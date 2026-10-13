@@ -5,7 +5,14 @@ import tseslint from 'typescript-eslint';
 
 export default tseslint.config(
   {
-    ignores: ['**/dist/**', '**/target/**', '**/node_modules/**', 'apps/desktop/src-tauri/gen/**'],
+    ignores: [
+      '**/dist/**',
+      '**/target/**',
+      '**/node_modules/**',
+      'apps/desktop/src-tauri/gen/**',
+      'apps/desktop/src-tauri/resources/**',
+      'apps/desktop/src-tauri/binaries/**',
+    ],
   },
   js.configs.recommended,
   ...tseslint.configs.recommended,
@@ -28,7 +35,7 @@ export default tseslint.config(
     languageOptions: { globals: { ...globals.node, ...globals.browser } },
   },
   {
-    files: ['packages/bridge/**/*.{ts,mjs}', '*.js', '*.config.*'],
+    files: ['packages/bridge/**/*.{ts,mjs}', 'scripts/**/*.mjs', '*.js', '*.config.*'],
     languageOptions: { globals: globals.node },
   },
 );

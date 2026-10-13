@@ -4,9 +4,9 @@
   "version": "0.1.0",
   "identifier": "dev.engineerlish.programish",
   "build": {
-    "beforeDevCommand": "pnpm --filter @programish/bridge build && pnpm --filter @programish/desktop dev",
+    "beforeDevCommand": "pnpm -w run sidecar:placeholder && pnpm --filter @programish/bridge build && pnpm --filter @programish/desktop dev",
     "devUrl": "http://localhost:1420",
-    "beforeBuildCommand": "pnpm --filter @programish/bridge build && pnpm --filter @programish/desktop build",
+    "beforeBuildCommand": "pnpm -w run sidecar && pnpm --filter @programish/bridge build && pnpm --filter @programish/desktop build",
     "frontendDist": "../dist"
   },
   "app": {
@@ -25,13 +25,28 @@
   },
   "bundle": {
     "active": true,
-    "targets": "all",
+    "targets": ["nsis", "deb"],
     "icon": [
       "icons/32x32.png",
       "icons/128x128.png",
       "icons/128x128@2x.png",
       "icons/icon.icns",
       "icons/icon.ico"
-    ]
+    ],
+    "externalBin": ["binaries/node"],
+    "resources": {
+      "resources/bridge/*": "bridge/"
+    },
+    "publisher": "engineerlish",
+    "copyright": "Copyright (c) 2026 engineerlish",
+    "category": "DeveloperTool",
+    "shortDescription": "A desktop app for prompting about code, on your Claude subscription",
+    "longDescription": "Programish is a lightweight desktop client for developers who mostly prompt about code. It runs on your Claude Code login: chat, code blocks and diffs, live previews, a prompt library, and usage tracking.",
+    "windows": {
+      "nsis": {
+        "installMode": "currentUser",
+        "displayLanguageSelector": false
+      }
+    }
   }
 }

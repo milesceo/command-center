@@ -6,12 +6,12 @@
 //! them as opaque strings so the protocol lives in exactly one place (TypeScript).
 
 use std::io::{BufRead, BufReader, Write};
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::process::{Child, ChildStdin, Command, Stdio};
 use std::sync::Mutex;
 use std::thread;
 
-use tauri::{AppHandle, Emitter, State};
+use tauri::{AppHandle, Emitter, Manager, State};
 
 const LINE_EVENT: &str = "bridge://line";
 /// Fired when the sidecar's stdout closes, so the UI can fail in-flight chats instead of hanging.
@@ -25,30 +25,89 @@ struct Running {
 #[derive(Default)]
 pub struct BridgeState(Mutex<Option<Running>>);
 
-/// Dev builds run the bundled script straight from the workspace. Packaging the
-/// sidecar for release (embedding a Node runtime) is a later phase.
-fn entry_path() -> Result<PathBuf, String> {
-    if let Ok(path) = std::env::var("PROGRAMISH_BRIDGE_ENTRY") {
-        return Ok(PathBuf::from(path));
-    }
-    if cfg!(debug_assertions) {
-        return Ok(PathBuf::from(env!("CARGO_MANIFEST_DIR"))
-            .join("../../../packages/bridge/dist/main.mjs"));
-    }
-    Err("Bridge packaging is not implemented yet; set PROGRAMISH_BRIDGE_ENTRY.".into())
+/// How to start the bridge: a program, its arguments and extra environment.
+#[derive(Debug, PartialEq, Eq)]
+struct Launch {
+    program: PathBuf,
+    args: Vec<PathBuf>,
+    env: Vec<(&'static str, PathBuf)>,
 }
 
-fn spawn_bridge() -> Result<Child, String> {
-    let entry = entry_path()?;
+fn exe_name(base: &str) -> String {
+    if cfg!(windows) {
+        format!("{base}.exe")
+    } else {
+        base.to_string()
+    }
+}
+
+/// The installed layout: Tauri puts the external `node` binary beside the app executable and
+/// copies `resources/bridge/*` (the bundled bridge and the SDK's Claude runtime) into the
+/// resource directory. Nothing here needs Node, npm or the repository on the user's machine.
+fn installed_launch(exe_dir: &Path, resource_dir: &Path) -> Result<Launch, String> {
+    let node = exe_dir.join(exe_name("node"));
+    let bridge = resource_dir.join("bridge");
+    let main = bridge.join("main.mjs");
+    let claude = bridge.join(exe_name("claude"));
+    for (what, path) in [
+        ("Node runtime", &node),
+        ("bridge", &main),
+        ("Claude runtime", &claude),
+    ] {
+        if !path.is_file() {
+            return Err(format!(
+                "The {what} is missing at {}. Reinstall Programish.",
+                path.display()
+            ));
+        }
+    }
+    Ok(Launch {
+        program: node,
+        args: vec![main],
+        env: vec![("PROGRAMISH_CLAUDE_EXECUTABLE", claude)],
+    })
+}
+
+/// Development: the workspace bundle run by the `node` on PATH, with the SDK finding its own runtime.
+fn dev_launch(entry: PathBuf) -> Result<Launch, String> {
     if !entry.exists() {
         return Err(format!(
             "Bridge entry not found at {}. Run `pnpm --filter @programish/bridge build`.",
             entry.display()
         ));
     }
-    let mut command = Command::new("node");
+    Ok(Launch {
+        program: PathBuf::from("node"),
+        args: vec![entry],
+        env: vec![],
+    })
+}
+
+fn resolve_launch(app: &AppHandle) -> Result<Launch, String> {
+    if let Ok(path) = std::env::var("PROGRAMISH_BRIDGE_ENTRY") {
+        return dev_launch(PathBuf::from(path));
+    }
+    if cfg!(debug_assertions) {
+        return dev_launch(
+            PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+                .join("../../../packages/bridge/dist/main.mjs"),
+        );
+    }
+    let exe = std::env::current_exe().map_err(|e| format!("Cannot locate the app: {e}"))?;
+    let exe_dir = exe.parent().ok_or("Cannot locate the app folder.")?;
+    let resource_dir = app
+        .path()
+        .resource_dir()
+        .map_err(|e| format!("Cannot locate the app resources: {e}"))?;
+    installed_launch(exe_dir, &resource_dir)
+}
+
+fn spawn_bridge(app: &AppHandle) -> Result<Child, String> {
+    let launch = resolve_launch(app)?;
+    let mut command = Command::new(&launch.program);
     command
-        .arg(entry)
+        .args(&launch.args)
+        .envs(launch.env.iter().map(|(k, v)| (*k, v)))
         .stdin(Stdio::piped())
         .stdout(Stdio::piped())
         .stderr(Stdio::piped());
@@ -60,9 +119,12 @@ fn spawn_bridge() -> Result<Child, String> {
         command.creation_flags(0x0800_0000);
     }
 
-    command
-        .spawn()
-        .map_err(|e| format!("Failed to start `node` (is Node.js installed and on PATH?): {e}"))
+    command.spawn().map_err(|e| {
+        format!(
+            "Failed to start the bridge ({}): {e}",
+            launch.program.display()
+        )
+    })
 }
 
 /// Starts the sidecar if it isn't already running. Idempotent.
@@ -78,7 +140,7 @@ pub fn bridge_start(app: AppHandle, state: State<'_, BridgeState>) -> Result<(),
         *guard = None;
     }
 
-    let mut child = spawn_bridge()?;
+    let mut child = spawn_bridge(&app)?;
     let stdin = child.stdin.take().ok_or("bridge stdin unavailable")?;
     let stdout = child.stdout.take().ok_or("bridge stdout unavailable")?;
     let stderr = child.stderr.take().ok_or("bridge stderr unavailable")?;
@@ -109,4 +171,67 @@ pub fn bridge_send(state: State<'_, BridgeState>, line: String) -> Result<(), St
     writeln!(running.stdin, "{line}")
         .and_then(|_| running.stdin.flush())
         .map_err(|e| format!("failed to write to bridge: {e}"))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::fs;
+
+    fn touch(path: &Path) {
+        fs::create_dir_all(path.parent().unwrap()).unwrap();
+        fs::write(path, b"x").unwrap();
+    }
+
+    fn scratch(name: &str) -> PathBuf {
+        let dir = std::env::temp_dir().join(format!("programish-{name}-{}", std::process::id()));
+        let _ = fs::remove_dir_all(&dir);
+        fs::create_dir_all(&dir).unwrap();
+        dir
+    }
+
+    #[test]
+    fn installed_layout_runs_the_bundled_node_with_the_bundled_runtime() {
+        let root = scratch("installed");
+        let (exe_dir, res) = (root.join("app"), root.join("app/resources"));
+        touch(&exe_dir.join(exe_name("node")));
+        touch(&res.join("bridge/main.mjs"));
+        touch(&res.join("bridge").join(exe_name("claude")));
+
+        let launch = installed_launch(&exe_dir, &res).unwrap();
+        assert_eq!(launch.program, exe_dir.join(exe_name("node")));
+        assert_eq!(launch.args, vec![res.join("bridge/main.mjs")]);
+        assert_eq!(
+            launch.env,
+            vec![(
+                "PROGRAMISH_CLAUDE_EXECUTABLE",
+                res.join("bridge").join(exe_name("claude"))
+            )]
+        );
+        fs::remove_dir_all(root).ok();
+    }
+
+    #[test]
+    fn a_missing_piece_is_named_in_the_error() {
+        let root = scratch("missing");
+        let (exe_dir, res) = (root.join("app"), root.join("app/resources"));
+        touch(&exe_dir.join(exe_name("node")));
+        touch(&res.join("bridge/main.mjs"));
+
+        let err = installed_launch(&exe_dir, &res).unwrap_err();
+        assert!(err.contains("Claude runtime"), "{err}");
+        assert!(err.contains("Reinstall"), "{err}");
+
+        fs::remove_file(res.join("bridge/main.mjs")).unwrap();
+        assert!(installed_launch(&exe_dir, &res)
+            .unwrap_err()
+            .contains("bridge"));
+        fs::remove_dir_all(root).ok();
+    }
+
+    #[test]
+    fn dev_launch_needs_the_built_bundle() {
+        let err = dev_launch(PathBuf::from("/definitely/not/here.mjs")).unwrap_err();
+        assert!(err.contains("pnpm --filter @programish/bridge build"));
+    }
 }
