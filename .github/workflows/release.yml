@@ -1,11 +1,18 @@
 name: Release
 
 # A version tag builds the Windows installer, smoke-tests the installed layout and publishes the
-# release with the matching CHANGELOG section as its notes. "Run workflow" on a branch does the
-# same build and checks but publishes nothing (the installer is kept as a run artifact).
+# release with the matching CHANGELOG section as its notes. Pull requests that touch packaging and
+# manual runs do the same build and checks but publish nothing (the installer is kept as an artifact).
 on:
   push:
     tags: ['v[0-9]+.[0-9]+.[0-9]+']
+  # Changes to packaging build and smoke-test the installer too (nothing is published).
+  pull_request:
+    paths:
+      - .github/workflows/release.yml
+      - scripts/**
+      - apps/desktop/src-tauri/**
+      - packages/bridge/**
   workflow_dispatch:
 
 concurrency:
