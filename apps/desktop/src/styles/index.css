@@ -1,0 +1,100 @@
+@import 'tailwindcss';
+@import '@fontsource-variable/geist';
+@import '@fontsource-variable/geist-mono';
+
+/*
+ * Design tokens. Components never use raw colors; they use the Tailwind
+ * utilities mapped below (bg-surface, text-fg-muted, border-border, ...).
+ * Dark is the default; light overrides via [data-theme='light'].
+ */
+:root,
+[data-theme='dark'] {
+  color-scheme: dark;
+  --bg: #0b0b0d;
+  --surface: #111114;
+  --elevated: #17171b;
+  --hover: #1d1d22;
+  --border: #232328;
+  --border-strong: #32323a;
+  --fg: #ececef;
+  --fg-muted: #9a9aa6;
+  --fg-subtle: #6b6b77;
+  --accent: #8b93ff;
+  --accent-fg: #0b0b0d;
+  --success: #4ade80;
+  --danger: #f87171;
+  --warning: #fbbf24;
+}
+
+[data-theme='light'] {
+  color-scheme: light;
+  --bg: #fcfcfd;
+  --surface: #f5f5f7;
+  --elevated: #ffffff;
+  --hover: #ececf0;
+  --border: #e4e4ea;
+  --border-strong: #d2d2db;
+  --fg: #16161a;
+  --fg-muted: #5f5f6b;
+  --fg-subtle: #8c8c98;
+  --accent: #5b63e6;
+  --accent-fg: #ffffff;
+  --success: #16a34a;
+  --danger: #dc2626;
+  --warning: #d97706;
+}
+
+@theme inline {
+  --color-bg: var(--bg);
+  --color-surface: var(--surface);
+  --color-elevated: var(--elevated);
+  --color-hover: var(--hover);
+  --color-border: var(--border);
+  --color-border-strong: var(--border-strong);
+  --color-fg: var(--fg);
+  --color-fg-muted: var(--fg-muted);
+  --color-fg-subtle: var(--fg-subtle);
+  --color-accent: var(--accent);
+  --color-accent-fg: var(--accent-fg);
+  --color-success: var(--success);
+  --color-danger: var(--danger);
+  --color-warning: var(--warning);
+  --font-sans: 'Geist Variable', ui-sans-serif, system-ui, 'Segoe UI', sans-serif;
+  --font-mono: 'Geist Mono Variable', ui-monospace, 'Cascadia Code', Consolas, monospace;
+  --radius-control: 6px;
+  --radius-panel: 10px;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  background: var(--bg);
+  color: var(--fg);
+  font-family: var(--font-sans);
+  font-size: 13px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+  /* A desktop app, not a web page: no accidental text selection of chrome. */
+  user-select: none;
+  overflow: hidden;
+}
+
+/* Content the user may want to copy opts back in. */
+.selectable {
+  user-select: text;
+}
+
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+
+/* Slim, quiet scrollbars. */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--border-strong) transparent;
+}

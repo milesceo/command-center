@@ -1,0 +1,7 @@
+packages:
+  - apps/*
+  - packages/*
+
+# Build scripts we explicitly allow (pnpm 10 blocks them by default).
+onlyBuiltDependencies:
+  - esbuild

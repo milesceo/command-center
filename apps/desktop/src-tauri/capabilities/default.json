@@ -1,0 +1,7 @@
+{
+  "$schema": "../gen/schemas/desktop-schema.json",
+  "identifier": "default",
+  "description": "Permissions for the main window. SQL is limited to load/select/execute.",
+  "windows": ["main"],
+  "permissions": ["core:default", "sql:allow-load", "sql:allow-select", "sql:allow-execute"]
+}
