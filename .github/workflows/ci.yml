@@ -55,6 +55,9 @@ jobs:
       - name: Create placeholder frontend dist
         shell: bash
         run: mkdir -p apps/desktop/dist && touch apps/desktop/dist/index.html
+      # tauri-build also requires the bundled sidecar files to exist; empty ones are enough to compile.
+      - name: Create placeholder sidecar files
+        run: node scripts/prepare-sidecar.mjs --placeholder
       - run: cargo fmt --manifest-path apps/desktop/src-tauri/Cargo.toml --all -- --check
       - run: cargo clippy --manifest-path apps/desktop/src-tauri/Cargo.toml --all-targets -- -D warnings
       - run: cargo test --manifest-path apps/desktop/src-tauri/Cargo.toml
