@@ -1,4 +1,5 @@
 mod bridge;
+mod preview;
 
 use tauri_plugin_sql::{Migration, MigrationKind};
 
@@ -28,15 +29,19 @@ pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_dialog::init())
+        .plugin(tauri_plugin_fs::init())
         .plugin(
             tauri_plugin_sql::Builder::default()
                 .add_migrations(DB_URL, migrations())
                 .build(),
         )
         .manage(bridge::BridgeState::default())
+        .manage(preview::PreviewStore::default())
+        .register_uri_scheme_protocol("preview", preview::handle)
         .invoke_handler(tauri::generate_handler![
             bridge::bridge_start,
-            bridge::bridge_send
+            bridge::bridge_send,
+            preview::preview_set
         ])
         .run(tauri::generate_context!())
         .expect("error while running Programish");

@@ -1,7 +1,7 @@
 {
   "$schema": "../gen/schemas/desktop-schema.json",
   "identifier": "default",
-  "description": "Permissions for the main window. SQL is limited to load/select/execute; the opener only opens http(s)/mailto links; the dialog is used to pick a folder.",
+  "description": "Permissions for the main window. SQL is limited to load/select/execute; the opener only opens http(s)/mailto links; the dialog picks a folder or a save location (paths chosen there are added to the fs scope, and only text writes are allowed); previews are served by the preview: scheme in src/preview.rs.",
   "windows": ["main"],
   "permissions": [
     "core:default",
@@ -9,6 +9,8 @@
     "sql:allow-select",
     "sql:allow-execute",
     "opener:default",
-    "dialog:allow-open"
+    "dialog:allow-open",
+    "dialog:allow-save",
+    "fs:allow-write-text-file"
   ]
 }

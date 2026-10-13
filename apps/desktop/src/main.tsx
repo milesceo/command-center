@@ -1,7 +1,7 @@
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import { App } from './App';
-import { warmUpHighlighter } from './lib/rehype-lowlight';
+import { warmUpHighlighter } from './lib/highlight';
 import './styles/index.css';
 
 const root = document.getElementById('root');

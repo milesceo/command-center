@@ -1,4 +1,4 @@
-import { Plus } from 'lucide-react';
+import { Keyboard, Plus } from 'lucide-react';
 import { conversationsStore } from '../../stores/conversations';
 import { useUiStore } from '../../stores/ui';
 import { Button } from '../ui/button';
@@ -31,6 +31,15 @@ export function Sidebar() {
 
       <div className="flex items-center gap-1 border-t border-border p-2">
         <BridgeStatus />
+        <Button
+          variant="ghost"
+          size="icon"
+          aria-label="Keyboard shortcuts"
+          title="Keyboard shortcuts"
+          onClick={() => useUiStore.getState().setShortcutsOpen(true)}
+        >
+          <Keyboard size={15} />
+        </Button>
         <ThemeToggle />
       </div>
     </aside>

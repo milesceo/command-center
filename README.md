@@ -9,7 +9,11 @@ A personal desktop app for prompting about code. It is a lightweight, fast repla
 - Streaming chat on your Claude subscription (through your Claude Code login), with a Stop button that keeps the partial reply so you can carry on
 - Model picker (Default, Sonnet, Opus, Haiku) and a per-conversation system prompt
 - Plain chat by default; optional read-only file access (Read/Glob/Grep) for one folder you choose
-- Markdown with GitHub tables, syntax-highlighted code blocks and copy buttons
+- Markdown with GitHub tables
+- Code blocks highlighted with Shiki (theme follows light/dark), with language and file name, line numbers, collapse for long blocks, a wrap toggle, copy, save as file and open in preview
+- Diffs: unified diffs in a reply render as side-by-side or inline diffs with changed words highlighted; compare any two code blocks, or a block with its earlier version in the conversation
+- Live preview panel for HTML, SVG, Mermaid and Markdown: sandboxed (no access to the app, bridge or files), tabs, refresh, mobile/tablet/desktop widths, a console pane, and it updates as a reply streams
+- Keyboard shortcuts (`Ctrl+/` lists them): copy last code block, toggle preview, toggle diff layout
 - Copy any message, edit and resend an earlier message, regenerate the last reply
 - Multiline composer (Enter sends, Shift+Enter inserts a newline); paste, drop or pick text files as attachments
 - Conversations saved in SQLite: rename, pin, delete (with confirmation), search by title and message content

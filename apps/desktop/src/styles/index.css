@@ -182,63 +182,76 @@
   font-weight: 600;
 }
 
-/* ---- Code blocks (highlight.js tokens mapped to theme variables) --------- */
-.code-block pre {
+/* ---- Code blocks --------------------------------------------------------- */
+/*
+ * Shiki uses a CSS-variables theme, so these variables are the whole color
+ * scheme: switching [data-theme] recolors every block with no re-highlighting.
+ */
+:root,
+[data-theme='dark'] {
+  --shiki-foreground: #ececef;
+  --shiki-token-constant: #f0b866;
+  --shiki-token-string: #7ee0a1;
+  --shiki-token-comment: #6b6b77;
+  --shiki-token-keyword: #9aa2ff;
+  --shiki-token-parameter: #d4d4dc;
+  --shiki-token-function: #7cc4ff;
+  --shiki-token-string-expression: #7ee0a1;
+  --shiki-token-punctuation: #8d8d99;
+  --shiki-token-link: #7cc4ff;
+  --diff-add: color-mix(in srgb, var(--success) 14%, transparent);
+  --diff-add-strong: color-mix(in srgb, var(--success) 34%, transparent);
+  --diff-del: color-mix(in srgb, var(--danger) 14%, transparent);
+  --diff-del-strong: color-mix(in srgb, var(--danger) 34%, transparent);
+}
+[data-theme='light'] {
+  --shiki-foreground: #16161a;
+  --shiki-token-constant: #a35a00;
+  --shiki-token-string: #0f7a3d;
+  --shiki-token-comment: #8c8c98;
+  --shiki-token-keyword: #4a52d6;
+  --shiki-token-parameter: #3d3d4a;
+  --shiki-token-function: #0b6bb5;
+  --shiki-token-string-expression: #0f7a3d;
+  --shiki-token-punctuation: #6b6b77;
+  --shiki-token-link: #0b6bb5;
+}
+
+.code-lines {
   margin: 0;
-  overflow-x: auto;
-  padding: 0.8em 1em;
+  padding: 0.55em 0;
   font-family: var(--font-mono);
   font-size: 12.5px;
-  line-height: 1.55;
+  line-height: 1.6;
+  color: var(--shiki-foreground);
+  tab-size: 2;
 }
-.code-block code {
+.code-lines code {
+  display: block;
+  min-width: max-content;
   font-family: inherit;
 }
-.hljs-comment,
-.hljs-quote {
+.code-wrap code {
+  min-width: 0;
+}
+.code-line {
+  display: grid;
+  grid-template-columns: calc(var(--gutter) + 2.2em) 1fr;
+}
+.code-ln {
+  padding-right: 1em;
+  text-align: right;
   color: var(--fg-subtle);
-  font-style: italic;
+  user-select: none;
+  opacity: 0.7;
 }
-.hljs-keyword,
-.hljs-selector-tag,
-.hljs-literal,
-.hljs-doctag {
-  color: var(--accent);
+.code-lc {
+  padding-right: 1em;
+  white-space: pre;
 }
-.hljs-string,
-.hljs-regexp,
-.hljs-addition {
-  color: var(--success);
-}
-.hljs-number,
-.hljs-symbol,
-.hljs-bullet,
-.hljs-meta {
-  color: var(--warning);
-}
-.hljs-title,
-.hljs-section,
-.hljs-built_in,
-.hljs-type,
-.hljs-class .hljs-title {
-  color: var(--fg);
-  font-weight: 600;
-}
-.hljs-attr,
-.hljs-attribute,
-.hljs-variable,
-.hljs-template-variable,
-.hljs-property {
-  color: var(--fg-muted);
-}
-.hljs-deletion {
-  color: var(--danger);
-}
-.hljs-emphasis {
-  font-style: italic;
-}
-.hljs-strong {
-  font-weight: 700;
+.code-wrap .code-lc {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
 }
 
 @keyframes caret-pulse {
@@ -254,4 +267,80 @@
   border-radius: 9999px;
   background: var(--accent);
   animation: caret-pulse 1s ease-in-out infinite;
+}
+
+/* ---- Diffs ----------------------------------------------------------------- */
+.diff {
+  font-family: var(--font-mono);
+  font-size: 12.5px;
+  line-height: 1.6;
+}
+.diff-file-head {
+  display: flex;
+  align-items: center;
+  gap: 0.75em;
+  padding: 0.35em 0.9em;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  color: var(--fg-muted);
+  font-size: 12px;
+}
+.diff-hunk {
+  padding: 0.15em 0.9em;
+  background: color-mix(in srgb, var(--accent) 10%, transparent);
+  color: var(--fg-subtle);
+  white-space: pre;
+}
+.diff-row {
+  display: grid;
+}
+.diff-inline {
+  grid-template-columns: 3.4em 3.4em 1.4em 1fr;
+}
+.diff-split {
+  grid-template-columns: 3.4em 1fr 3.4em 1fr;
+}
+.diff-split > .diff-cell + .diff-cell + .diff-no,
+.diff-split > .diff-no:nth-child(3) {
+  border-left: 1px solid var(--border);
+}
+.diff-no {
+  padding: 0 0.6em;
+  text-align: right;
+  color: var(--fg-subtle);
+  user-select: none;
+  opacity: 0.8;
+}
+.diff-sign {
+  text-align: center;
+  color: var(--fg-subtle);
+  user-select: none;
+}
+.diff-cell {
+  padding-right: 1em;
+  white-space: pre;
+  min-width: 0;
+}
+.diff-wrap .diff-cell {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.diff-add {
+  background: var(--diff-add);
+}
+.diff-del {
+  background: var(--diff-del);
+}
+.diff-empty {
+  background: color-mix(in srgb, var(--fg) 4%, transparent);
+}
+.diff-word-add {
+  background: var(--diff-add-strong);
+  color: inherit;
+  border-radius: 2px;
+}
+.diff-word-del {
+  background: var(--diff-del-strong);
+  color: inherit;
+  border-radius: 2px;
 }

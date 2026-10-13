@@ -3,8 +3,73 @@
 //   "slow ..."  streams words forever-ish (until aborted), to exercise Stop
 //   "login ..." behaves like a logged-out runtime
 //   "limit ..." behaves like an exhausted 5-hour window
+//   "demo <kind> ..." replies with a ready-made code block for the preview/diff/code-block e2e checks
 //   "stress ..." streams ~6 KB of mixed markdown at ~500 tokens/s (perf checks)
 //   anything else echoes back a short markdown reply.
+
+const fence = (lang, body, meta = '') =>
+  '```' + lang + (meta ? ' ' + meta : '') + '\n' + body + '\n```';
+const V1 =
+  'export function sum(a, b) {\n  return a + b;\n}\n\nexport function mul(a, b) {\n  return a * b;\n}\n\nexport const VERSION = 1;';
+const V2 =
+  'export function sum(a: number, b: number): number {\n  return a + b;\n}\n\nexport function mul(a, b) {\n  return a * b;\n}\n\nexport const VERSION = 2;';
+const DEMOS = {
+  html:
+    'Here is a page:\n\n' +
+    fence(
+      'html',
+      "<h1 id=\"t\">Hello preview</h1>\n<script>\nconsole.log('hello from preview');\nconsole.warn('careful');\nsetTimeout(function () { throw new Error('boom'); }, 20);\n</script>",
+    ),
+  isolation:
+    'Probe:\n\n' +
+    fence(
+      'html',
+      "<p id=\"p\">probe</p>\n<script>\nvar r = {};\ntry { void parent.document.title; r.parent = 'LEAK'; } catch (e) { r.parent = 'blocked'; }\ntry { void localStorage.getItem('x'); r.storage = 'LEAK'; } catch (e) { r.storage = 'blocked'; }\nr.tauri = typeof window.__TAURI_INTERNALS__ === 'undefined' ? 'absent' : 'LEAK';\nfetch('/').then(function () { r.fetch = 'LEAK'; done(); }, function () { r.fetch = 'blocked'; done(); });\nfunction done() { console.log('RESULT parent=' + r.parent + ' storage=' + r.storage + ' tauri=' + r.tauri + ' fetch=' + r.fetch); }\n</script>",
+    ),
+  svg:
+    'A logo:\n\n' +
+    fence(
+      'svg',
+      '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="100" height="100"><circle id="c" cx="50" cy="50" r="40" fill="tomato"/></svg>',
+    ),
+  mermaid:
+    'A flow:\n\n' +
+    fence('mermaid', 'graph TD\n  A[Start] --> B{Ok?}\n  B -->|yes| C[Done]\n  B -->|no| A'),
+  md:
+    'Notes:\n\n' +
+    fence('markdown', '# Release notes\n\n- fast\n- **small**\n\n| a | b |\n|---|---|\n| 1 | 2 |'),
+  diff:
+    'Apply this:\n\n' +
+    fence(
+      'diff',
+      'diff --git a/src/total.ts b/src/total.ts\n--- a/src/total.ts\n+++ b/src/total.ts\n@@ -1,5 +1,6 @@\n export function total(items: number[]) {\n-  const sum = items.reduce((a, b) => a + b, 0);\n-  return sum;\n+  const sum = items.reduce((a, b) => a + b, 0) * 1.2;\n+  return Math.round(sum);\n }\n export const X = 1;',
+    ),
+  two:
+    'Two options:\n\n' +
+    fence('ts', 'const mode = "fast";\nconst retries = 1;', 'title="a.ts"') +
+    '\n\nand\n\n' +
+    fence('ts', 'const mode = "safe";\nconst retries = 3;', 'title="b.ts"'),
+  v1: 'First version:\n\n' + fence('ts', V1),
+  v2: 'Updated:\n\n' + fence('ts', V2),
+  long:
+    'A long file:\n\n' +
+    fence(
+      'ts',
+      Array.from(
+        { length: 60 },
+        (_, i) => 'export const value' + i + ' = ' + i + '; // line ' + (i + 1),
+      ).join('\n'),
+      'title="long.ts"',
+    ),
+  'stream-html':
+    'Building it:\n\n' +
+    fence(
+      'html',
+      '<h1>Part 1</h1>\n<p>Part 2</p>\n<p>Part 3</p>\n<p>Part 4</p>\n<p id="last">Part 5</p>',
+    ) +
+    '\n\nDone.',
+};
+
 export function query({ prompt, options }) {
   const signal = options?.abortController?.signal;
   const sleep = (ms) =>
@@ -68,6 +133,37 @@ export function query({ prompt, options }) {
       parent_tool_use_id: null,
       event: { type: 'message_start', message: { id: 'm' } },
     };
+    if (last.startsWith('demo ')) {
+      const kind = last.slice(5).trim().split(/\s+/)[0];
+      const body = DEMOS[kind] ?? 'unknown demo';
+      const slow = kind === 'stream-html';
+      yield {
+        type: 'stream_event',
+        parent_tool_use_id: null,
+        event: { type: 'message_start', message: { id: 'm' } },
+      };
+      for (let i = 0; i < body.length; i += slow ? 4 : 24) {
+        if (signal?.aborted) return;
+        yield {
+          type: 'stream_event',
+          parent_tool_use_id: null,
+          event: {
+            type: 'content_block_delta',
+            index: 0,
+            delta: { type: 'text_delta', text: body.slice(i, i + (slow ? 4 : 24)) },
+          },
+        };
+        await sleep(slow ? 70 : 3);
+      }
+      yield {
+        type: 'result',
+        subtype: 'success',
+        is_error: false,
+        duration_ms: 5,
+        usage: { input_tokens: 10, output_tokens: body.length },
+      };
+      return;
+    }
     if (last.startsWith('stress')) {
       const section = (i) =>
         `## Section ${i}\n\nSome **bold** text, \`inline code\` and a [link](https://example.com/${i}).\n\n- item one\n- item two\n\n\`\`\`ts\nexport function f${i}(x: number): number {\n  // comment ${i}\n  return x * ${i};\n}\n\`\`\`\n\n`;

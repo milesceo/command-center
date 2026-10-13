@@ -1,4 +1,7 @@
 import { useEffect } from 'react';
+import { ShortcutsDialog } from './components/ui/shortcuts-dialog';
+import { Toaster } from './components/ui/toaster';
+import { useShortcuts } from './lib/use-shortcuts';
 import { MainPanel } from './components/shell/MainPanel';
 import { RightPanel } from './components/shell/RightPanel';
 import { Sidebar } from './components/shell/Sidebar';
@@ -13,6 +16,7 @@ export function App() {
   const connect = useBridgeStore((s) => s.connect);
 
   useEffect(() => applyTheme(theme), [theme]);
+  useShortcuts();
 
   // Start the sidecar and read the saved conversations (which also runs DB migrations).
   useEffect(() => {
@@ -30,6 +34,8 @@ export function App() {
       <Sidebar />
       <MainPanel />
       <RightPanel />
+      <ShortcutsDialog />
+      <Toaster />
     </div>
   );
 }

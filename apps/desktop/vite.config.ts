@@ -6,6 +6,8 @@ import { defineConfig } from 'vitest/config';
 export default defineConfig({
   plugins: [react(), tailwindcss()],
   clearScreen: false,
+  // The highlighter worker code-splits (one chunk per grammar), which needs ES module workers.
+  worker: { format: 'es' },
   server: { port: 1420, strictPort: true },
   test: { environment: 'node', include: ['src/**/*.test.{ts,tsx}'] },
 });

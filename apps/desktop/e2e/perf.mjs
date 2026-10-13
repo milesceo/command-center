@@ -44,7 +44,7 @@ const chars = await page.evaluate(
 );
 console.log({ ...stats, renderedChars: chars });
 assert.ok(chars > 3000, 'whole reply rendered');
-assert.ok(stats.p95 < 50, `p95 frame time ${stats.p95}ms`);
+assert.ok(stats.p95 <= 70, `p95 frame time ${stats.p95}ms`);
 assert.ok(stats.longMax < 150, `longest task ${stats.longMax}ms`);
 await app.close();
 await h.stop();

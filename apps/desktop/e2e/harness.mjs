@@ -8,9 +8,16 @@
 // By default the sidecar uses a fake SDK (deterministic, no login needed);
 // set E2E_REAL=1 to talk to the real Claude runtime instead.
 import { spawn } from 'node:child_process';
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync } from 'node:fs';
+import {
+  existsSync,
+  mkdirSync,
+  mkdtempSync,
+  readFileSync,
+  readdirSync,
+  writeFileSync,
+} from 'node:fs';
 import { tmpdir } from 'node:os';
-import { dirname, join } from 'node:path';
+import { basename, dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { DatabaseSync } from 'node:sqlite';
 import { chromium } from 'playwright-core';
@@ -49,6 +56,8 @@ function openDatabase(file) {
 
 /** Injected before the app loads: a minimal stand-in for window.__TAURI_INTERNALS__. */
 function installTauriShim() {
+  // Only the app's own frame gets the IPC bridge; previewed pages (iframes) must not see it.
+  if (window.top !== window) return;
   const callbacks = new Map();
   const listeners = new Map();
   window.__TAURI_INTERNALS__ = {
@@ -58,8 +67,9 @@ function installTauriShim() {
       return id;
     },
     unregisterCallback: (id) => callbacks.delete(id),
-    convertFileSrc: (p) => p,
-    async invoke(cmd, args) {
+    // Windows form of custom-scheme URLs; the harness answers these requests itself (see launch()).
+    convertFileSrc: (p, scheme = 'asset') => `http://${scheme}.localhost/${p}`,
+    async invoke(cmd, args, options) {
       if (cmd === 'plugin:event|listen') {
         const list = listeners.get(args.event) ?? [];
         list.push(args.handler);
@@ -67,7 +77,12 @@ function installTauriShim() {
         return args.handler;
       }
       if (cmd === 'plugin:event|unlisten') return null;
-      return window.__e2e_invoke(cmd, args);
+      // Binary bodies (the fs plugin writes Uint8Array) cannot cross the exposed-function boundary as-is.
+      return window.__e2e_invoke(
+        cmd,
+        args instanceof Uint8Array ? { __bytes: Array.from(args) } : args,
+        options ? { headers: options.headers } : undefined,
+      );
     },
   };
   window.__TAURI_EVENT_PLUGIN_INTERNALS__ = { unregisterListener() {} };
@@ -105,6 +120,14 @@ export async function startHarness({ real = process.env.E2E_REAL === '1' } = {})
   }
   const browser = await chromium.launch({ executablePath: findChromium() });
   const consoleErrors = [];
+  const saved = new Map();
+  const saveDir = mkdtempSync(join(tmpdir(), 'programish-save-'));
+  // The CSP the Rust protocol handler sends with every preview document: read from the source so the two cannot drift.
+  const previewCsp = /const PREVIEW_CSP: &str = "([^"]+)"/.exec(
+    readFileSync(join(desktop, 'src-tauri/src/preview.rs'), 'utf8'),
+  )?.[1];
+  if (!previewCsp) throw new Error('Could not read PREVIEW_CSP from preview.rs');
+  const previewDocs = new Map();
 
   /** Opens the app like a fresh launch: new page, new sidecar process, same database. */
   async function launch({ viewport = { width: 1200, height: 780 }, theme } = {}) {
@@ -112,12 +135,27 @@ export async function startHarness({ real = process.env.E2E_REAL === '1' } = {})
       viewport,
       permissions: ['clipboard-read', 'clipboard-write'],
     });
+    // Stands in for src-tauri/src/preview.rs: same documents, same security headers.
+    await context.route('http://preview.localhost/**', (route) => {
+      const html = previewDocs.get(new URL(route.request().url()).pathname.slice(1));
+      return html === undefined
+        ? route.fulfill({ status: 404, body: 'Preview not found' })
+        : route.fulfill({
+            status: 200,
+            contentType: 'text/html; charset=utf-8',
+            headers: {
+              'content-security-policy': `${previewCsp}; sandbox allow-scripts`,
+              'cache-control': 'no-store',
+            },
+            body: html,
+          });
+    });
     const page = await context.newPage();
     let child = null;
     const emit = (event, payload) =>
       page.evaluate(([e, p]) => window.__e2e_emit(e, p), [event, payload]).catch(() => {});
 
-    await page.exposeFunction('__e2e_invoke', async (cmd, args) => {
+    await page.exposeFunction('__e2e_invoke', async (cmd, args, options) => {
       switch (cmd) {
         case 'plugin:sql|load':
           return args.db;
@@ -147,6 +185,20 @@ export async function startHarness({ real = process.env.E2E_REAL === '1' } = {})
             }
           });
           child.on('exit', () => void emit('bridge://exit', null));
+          return null;
+        }
+        case 'preview_set':
+          previewDocs.set(args.id, args.html);
+          return null;
+        case 'plugin:dialog|save': {
+          const path = join(saveDir, basename(args.options?.defaultPath ?? 'untitled'));
+          return path;
+        }
+        case 'plugin:fs|write_text_file': {
+          const path = decodeURIComponent(options.headers.path);
+          const text = Buffer.from(args.__bytes).toString('utf8');
+          writeFileSync(path, text);
+          saved.set(path, text);
           return null;
         }
         case 'bridge_send':
@@ -185,6 +237,7 @@ export async function startHarness({ real = process.env.E2E_REAL === '1' } = {})
 
   return {
     db,
+    saved,
     launch,
     consoleErrors,
     stop: async () => {

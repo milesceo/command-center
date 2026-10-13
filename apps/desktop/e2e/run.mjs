@@ -44,7 +44,7 @@ await step('streams a markdown reply with highlighted code', async () => {
   });
   if (!real) {
     assert.equal(await lastReply(app.page).locator('strong').innerText(), 'hello there');
-    await app.page.waitForSelector('.code-block .hljs-keyword');
+    await app.page.waitForSelector('.code-lc span[style*="shiki-token-keyword"]');
   } else {
     await app.page.waitForSelector('.code-block');
   }
@@ -268,13 +268,260 @@ await step('bridge crash: in-flight chat fails cleanly and the badge restarts it
   await app.page.waitForSelector('aside >> text=/Bridge ready|pong \\d+ms/');
 });
 
+if (!real) {
+  const newChat = async () => {
+    await app.page.click('aside button:has-text("New chat")');
+    await app.page.waitForSelector('text=What are we building?');
+  };
+  const demo = async (kind) => {
+    await send(app.page, `demo ${kind}`);
+    await app.page.waitForSelector('[data-role="assistant"]:not([data-streaming])', {
+      timeout: 30000,
+    });
+  };
+  const frame = () => app.page.frameLocator('iframe[title^="Preview"]');
+  const panel = () => app.page.getByLabel('Preview', { exact: true });
+  const openConsole = async () => {
+    const toggle = app.page.getByRole('button', { name: 'Toggle console' });
+    if ((await toggle.getAttribute('aria-pressed')) !== 'true') await toggle.click();
+  };
+  const openPreview = async (n = 'last') => {
+    const btns = app.page.getByRole('button', { name: 'Open in preview' });
+    await (n === 'last' ? btns.last() : btns.nth(n)).click();
+    await panel().waitFor();
+  };
+
+  await app.page.evaluate(() => localStorage.removeItem('programish-ui'));
+  await app.close();
+  app = await h.launch({ theme: 'dark' });
+  await newChat();
+
+  await step('code block: header, line numbers, collapse, wrap, theme-matched colors', async () => {
+    await demo('long');
+    const block = app.page.getByTestId('code-block');
+    assert.match(await block.locator('header, div').first().innerText(), /ts\s+long\.ts/);
+    assert.equal(await block.locator('.code-line').count(), 16, 'collapsed to 16 lines');
+    await app.page.click('text=Show 44 more lines');
+    assert.equal(await block.locator('.code-line').count(), 60);
+    assert.equal(await block.locator('.code-ln').first().innerText(), '1');
+    await app.page.waitForFunction(() =>
+      [...document.querySelectorAll('.code-lc span')].some((s) =>
+        s.style.color.includes('--shiki-token-keyword'),
+      ),
+    );
+    const color = () =>
+      app.page.evaluate(() => {
+        const el = [...document.querySelectorAll('.code-lc span')].find((s) =>
+          s.style.color.includes('keyword'),
+        );
+        return getComputedStyle(el).color;
+      });
+    const dark = await color();
+    await shot(app, '11-code-block-dark');
+    await app.page.click('button[aria-label="Switch to light theme"]');
+    const light = await color();
+    assert.notEqual(dark, light, 'token colors follow the theme');
+    await shot(app, '12-code-block-light');
+    await app.page.click('button[aria-label="Switch to dark theme"]');
+    await app.page.click('button[aria-label="Toggle line wrap"]');
+    assert.ok((await block.locator('.code-wrap').count()) > 0);
+    await app.page.click('button[aria-label="Toggle line wrap"]');
+  });
+
+  await step('code block: copy and save as file', async () => {
+    await app.page.getByRole('button', { name: 'Copy code' }).click();
+    const copied = await app.page.evaluate(() => navigator.clipboard.readText());
+    assert.ok(
+      copied.startsWith('export const value0 = 0;') &&
+        !copied.includes(' ') &&
+        !/^\d+\s/.test(copied),
+      'raw code, no line numbers',
+    );
+    assert.equal(copied.split('\n').length, 60);
+    // The harness plays the native save dialog and the fs plugin, so this exercises the desktop save path.
+    await app.page.getByRole('button', { name: 'Save as file' }).click();
+    await app.page.waitForSelector('text=Saved');
+    const [[path, text]] = [...h.saved.entries()];
+    assert.ok(path.endsWith('long.ts'), `saved as ${path}`);
+    assert.equal(text, copied);
+  });
+
+  await step('HTML preview: sandboxed iframe, console output, errors', async () => {
+    await newChat();
+    await demo('html');
+    await openPreview();
+    await frame().locator('#t').waitFor();
+    assert.equal(
+      await app.page.locator('iframe[title^="Preview"]').getAttribute('sandbox'),
+      'allow-scripts',
+    );
+    await openConsole();
+    const log = app.page.getByRole('log');
+    await app.page.waitForFunction(() =>
+      document.querySelector('[role="log"]')?.textContent.includes('boom'),
+    );
+    const text = await log.innerText();
+    assert.match(text, /hello from preview/);
+    assert.match(text, /warn: careful/);
+    assert.match(text, /error: .*boom/);
+    await shot(app, '13-html-preview-console');
+  });
+
+  await step('previewed code cannot reach the app, storage, IPC or network', async () => {
+    await newChat();
+    await demo('isolation');
+    await openPreview();
+    await openConsole();
+    await app.page.waitForFunction(
+      () => document.querySelector('[role="log"]')?.textContent.includes('RESULT'),
+      null,
+      { timeout: 15000 },
+    );
+    const text = await app.page.getByRole('log').innerText();
+    assert.match(text, /RESULT parent=blocked storage=blocked tauri=absent fetch=blocked/);
+  });
+
+  await step('viewport toggle, refresh, tabs', async () => {
+    const stageWidth = () =>
+      app.page
+        .getByTestId('preview-stage')
+        .locator('> div')
+        .evaluate((el) => Math.round(el.getBoundingClientRect().width));
+    await app.page.getByRole('button', { name: /^Mobile/ }).click();
+    assert.equal(await stageWidth(), 375);
+    await app.page.getByRole('button', { name: /^Tablet/ }).click();
+    assert.equal(
+      await stageWidth(),
+      768 > (await app.page.getByTestId('preview-stage').boundingBox()).width
+        ? await stageWidth()
+        : 768,
+    );
+    await app.page.getByRole('button', { name: /^Desktop/ }).click();
+    await app.page.getByRole('button', { name: 'Refresh preview' }).click();
+    await frame().locator('#p').waitFor();
+    assert.ok(
+      (await app.page.getByRole('tab', { selected: true }).count()) === 1,
+      'one active tab',
+    );
+  });
+
+  await step('SVG, Mermaid and Markdown previews', async () => {
+    await newChat();
+    await demo('svg');
+    await openPreview();
+    await frame().locator('circle#c').waitFor();
+    await shot(app, '14-svg-preview');
+    await newChat();
+    await demo('mermaid');
+    await openPreview();
+    await frame().locator('svg .node').first().waitFor({ timeout: 60000 });
+    await shot(app, '15-mermaid-preview');
+    await newChat();
+    await demo('md');
+    await openPreview();
+    await panel().getByRole('heading', { name: 'Release notes' }).waitFor();
+    assert.equal(await panel().locator('table').count(), 1);
+    assert.ok((await app.page.getByRole('tab').count()) >= 3, 'previews accumulate as tabs');
+  });
+
+  await step('preview follows a reply that is still streaming', async () => {
+    await newChat();
+    await send(app.page, 'demo stream-html');
+    await app.page.getByRole('button', { name: 'Open in preview' }).waitFor();
+    await openPreview();
+    assert.equal(
+      await app.page.locator('[data-streaming="true"]').count(),
+      1,
+      'still streaming when the preview opened',
+    );
+    await frame().getByText('Part 2').waitFor();
+    await frame().locator('#last').waitFor({ timeout: 15000 });
+    await app.page.waitForSelector('[data-role="assistant"]:not([data-streaming])');
+    assert.equal(await frame().locator('#last').innerText(), 'Part 5');
+  });
+
+  await step('diff in a reply: side-by-side and inline, changed words highlighted', async () => {
+    await newChat();
+    await demo('diff');
+    const diff = app.page.getByTestId('diff-block');
+    await diff.waitFor();
+    // With the preview panel open the chat column is narrower than the side-by-side minimum, so it falls back to inline.
+    assert.equal(
+      await diff.locator('[data-requested="split"]').getAttribute('data-mode'),
+      'inline',
+    );
+    await app.page.keyboard.press('Control+Shift+P');
+    await app.page.waitForFunction(
+      () =>
+        document
+          .querySelector('[data-testid="diff-block"] [data-mode]')
+          ?.getAttribute('data-mode') === 'split',
+    );
+    assert.equal(await diff.locator('[data-mode="split"]').count(), 1);
+    assert.ok((await diff.locator('mark').count()) > 0, 'changed words are highlighted');
+    await shot(app, '16-diff-split');
+    await diff.getByRole('button', { name: 'Inline diff' }).click();
+    assert.equal(await diff.locator('[data-mode="inline"]').count(), 1);
+    await shot(app, '17-diff-inline');
+    await diff.getByRole('button', { name: 'Side-by-side diff' }).click();
+  });
+
+  await step('compare two code blocks, and a block against its earlier version', async () => {
+    await newChat();
+    await demo('two');
+    const compare = app.page.getByRole('button', { name: /compare with/i });
+    await compare.first().click();
+    await app.page.getByRole('button', { name: /^Compare with a\.ts/ }).waitFor();
+    await compare.last().click();
+    await panel().getByTestId('diff-file').waitFor();
+    assert.ok((await panel().locator('mark').count()) > 0);
+    await shot(app, '18-compare-blocks');
+    await newChat();
+    await demo('v1');
+    await demo('v2');
+    await app.page.getByRole('button', { name: 'Diff against earlier version' }).click();
+    await panel().getByText('VERSION').first().waitFor();
+    assert.match(await panel().innerText(), /\+1.*−1|\+2.*−2/s);
+  });
+
+  await step('keyboard shortcuts and the shortcuts dialog', async () => {
+    const mod = 'Control';
+    const panelOpen = async () => (await panel().count()) > 0;
+    const before = await panelOpen();
+    await app.page.keyboard.press(`${mod}+Shift+P`);
+    assert.notEqual(await panelOpen(), before);
+    await app.page.keyboard.press(`${mod}+Shift+P`);
+    assert.equal(await panelOpen(), before);
+    await newChat();
+    await demo('two');
+    await app.page.evaluate(() => navigator.clipboard.writeText('x'));
+    await app.page.keyboard.press(`${mod}+Shift+C`);
+    await app.page.waitForSelector('text=Copied last code block');
+    assert.equal(
+      await app.page.evaluate(() => navigator.clipboard.readText()),
+      'const mode = "safe";\nconst retries = 3;',
+    );
+    await app.page.keyboard.press(`${mod}+/`);
+    await app.page.getByRole('dialog', { name: 'Keyboard shortcuts' }).waitFor();
+    await shot(app, '19-shortcuts');
+    await app.page.keyboard.press('Escape');
+    assert.equal(await app.page.getByRole('dialog', { name: 'Keyboard shortcuts' }).count(), 0);
+  });
+}
+
+console.log(results.join('\n'));
+console.log(`screenshots: ${outDir}`);
 assert.deepEqual(
-  // The ResizeObserver message is a benign browser notice from measuring virtualized rows.
-  h.consoleErrors.filter((e) => !/Failed to load resource|favicon|ResizeObserver loop/.test(e)),
+  // The ResizeObserver message is a benign browser notice from measuring virtualized rows; the sandbox/CSP
+  // and `boom` lines come from the previewed test pages themselves (probing isolation, throwing on purpose).
+  h.consoleErrors.filter(
+    (e) =>
+      !/Failed to load resource|favicon|ResizeObserver loop|sandboxed and lacks|Refused to connect|Fetch API cannot load|Error: boom/.test(
+        e,
+      ),
+  ),
   [],
   'no console errors',
 );
 await app.close();
 await h.stop();
-console.log(results.join('\n'));
-console.log(`screenshots: ${outDir}`);

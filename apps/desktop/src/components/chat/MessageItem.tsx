@@ -94,7 +94,7 @@ export const MessageItem = memo(function MessageItem({
 
   return (
     <div className="group flex flex-col gap-1" data-role="assistant">
-      <Markdown text={message.content} />
+      <Markdown text={message.content} messageId={message.id} />
       {message.status === 'stopped' && <p className="text-xs text-fg-subtle">Stopped</p>}
       {message.status === 'error' && message.error && <ErrorNotice error={message.error} />}
       <div className="flex items-center gap-1 opacity-0 transition-opacity group-hover:opacity-100 focus-within:opacity-100">

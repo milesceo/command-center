@@ -24,6 +24,8 @@ export interface RateLimitNotice {
 
 /** A reply that is still arriving. It becomes a stored Message when the stream ends. */
 export interface StreamState {
+  /** Id the reply will be stored under, so anything keyed to it (a live preview) survives the hand-off. */
+  messageId: string;
   requestId: string;
   text: string;
   tools: ToolActivity[];
@@ -143,7 +145,7 @@ export function createChatStore(deps: Partial<ChatDeps> = {}) {
       }
       const done = outcome.event?.type === 'chat.done' ? outcome.event : undefined;
       const message: Message = {
-        id: crypto.randomUUID(),
+        id: stream.messageId,
         conversationId,
         role: 'assistant',
         content: stream.text,
@@ -276,6 +278,7 @@ export function createChatStore(deps: Partial<ChatDeps> = {}) {
         streams: {
           ...state.streams,
           [conversationId]: {
+            messageId: crypto.randomUUID(),
             requestId: '',
             text: '',
             tools: [],

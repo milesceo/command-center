@@ -25,7 +25,7 @@ export function StreamingMessage({ stream }: { stream: StreamState }) {
           ))}
         </ul>
       )}
-      {stream.text ? <Markdown text={stream.text} /> : null}
+      {stream.text ? <Markdown text={stream.text} messageId={stream.messageId} streaming /> : null}
       <span className="caret" aria-label="Claude is typing" role="status" />
       {warning && (
         <p className="flex items-center gap-1.5 text-xs text-warning">

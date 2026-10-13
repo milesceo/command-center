@@ -26,6 +26,18 @@ Programish is a personal project, but it is developed like a team project: small
 2. Register it, in order, in `migrations()` in `src-tauri/src/lib.rs`.
 3. Extend `src/lib/schema.test.ts` so the schema is exercised by Vitest.
 
+## Adding a highlighted language
+
+Add a loader line to `LOADERS` in `apps/desktop/src/lib/highlight-core.ts` (one lazy chunk per grammar) and, if models use other names for it, aliases in `lib/fence.ts`.
+
+## Adding a keyboard shortcut
+
+Add it to `SHORTCUTS` in `apps/desktop/src/lib/shortcuts.ts` (the help dialog reads the same list), handle its id in `lib/use-shortcuts.ts`, and add a test in `src/shortcuts.test.tsx`. Keep to `Mod+<key>` or `Mod+Shift+<key>`: no Alt, because Ctrl+Alt is AltGr on many Windows layouts.
+
+## Working on the preview panel
+
+Previewed code is untrusted. Read the "Preview isolation" notes in `CLAUDE.md` before changing the iframe's `sandbox`, the CSP, the `preview:` scheme or the capabilities. The e2e suite includes an isolation probe; run it.
+
 ## End-to-end checks
 
 `pnpm --filter @programish/desktop e2e` drives the real UI in headless Chromium against the real bridge process and a real SQLite file, with the Tauri side emulated (`apps/desktop/e2e/harness.mjs`). It is not part of CI because it needs a Chromium binary (`E2E_CHROMIUM`). Run it, and `E2E_PROD=1 node apps/desktop/e2e/perf.mjs`, after touching streaming, the transcript or the stores.
