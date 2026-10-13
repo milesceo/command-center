@@ -1,29 +1,38 @@
 # Programish
 
-A personal desktop app for prompting about code. It is a lightweight, fast replacement for a general chat app, with coding-focused tools and visuals, powered by your existing Claude Code login (no API key handling).
+A lightweight desktop app for prompting about code, running on your own Claude Code login. No API key, no separate bill, and everything you save stays on your computer.
 
-> **Status:** chat, code tools, usage and prompt library. Streaming conversations work end to end; see the feature list below and [CLAUDE.md](CLAUDE.md#phase-status) for what is next.
+![Programish with a conversation and the live preview panel](docs/screenshots/chat-preview-dark.png)
+
+## Install
+
+1. Log in to Claude Code once: install it (`npm i -g @anthropic-ai/claude-code`), run `claude` and sign in. Programish reads that login; it never asks for or stores credentials.
+2. Download `Programish_<version>_x64-setup.exe` from the [latest release](https://github.com/engineerlish/programish/releases/latest) and run it. It installs for your user only and needs no admin rights or developer tools: the app carries its own Node runtime, bridge and Claude runtime.
+3. The installer is not code signed yet, so Windows SmartScreen may warn on first run: choose **More info**, then **Run anyway**. Each release lists a SHA-256 checksum (`SHA256SUMS.txt`) if you want to verify the download.
+
+Windows 11 on x64 is the supported target. Building from source on other platforms works but is untested.
 
 ## Features
 
-- Streaming chat on your Claude subscription (through your Claude Code login), with a Stop button that keeps the partial reply so you can carry on
-- Model picker (Default, Sonnet, Opus, Haiku) and a per-conversation system prompt
-- Plain chat by default; optional read-only file access (Read/Glob/Grep) for one folder you choose
-- Markdown with GitHub tables
-- Code blocks highlighted with Shiki (theme follows light/dark), with language and file name, line numbers, collapse for long blocks, a wrap toggle, copy, save as file and open in preview
-- Diffs: unified diffs in a reply render as side-by-side or inline diffs with changed words highlighted; compare any two code blocks, or a block with its earlier version in the conversation
-- Live preview panel for HTML, SVG, Mermaid and Markdown: sandboxed (no access to the app, bridge or files), tabs, refresh, mobile/tablet/desktop widths, a console pane, and it updates as a reply streams
-- Keyboard shortcuts (`Ctrl+/` lists them): copy last code block, toggle preview, toggle diff layout
-- Copy any message, edit and resend an earlier message, regenerate the last reply
-- Multiline composer (Enter sends, Shift+Enter inserts a newline); paste, drop or pick text files as attachments
-- Conversations saved in SQLite: rename, pin, delete (with confirmation), search by title and message content
-- Friendly messages for logged-out, usage-limit (with reset time) and rate-limit situations
-- Usage tracking from the SDK's own numbers: tokens (input, output, cache) per reply, running totals in the chat header, a Usage view with daily and weekly charts, per-model and top-conversation breakdowns, and your plan headroom and reset times when your login reports them. Cost is shown as "API-equivalent cost": informational on a subscription, not a bill
-- Prompt library: saved prompts and system prompts with tags and `{{variables}}` (a small form fills them in), `/` in the message box to search and insert, JSON import and export
-- Projects: group conversations and give a project a default system prompt; attach a library system prompt to a single chat
-- Virtualized transcript and per-frame update batching so long chats and fast streams stay smooth
+- **Chat** on your Claude subscription, with a Stop button that keeps the partial reply, a model picker (Default, Sonnet, Opus, Haiku) and a system prompt per conversation. Plain chat by default; optional read-only file access (Read, Glob, Grep) for one folder you choose.
+- **Conversations** saved in SQLite: rename, pin, delete with confirmation, search by title and message text, edit and resend, regenerate, and attach text files.
+- **Code blocks** highlighted with Shiki (the theme follows light and dark), with line numbers, collapse, wrap, copy, save as file and open in preview.
+- **Diffs** in replies as side-by-side or inline views with changed words marked, plus comparison of any two code blocks.
+- **Live preview** for HTML, SVG, Mermaid and Markdown. Previewed code is sandboxed (no access to the app, your files or the network) and updates while a reply streams.
+- **Usage** from the numbers the SDK reports: tokens per reply, totals in the chat header, daily and weekly charts, per-model and per-conversation breakdowns, and plan headroom when your login exposes it. Cost is shown as "API-equivalent cost": informational on a subscription, not a bill.
+- **Prompt library** with `{{variables}}`, `/` to insert from the message box, JSON import and export, and **projects** that group conversations and carry a default system prompt.
+- **Command palette** (`Ctrl+K`) and **settings** (theme, interface and code font size, defaults for new chats, data location, export and clear).
+- Keyboard shortcuts (`Ctrl+/` lists them), keyboard-navigable dialogs and WCAG AA contrast in both themes.
 
-<!-- Screenshots: add dark and light shell captures here (docs/screenshots/). -->
+| Diffs                                                | Usage                                                 |
+| ---------------------------------------------------- | ----------------------------------------------------- |
+| ![Diff view](docs/screenshots/diff-dark.png)         | ![Usage view](docs/screenshots/usage-dark.png)        |
+| **Prompt library**                                   | **Command palette**                                   |
+| ![Prompt library](docs/screenshots/prompts-dark.png) | ![Command palette](docs/screenshots/palette-dark.png) |
+| **Settings**                                         | **Light theme**                                       |
+| ![Settings](docs/screenshots/settings-dark.png)      | ![Light theme](docs/screenshots/chat-light.png)       |
+
+The usage charts above show sample data. Screenshots are regenerated by `apps/desktop/e2e/screenshots.mjs`.
 
 ## Stack
 
@@ -56,7 +65,9 @@ flowchart LR
 
 Rust only moves lines between the UI and the sidecar; the message types live in one place, `packages/protocol`.
 
-## Prerequisites
+## Building from source
+
+### Prerequisites
 
 | Tool                        | Why                   | Install (Windows)                                                        |
 | --------------------------- | --------------------- | ------------------------------------------------------------------------ |
@@ -68,7 +79,7 @@ Rust only moves lines between the UI and the sidecar; the message types live in 
 
 Linux additionally needs `libwebkit2gtk-4.1-dev libgtk-3-dev librsvg2-dev libayatana-appindicator3-dev patchelf`.
 
-## Getting started
+### Getting started
 
 ```sh
 pnpm install
@@ -80,15 +91,16 @@ In the app, the sidebar footer shows the bridge status (the `ping`/`pong` round-
 
 ## Scripts
 
-| Script                             | What it does                              |
-| ---------------------------------- | ----------------------------------------- |
-| `pnpm dev` / `pnpm dev:web`        | Run the desktop app / the UI in a browser |
-| `pnpm build`                       | Build the bridge bundle and the frontend  |
-| `pnpm lint` / `pnpm format`        | ESLint / Prettier (`format:check` in CI)  |
-| `pnpm typecheck`                   | `tsc` in strict mode for every package    |
-| `pnpm test`                        | Vitest in every package                   |
-| `pnpm check`                       | Format check, lint, typecheck and tests   |
-| `pnpm rust:fmt` / `pnpm rust:lint` | `cargo fmt` / `cargo clippy -D warnings`  |
+| Script                             | What it does                               |
+| ---------------------------------- | ------------------------------------------ |
+| `pnpm dev` / `pnpm dev:web`        | Run the desktop app / the UI in a browser  |
+| `pnpm build`                       | Build the bridge bundle and the frontend   |
+| `pnpm lint` / `pnpm format`        | ESLint / Prettier (`format:check` in CI)   |
+| `pnpm typecheck`                   | `tsc` in strict mode for every package     |
+| `pnpm test`                        | Vitest in every package                    |
+| `pnpm check`                       | Format check, lint, typecheck and tests    |
+| `pnpm rust:fmt` / `pnpm rust:lint` | `cargo fmt` / `cargo clippy -D warnings`   |
+| `pnpm sidecar`                     | Assemble the bundled Node, bridge, runtime |
 
 ## Repository layout
 
@@ -98,7 +110,19 @@ apps/desktop/            Tauri + React app
   src-tauri/             Rust core, SQLite migrations, capabilities
 packages/protocol/       Shared message types and NDJSON helpers (source-only)
 packages/bridge/         Node sidecar (bundled to dist/main.mjs with esbuild)
+scripts/                 Sidecar assembly, release tooling and the installed-app smoke test
+docs/screenshots/        README images
 ```
+
+## Your data
+
+One SQLite file in the app's config folder (Settings shows the exact path and can open it). Nothing is uploaded except the messages you send to Claude. Settings can export everything as JSON and clear usage history, the prompt library, or all data.
+
+## Releasing
+
+Versions follow [SemVer](https://semver.org/) and [CHANGELOG.md](CHANGELOG.md) follows [Keep a Changelog](https://keepachangelog.com/). To release: update the changelog and bump the version in `package.json`, `apps/desktop/package.json`, `src-tauri/tauri.conf.json` and `src-tauri/Cargo.toml`, merge, then push a tag such as `v1.0.1`. The [release workflow](.github/workflows/release.yml) builds the installer on Windows, installs it silently, smoke-tests the installed files, launches the app and checks that it starts its bundled bridge, and then publishes the release with the changelog section as its notes. Running the workflow by hand does everything except publish.
+
+`pnpm sidecar` assembles the bundled pieces locally (`node`, the bridge bundle and the Claude runtime); `pnpm --filter @programish/desktop tauri build` makes an installer for the machine it runs on.
 
 ## License
 

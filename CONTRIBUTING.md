@@ -42,6 +42,14 @@ Previewed code is untrusted. Read the "Preview isolation" notes in `CLAUDE.md` b
 
 `pnpm --filter @programish/desktop e2e` drives the real UI in headless Chromium against the real bridge process and a real SQLite file, with the Tauri side emulated (`apps/desktop/e2e/harness.mjs`). It is not part of CI because it needs a Chromium binary (`E2E_CHROMIUM`). Run it, and `E2E_PROD=1 node apps/desktop/e2e/perf.mjs`, after touching streaming, the transcript or the stores.
 
+## Accessibility and performance checks
+
+`node apps/desktop/e2e/a11y.mjs` audits every view in both themes with axe-core and exits non-zero on any serious or critical finding; run it after touching colors or adding a view. `E2E_PROD=1 node apps/desktop/e2e/startup.mjs` (after `pnpm build`) prints startup time, idle heap and bundle sizes; compare before and after when changing dependencies or startup work.
+
+## Releasing
+
+See "Releasing" in the README and "Packaging and release design decisions" in `CLAUDE.md`. Update `CHANGELOG.md` in the same PR as the change when it is user-visible.
+
 ## Adding a bridge message
 
 1. Add the request and/or event types, parser and tests in `packages/protocol`.
