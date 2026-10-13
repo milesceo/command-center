@@ -1,6 +1,7 @@
 import { tmpdir } from 'node:os';
 import type { Options } from '@anthropic-ai/claude-agent-sdk';
 import type { ChatRequest } from '@programish/protocol';
+import { claudeExecutable } from './sdk';
 
 export const DEFAULT_SYSTEM_PROMPT = [
   'You are Claude, chatting with a software developer in a desktop app called Programish.',
@@ -50,6 +51,8 @@ export function buildOptions(
     env: runtimeEnv(base),
     stderr: onStderr,
   };
+  const executable = claudeExecutable(base);
+  if (executable) options.pathToClaudeCodeExecutable = executable;
   if (readonly) {
     options.allowedTools = READONLY_TOOLS;
     if (request.cwd) options.cwd = request.cwd;

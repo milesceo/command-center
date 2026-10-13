@@ -25,7 +25,8 @@ import { build, createServer, preview } from 'vite';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const desktop = join(here, '..');
-const bridgeEntry = join(desktop, '../../packages/bridge/dist/main.mjs');
+const bridgeEntry =
+  process.env.E2E_BRIDGE_ENTRY ?? join(desktop, '../../packages/bridge/dist/main.mjs');
 const fakeSdk = join(desktop, '../../packages/bridge/test/fake-sdk.mjs');
 export const outDir = process.env.E2E_OUT ?? join(here, 'out');
 mkdirSync(outDir, { recursive: true });

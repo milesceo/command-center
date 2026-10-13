@@ -23,9 +23,24 @@ export type QueryFn = (params: {
  * the end-to-end harness can run the real bridge process without a Claude login.
  */
 export async function loadQuery(): Promise<QueryFn> {
-  const specifier = process.env.PROGRAMISH_QUERY_MODULE ?? '@anthropic-ai/claude-agent-sdk';
-  const mod = (await import(specifier)) as { query?: QueryFn };
+  const override = process.env.PROGRAMISH_QUERY_MODULE;
+  // A literal specifier (not a variable) so the release build can bundle the SDK into main.mjs.
+  const mod = (await (override ? import(override) : import('@anthropic-ai/claude-agent-sdk'))) as {
+    query?: QueryFn;
+  };
   if (typeof mod.query !== 'function')
-    throw new Error(`Module ${specifier} does not export query().`);
+    throw new Error(
+      `Module ${override ?? '@anthropic-ai/claude-agent-sdk'} does not export query().`,
+    );
   return mod.query;
+}
+
+/**
+ * The Claude runtime binary to launch. The installed app ships the one that matches the
+ * SDK version and tells the bridge where it is; in development this is unset and the SDK
+ * finds its own copy in node_modules.
+ */
+export function claudeExecutable(base: NodeJS.ProcessEnv = process.env): string | undefined {
+  const path = base.PROGRAMISH_CLAUDE_EXECUTABLE?.trim();
+  return path ? path : undefined;
 }

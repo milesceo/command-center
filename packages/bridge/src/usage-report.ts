@@ -2,7 +2,7 @@ import { tmpdir } from 'node:os';
 import type { BridgeEvent } from '@programish/protocol';
 import { fromThrown } from './errors';
 import { DEFAULT_SYSTEM_PROMPT, runtimeEnv } from './options';
-import type { QueryFn } from './sdk';
+import { claudeExecutable, type QueryFn } from './sdk';
 import { reportFromUsage } from './usage';
 
 const TIMEOUT_MS = 25_000;
@@ -52,6 +52,7 @@ export async function runUsage(
         cwd: tmpdir(),
         systemPrompt: DEFAULT_SYSTEM_PROMPT,
         env: runtimeEnv(process.env),
+        ...(claudeExecutable() ? { pathToClaudeCodeExecutable: claudeExecutable() as string } : {}),
       },
     });
     if (typeof q.usage_EXPERIMENTAL_MAY_CHANGE_DO_NOT_RELY_ON_THIS_API_YET !== 'function') {
