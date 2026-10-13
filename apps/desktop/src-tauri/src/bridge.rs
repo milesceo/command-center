@@ -33,6 +33,16 @@ struct Launch {
     env: Vec<(&'static str, PathBuf)>,
 }
 
+/// Tauri can hand back Windows paths in verbatim form (`\\?\D:\app\...`). Node resolves those
+/// wrongly (it fails with `EISDIR: lstat 'D:'`), so drop the prefix; UNC paths keep theirs.
+fn plain_path(path: PathBuf) -> PathBuf {
+    let text = path.to_string_lossy();
+    match text.strip_prefix(r"\\?\") {
+        Some(rest) if !rest.starts_with(r"UNC\") => PathBuf::from(rest),
+        _ => path,
+    }
+}
+
 fn exe_name(base: &str) -> String {
     if cfg!(windows) {
         format!("{base}.exe")
@@ -99,7 +109,10 @@ fn resolve_launch(app: &AppHandle) -> Result<Launch, String> {
         .path()
         .resource_dir()
         .map_err(|e| format!("Cannot locate the app resources: {e}"))?;
-    installed_launch(exe_dir, &resource_dir)
+    installed_launch(
+        &plain_path(exe_dir.to_path_buf()),
+        &plain_path(resource_dir),
+    )
 }
 
 fn spawn_bridge(app: &AppHandle) -> Result<Child, String> {
@@ -227,6 +240,22 @@ mod tests {
             .unwrap_err()
             .contains("bridge"));
         fs::remove_dir_all(root).ok();
+    }
+
+    #[test]
+    fn verbatim_windows_prefixes_are_dropped_but_unc_paths_are_kept() {
+        assert_eq!(
+            plain_path(PathBuf::from(r"\\?\D:\a\_temp\Programish")),
+            PathBuf::from(r"D:\a\_temp\Programish")
+        );
+        assert_eq!(
+            plain_path(PathBuf::from(r"\\?\UNC\server\share")),
+            PathBuf::from(r"\\?\UNC\server\share")
+        );
+        assert_eq!(
+            plain_path(PathBuf::from("/usr/lib/Programish")),
+            PathBuf::from("/usr/lib/Programish")
+        );
     }
 
     #[test]
