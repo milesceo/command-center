@@ -4,6 +4,7 @@ import { Toaster } from './components/ui/toaster';
 import { useShortcuts } from './lib/use-shortcuts';
 import { MainPanel } from './components/shell/MainPanel';
 import { RightPanel } from './components/shell/RightPanel';
+import { CommandPalette } from './components/palette/CommandPalette';
 import { Sidebar } from './components/shell/Sidebar';
 import { useBridgeStore } from './stores/bridge';
 import { chatStore } from './stores/chat';
@@ -11,6 +12,7 @@ import { conversationsStore, useConversations } from './stores/conversations';
 import { projectsStore } from './stores/projects';
 import { promptsStore } from './stores/prompts';
 import { usageStore } from './stores/usage';
+import { applyDisplaySettings, useSettings } from './stores/settings';
 import { applyTheme, useUiStore } from './stores/ui';
 
 export function App() {
@@ -18,7 +20,11 @@ export function App() {
   const activeId = useConversations((s) => s.activeId);
   const connect = useBridgeStore((s) => s.connect);
 
+  const uiScale = useSettings((s) => s.uiScale);
+  const codeFontSize = useSettings((s) => s.codeFontSize);
+
   useEffect(() => applyTheme(theme), [theme]);
+  useEffect(() => applyDisplaySettings(uiScale, codeFontSize), [uiScale, codeFontSize]);
   useShortcuts();
 
   // Start the sidecar and read the saved conversations (which also runs DB migrations).
@@ -46,6 +52,7 @@ export function App() {
       <MainPanel />
       <RightPanel />
       <ShortcutsDialog />
+      <CommandPalette />
       <Toaster />
     </div>
   );

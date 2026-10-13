@@ -1,4 +1,5 @@
 import { useEffect, useRef, type ReactNode } from 'react';
+import { useFocusTrap } from '../../lib/use-focus-trap';
 import { Button } from './button';
 
 interface ConfirmProps {
@@ -22,6 +23,8 @@ export function ConfirmDialog({
   onCancel,
 }: ConfirmProps) {
   const cancelRef = useRef<HTMLButtonElement>(null);
+  const panel = useRef<HTMLDivElement>(null);
+  useFocusTrap(panel, open);
 
   useEffect(() => {
     if (!open) return;
@@ -38,6 +41,7 @@ export function ConfirmDialog({
       onMouseDown={(e) => e.target === e.currentTarget && onCancel()}
     >
       <div
+        ref={panel}
         role="alertdialog"
         aria-modal="true"
         aria-labelledby="confirm-title"
@@ -74,6 +78,8 @@ interface ModalProps {
 
 /** A plain modal panel: Escape and a click on the backdrop close it, and it names itself for screen readers. */
 export function Modal({ title, onClose, children, width = 'max-w-lg' }: ModalProps) {
+  const panel = useRef<HTMLDivElement>(null);
+  useFocusTrap(panel);
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => e.key === 'Escape' && onClose();
     window.addEventListener('keydown', onKey);
@@ -86,6 +92,7 @@ export function Modal({ title, onClose, children, width = 'max-w-lg' }: ModalPro
       onMouseDown={(e) => e.target === e.currentTarget && onClose()}
     >
       <div
+        ref={panel}
         role="dialog"
         aria-modal="true"
         aria-label={title}

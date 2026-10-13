@@ -231,7 +231,7 @@
   margin: 0;
   padding: 0.55em 0;
   font-family: var(--font-mono);
-  font-size: 12.5px;
+  font-size: var(--code-font-size, 12.5px);
   line-height: 1.6;
   color: var(--shiki-foreground);
   tab-size: 2;
@@ -282,7 +282,7 @@
 /* ---- Diffs ----------------------------------------------------------------- */
 .diff {
   font-family: var(--font-mono);
-  font-size: 12.5px;
+  font-size: var(--code-font-size, 12.5px);
   line-height: 1.6;
 }
 .diff-file-head {

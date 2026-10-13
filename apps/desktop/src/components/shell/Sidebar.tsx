@@ -1,4 +1,4 @@
-import { BarChart3, BookText, Keyboard, Plus } from 'lucide-react';
+import { BarChart3, BookText, Command, Keyboard, Plus, Settings } from 'lucide-react';
 import { conversationsStore } from '../../stores/conversations';
 import { useUiStore } from '../../stores/ui';
 import { Button } from '../ui/button';
@@ -38,6 +38,7 @@ export function Sidebar() {
           [
             ['prompts', 'Prompts', BookText],
             ['usage', 'Usage', BarChart3],
+            ['settings', 'Settings', Settings],
           ] as const
         ).map(([id, label, Icon]) => (
           <Button
@@ -55,6 +56,15 @@ export function Sidebar() {
 
       <div className="flex items-center gap-1 border-t border-border p-2">
         <BridgeStatus />
+        <Button
+          variant="ghost"
+          size="icon"
+          aria-label="Command palette"
+          title="Command palette (Ctrl+K)"
+          onClick={() => useUiStore.getState().setPaletteOpen(true)}
+        >
+          <Command size={15} />
+        </Button>
         <Button
           variant="ghost"
           size="icon"
