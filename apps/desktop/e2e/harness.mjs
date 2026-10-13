@@ -188,6 +188,11 @@ export async function startHarness({ real = process.env.E2E_REAL === '1' } = {})
           child.on('exit', () => void emit('bridge://exit', null));
           return null;
         }
+        case 'data_location': {
+          // Stands in for the Rust command: a representative Windows path, never touched.
+          const dir = 'C:\\Users\\you\\AppData\\Roaming\\dev.engineerlish.programish';
+          return { dir, db_file: `${dir}\\programish.db` };
+        }
         case 'preview_set':
           previewDocs.set(args.id, args.html);
           return null;
