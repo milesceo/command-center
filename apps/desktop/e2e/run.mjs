@@ -786,6 +786,155 @@ if (!real) {
     await finished();
     assert.match(await lastReply(page).innerText(), /system: Always answer like a kraken\./);
   });
+
+  await step(
+    'command palette: open with Ctrl+K, run commands, switch chats, insert prompts',
+    async () => {
+      await page.keyboard.press('Control+k');
+      const box = page.getByRole('combobox', { name: /Search commands/ });
+      await box.waitFor();
+      assert.ok(await box.evaluate((el) => el === document.activeElement), 'search box has focus');
+      await shot(app, '24-palette');
+      await box.fill('settings');
+      await box.press('Enter');
+      await page.getByTestId('settings-view').waitFor();
+      assert.equal(await page.getByRole('dialog', { name: 'Command palette' }).count(), 0);
+
+      // Switch conversation by title.
+      await page.keyboard.press('Control+k');
+      await page.getByRole('combobox', { name: /Search commands/ }).fill('attach test');
+      await page
+        .getByRole('option', { name: /attach test/ })
+        .first()
+        .waitFor();
+      await page.keyboard.press('Enter');
+      await page.waitForSelector('textarea[aria-label="Message"]');
+      assert.match(await page.locator('h1').first().innerText(), /attach test/);
+
+      // Change model for this chat.
+      await page.keyboard.press('Control+k');
+      await page.getByRole('combobox', { name: /Search commands/ }).fill('model: haiku');
+      await page.keyboard.press('Enter');
+      await page.waitForFunction(
+        () => document.querySelector('select[aria-label="Model"]')?.value === 'haiku',
+      );
+
+      // Insert a library prompt (with variables) into the composer.
+      await page.keyboard.press('Control+k');
+      await page
+        .getByRole('combobox', { name: /Search commands/ })
+        .fill('insert prompt: code review');
+      await page.keyboard.press('Enter');
+      const form = dialog('Code review v2');
+      await form.getByLabel('language').fill('Zig');
+      await form.getByLabel('code').fill('const x = 1;');
+      await form.getByRole('button', { name: 'Insert' }).click();
+      await page.waitForFunction(() =>
+        document
+          .querySelector('textarea[aria-label="Message"]')
+          ?.value.startsWith('Review this Zig code'),
+      );
+      await page.locator('textarea[aria-label="Message"]').fill('');
+
+      // Toggle panels, Escape closes, and focus goes back to where it was.
+      await page.keyboard.press('Control+k');
+      await page.getByRole('combobox', { name: /Search commands/ }).fill('toggle sidebar');
+      await page.keyboard.press('Enter');
+      await page.waitForFunction(() => !document.querySelector('nav[aria-label="Conversations"]'));
+      await page.keyboard.press('Control+b');
+      await page.locator('nav[aria-label="Conversations"]').waitFor();
+      await page.keyboard.press('Control+k');
+      await page.keyboard.press('Escape');
+      assert.equal(await page.getByRole('dialog', { name: 'Command palette' }).count(), 0);
+    },
+  );
+
+  await step('settings: display, defaults for new chats, export, confirmed clear', async () => {
+    await openView('Settings');
+    await page.getByTestId('settings-view').waitFor();
+    await page
+      .getByRole('group', { name: 'Interface size' })
+      .getByRole('button', { name: '110%' })
+      .click();
+    await page.waitForFunction(() => document.documentElement.style.zoom === '1.1');
+    await page
+      .getByRole('group', { name: 'Code font size' })
+      .getByRole('button', { name: '14' })
+      .click();
+    assert.equal(
+      await page.evaluate(() =>
+        document.documentElement.style.getPropertyValue('--code-font-size'),
+      ),
+      '14px',
+    );
+    await page.getByLabel('Default model').selectOption('sonnet');
+    await page.getByLabel(/Default system prompt/).fill('Answer in one line.');
+
+    // The defaults reach the next new chat. (Settings live in localStorage, which the harness
+    // does not carry across launches, so persistence itself is covered by the store tests.)
+    const p2 = page;
+    await p2.click('aside button:has-text("New chat")');
+    assert.equal(await p2.locator('select[aria-label="Model"]').inputValue(), 'sonnet');
+    await p2.fill('textarea[aria-label="Message"]', 'defaults check');
+    await p2.press('textarea[aria-label="Message"]', 'Enter');
+    await p2.waitForSelector('[data-role="assistant"]:not([data-streaming])');
+    assert.match(
+      await p2.locator('[data-role="assistant"]').last().innerText(),
+      /system: Answer in one line\./,
+    );
+
+    // Export and the confirmed clear.
+    await p2
+      .getByRole('navigation', { name: 'Library' })
+      .getByRole('button', { name: 'Settings' })
+      .click();
+    await p2.getByRole('button', { name: /Export all data/ }).click();
+    await p2.waitForSelector('text=Data exported');
+    const exported = [...h.saved.entries()].find(([path]) => path.endsWith('programish-data.json'));
+    assert.ok(exported, 'export file written');
+    const data = JSON.parse(exported[1]);
+    assert.equal(data.format, 'programish-data');
+    assert.ok(data.tables.conversations.length > 5 && data.tables.messages.length > 5);
+
+    await p2.getByRole('button', { name: 'Clear usage history' }).click();
+    await p2.getByRole('alertdialog').getByRole('button', { name: 'Cancel' }).click();
+    assert.ok(h.db.prepare('select count(*) n from usage_log').get().n > 0, 'cancel keeps usage');
+    await p2.getByRole('button', { name: 'Clear usage history' }).click();
+    await p2.getByRole('alertdialog').getByRole('button', { name: 'Delete' }).click();
+    await p2.waitForSelector('text=Data cleared');
+    assert.equal(h.db.prepare('select count(*) n from usage_log').get().n, 0);
+    assert.ok(h.db.prepare('select count(*) n from conversations').get().n > 5, 'chats kept');
+    await p2.waitForFunction(() =>
+      /\b0 usage records/.test(
+        document.querySelector('[data-testid="data-counts"]')?.textContent ?? '',
+      ),
+    );
+
+    await p2.getByRole('button', { name: 'Clear all data' }).click();
+    await p2.getByRole('alertdialog').getByRole('button', { name: 'Delete' }).click();
+    await p2.waitForSelector('text=Data cleared');
+    assert.equal(h.db.prepare('select count(*) n from conversations').get().n, 0);
+    assert.equal(h.db.prepare('select count(*) n from messages').get().n, 0);
+    await p2.getByRole('button', { name: 'Reset display and new-chat settings' }).click();
+    await p2.waitForFunction(() => document.documentElement.style.zoom === '');
+    await shot(app, '25-settings-cleared');
+  });
+
+  await step('keyboard: focus ring is visible and Tab reaches the sidebar actions', async () => {
+    const p3 = page;
+    await p3
+      .getByRole('navigation', { name: 'Library' })
+      .getByRole('button', { name: 'Prompts' })
+      .focus();
+    await p3.keyboard.press('Tab');
+    const ring = await p3.evaluate(() => {
+      const el = document.activeElement;
+      const cs = getComputedStyle(el);
+      return { tag: el.tagName, outline: cs.outlineStyle, width: parseFloat(cs.outlineWidth) };
+    });
+    assert.notEqual(ring.outline, 'none', `focused ${ring.tag} shows an outline`);
+    assert.ok(ring.width >= 1);
+  });
 }
 
 console.log(results.join('\n'));

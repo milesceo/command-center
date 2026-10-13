@@ -2,12 +2,8 @@ import { createStore, useStore } from 'zustand';
 import { useShallow } from 'zustand/react/shallow';
 import { getDb, type Db } from '../lib/db';
 import * as repo from '../lib/repo';
-import {
-  DEFAULT_SETTINGS,
-  DEFAULT_TITLE,
-  type Conversation,
-  type ConversationSettings,
-} from '../lib/types';
+import { freshDraft } from './settings';
+import { DEFAULT_TITLE, type Conversation, type ConversationSettings } from '../lib/types';
 
 export interface ConversationsState {
   conversations: Conversation[];
@@ -88,7 +84,7 @@ export function createConversationsStore(database: () => Promise<Db> = getDb) {
       conversations: [],
       search: '',
       activeId: null,
-      draft: DEFAULT_SETTINGS,
+      draft: freshDraft(),
       loaded: false,
       error: null,
 
@@ -99,7 +95,7 @@ export function createConversationsStore(database: () => Promise<Db> = getDb) {
         await guarded(refresh);
       },
 
-      newChat: () => set({ activeId: null, draft: DEFAULT_SETTINGS }),
+      newChat: () => set({ activeId: null, draft: freshDraft() }),
 
       select: (id) => set({ activeId: id }),
 
@@ -145,7 +141,7 @@ export function createConversationsStore(database: () => Promise<Db> = getDb) {
       remove: (id) =>
         guarded(async () => {
           await repo.deleteConversation(await database(), id);
-          if (get().activeId === id) set({ activeId: null, draft: DEFAULT_SETTINGS });
+          if (get().activeId === id) set({ activeId: null, draft: freshDraft() });
           await refresh();
         }),
 

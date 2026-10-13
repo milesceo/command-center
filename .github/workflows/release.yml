@@ -1,0 +1,145 @@
+name: Release
+
+# A version tag builds the Windows installer, smoke-tests the installed layout and publishes the
+# release with the matching CHANGELOG section as its notes. Pull requests that touch packaging and
+# manual runs do the same build and checks but publish nothing (the installer is kept as an artifact).
+on:
+  push:
+    tags: ['v[0-9]+.[0-9]+.[0-9]+']
+  # Changes to packaging build and smoke-test the installer too (nothing is published).
+  pull_request:
+    paths:
+      - .github/workflows/release.yml
+      - scripts/**
+      - apps/desktop/src-tauri/**
+      - packages/bridge/**
+  workflow_dispatch:
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  windows:
+    name: Windows installer
+    runs-on: windows-latest
+    permissions:
+      contents: write
+    env:
+      # Only the tag build compares tag and manifests; a manual run uses the manifests as they are.
+      IS_TAG: ${{ startsWith(github.ref, 'refs/tags/v') }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: apps/desktop/src-tauri
+
+      - name: Check the tag matches every manifest
+        if: env.IS_TAG == 'true'
+        shell: bash
+        run: node scripts/release-tools.mjs check-version "$GITHUB_REF_NAME"
+
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm check
+
+      # beforeBuildCommand bundles the bridge, copies node.exe and the SDK's claude.exe, then
+      # builds the frontend; `tauri build` compiles the app and packages the NSIS installer.
+      - name: Build the installer
+        run: pnpm --filter @programish/desktop tauri build --bundles nsis
+
+      - name: Locate the installer
+        id: installer
+        shell: bash
+        run: |
+          file=$(ls apps/desktop/src-tauri/target/release/bundle/nsis/*-setup.exe | head -n 1)
+          echo "path=$file" >> "$GITHUB_OUTPUT"
+          echo "name=$(basename "$file")" >> "$GITHUB_OUTPUT"
+          ls -l "$file"
+
+      - name: Install it silently, like a user would (per-user, no admin)
+        shell: pwsh
+        run: |
+          $installer = (Resolve-Path "${{ steps.installer.outputs.path }}").Path
+          $target = Join-Path $env:RUNNER_TEMP 'Programish'
+          # /D must be the last argument and must not be quoted.
+          $p = Start-Process -FilePath $installer -ArgumentList '/S', "/D=$target" -Wait -PassThru
+          if ($p.ExitCode -ne 0) { throw "installer exited with $($p.ExitCode)" }
+          Get-ChildItem $target -Recurse -File | Where-Object { $_.Length -gt 1MB } |
+            Select-Object FullName, @{n='MB';e={[math]::Round($_.Length/1MB,1)}}
+          "INSTALL_DIR=$target" | Out-File -FilePath $env:GITHUB_ENV -Append
+
+      - name: Smoke test the installed files (bundled Node starts the bundled bridge and runtime)
+        run: node scripts/smoke-installed.mjs "$env:INSTALL_DIR"
+
+      - name: Launch the installed app and check it starts its bridge
+        shell: pwsh
+        run: |
+          $app = Join-Path $env:INSTALL_DIR 'programish.exe'
+          if (-not (Test-Path $app)) { throw "programish.exe is not in $env:INSTALL_DIR" }
+          $out = Join-Path $env:RUNNER_TEMP 'app.out.log'
+          $err = Join-Path $env:RUNNER_TEMP 'app.err.log'
+          $proc = Start-Process -FilePath $app -PassThru -RedirectStandardOutput $out -RedirectStandardError $err
+          function Show-State {
+            Write-Host '--- processes started by the app (any depth) ---'
+            $all = Get-CimInstance Win32_Process
+            $ids = @($proc.Id)
+            do {
+              $kids = $all | Where-Object { $ids -contains $_.ParentProcessId -and $ids -notcontains $_.ProcessId }
+              $ids += @($kids | ForEach-Object { $_.ProcessId })
+            } while ($kids)
+            $all | Where-Object { $ids -contains $_.ProcessId } |
+              ForEach-Object { Write-Host "$($_.ProcessId) <- $($_.ParentProcessId)  $($_.Name)  $($_.CommandLine)" }
+            Write-Host '--- stdout ---'; if (Test-Path $out) { Get-Content $out -Tail 40 }
+            Write-Host '--- stderr ---'; if (Test-Path $err) { Get-Content $err -Tail 40 }
+          }
+          # The app starts its bridge when its window loads; wait for the bundled node to appear as its child.
+          $bridge = $null
+          for ($i = 0; $i -lt 60 -and -not $bridge; $i++) {
+            Start-Sleep -Milliseconds 500
+            if ($proc.HasExited) { Show-State; throw "programish.exe exited early with code $($proc.ExitCode)" }
+            $bridge = Get-CimInstance Win32_Process -Filter "ParentProcessId = $($proc.Id) AND Name = 'node.exe'"
+          }
+          if (-not $bridge) { Show-State; throw 'the app never started its bridge' }
+          Write-Host "bridge: $($bridge.CommandLine)"
+          if ($bridge.CommandLine -notlike "*$env:INSTALL_DIR*main.mjs*") { Show-State; throw 'the bridge is not the bundled one' }
+          Start-Sleep -Seconds 5
+          if ($proc.HasExited) { Show-State; throw "programish.exe crashed with code $($proc.ExitCode)" }
+          Stop-Process -Id $proc.Id -Force
+
+      - name: Checksum
+        shell: bash
+        run: |
+          cd apps/desktop/src-tauri/target/release/bundle/nsis
+          sha256sum *-setup.exe | tee SHA256SUMS.txt
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: windows-installer
+          path: |
+            apps/desktop/src-tauri/target/release/bundle/nsis/*-setup.exe
+            apps/desktop/src-tauri/target/release/bundle/nsis/SHA256SUMS.txt
+          if-no-files-found: error
+
+      - name: Publish the release
+        if: env.IS_TAG == 'true'
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          node scripts/release-tools.mjs notes "$GITHUB_REF_NAME" > release-notes.md
+          cd apps/desktop/src-tauri/target/release/bundle/nsis
+          gh release create "$GITHUB_REF_NAME" \
+            --repo "$GITHUB_REPOSITORY" \
+            --title "Programish ${GITHUB_REF_NAME#v}" \
+            --notes-file "$GITHUB_WORKSPACE/release-notes.md" \
+            --verify-tag \
+            ./*-setup.exe ./SHA256SUMS.txt

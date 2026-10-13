@@ -24,6 +24,9 @@ export function lastCodeBlock(): string | null {
 async function run(id: ShortcutId) {
   const ui = useUiStore.getState();
   switch (id) {
+    case 'commandPalette':
+      ui.setPaletteOpen(!ui.paletteOpen);
+      return;
     case 'copyLastCode': {
       const code = lastCodeBlock();
       if (code === null) toast('No code block to copy');

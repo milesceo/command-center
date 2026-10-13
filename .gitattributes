@@ -1,0 +1,6 @@
+# Keep LF in the working tree on every platform: Prettier and rustfmt check for it, and Windows checkouts would otherwise convert.
+* text=auto eol=lf
+*.png binary
+*.ico binary
+*.icns binary
+*.woff2 binary

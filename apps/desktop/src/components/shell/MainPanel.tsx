@@ -1,13 +1,24 @@
 import { PanelLeft, PanelRight } from 'lucide-react';
+import { lazy, Suspense } from 'react';
 import { useChat } from '../../stores/chat';
 import { useConversations } from '../../stores/conversations';
 import { useUiStore } from '../../stores/ui';
 import { Composer } from '../chat/Composer';
-import { PromptsView } from '../prompts/PromptsView';
 import { ConversationUsage } from '../usage/ConversationUsage';
-import { UsageView } from '../usage/UsageView';
+import { ViewSkeleton } from '../ui/skeleton';
 import { MessageList } from '../chat/MessageList';
 import { Button } from '../ui/button';
+
+// Secondary views load on first visit, which keeps them out of the startup bundle.
+const UsageView = lazy(() => import('../usage/UsageView').then((m) => ({ default: m.UsageView })));
+const PromptsView = lazy(() =>
+  import('../prompts/PromptsView').then((m) => ({ default: m.PromptsView })),
+);
+const SettingsView = lazy(() =>
+  import('../settings/SettingsView').then((m) => ({ default: m.SettingsView })),
+);
+
+const VIEW_TITLES = { usage: 'Usage', prompts: 'Prompt library', settings: 'Settings' } as const;
 
 export function MainPanel() {
   const { toggleSidebar, toggleRightPanel, rightPanelOpen, view } = useUiStore();
@@ -26,7 +37,7 @@ export function MainPanel() {
         </Button>
         <div className="flex min-w-0 max-w-[70%] items-center gap-2">
           <h1 className="truncate text-xs text-fg-muted">
-            {view === 'usage' ? 'Usage' : view === 'prompts' ? 'Prompt library' : title}
+            {view === 'chat' ? title : VIEW_TITLES[view]}
           </h1>
           {view === 'chat' && activeId && <ConversationUsage conversationId={activeId} />}
         </div>
@@ -42,9 +53,17 @@ export function MainPanel() {
       </header>
 
       {view === 'usage' ? (
-        <UsageView />
+        <Suspense fallback={<ViewSkeleton label="usage" />}>
+          <UsageView />
+        </Suspense>
       ) : view === 'prompts' ? (
-        <PromptsView />
+        <Suspense fallback={<ViewSkeleton label="prompts" />}>
+          <PromptsView />
+        </Suspense>
+      ) : view === 'settings' ? (
+        <Suspense fallback={<ViewSkeleton label="settings" />}>
+          <SettingsView />
+        </Suspense>
       ) : (
         <>
           {showTranscript ? (

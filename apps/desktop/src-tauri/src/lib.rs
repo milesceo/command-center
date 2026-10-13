@@ -1,4 +1,5 @@
 mod bridge;
+mod data;
 mod preview;
 
 use tauri_plugin_sql::{Migration, MigrationKind};
@@ -47,6 +48,7 @@ pub fn run() {
         .invoke_handler(tauri::generate_handler![
             bridge::bridge_start,
             bridge::bridge_send,
+            data::data_location,
             preview::preview_set
         ])
         .run(tauri::generate_context!())

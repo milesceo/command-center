@@ -1,7 +1,12 @@
 /** The app's keyboard shortcuts: one list drives both the handler and the help dialog. */
 
 export type ShortcutId =
-  'copyLastCode' | 'togglePreview' | 'toggleDiffMode' | 'toggleSidebar' | 'showShortcuts';
+  | 'commandPalette'
+  | 'copyLastCode'
+  | 'togglePreview'
+  | 'toggleDiffMode'
+  | 'toggleSidebar'
+  | 'showShortcuts';
 
 export interface Shortcut {
   id: ShortcutId;
@@ -11,6 +16,7 @@ export interface Shortcut {
 }
 
 export const SHORTCUTS: readonly Shortcut[] = [
+  { id: 'commandPalette', keys: 'Mod+K', description: 'Open the command palette' },
   { id: 'copyLastCode', keys: 'Mod+Shift+C', description: 'Copy the last code block' },
   { id: 'togglePreview', keys: 'Mod+Shift+P', description: 'Show or hide the preview panel' },
   {

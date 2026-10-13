@@ -1,3 +1,5 @@
+import { isAbsolute } from 'node:path';
+import { pathToFileURL } from 'node:url';
 import type {
   Options,
   SDKControlGetUsageResponse,
@@ -22,10 +24,37 @@ export type QueryFn = (params: {
  * `PROGRAMISH_QUERY_MODULE` points at a module exporting `query`; it exists so
  * the end-to-end harness can run the real bridge process without a Claude login.
  */
+/**
+ * `import()` takes URLs, and on Windows a path like `D:\\a\\fake-sdk.mjs` reads as a URL with the
+ * scheme `d:` and fails. Absolute filesystem paths become file URLs; package names pass through.
+ */
+export function moduleSpecifier(specifier: string): string {
+  return isAbsolute(specifier) || /^[A-Za-z]:[\\/]/.test(specifier)
+    ? pathToFileURL(specifier).href
+    : specifier;
+}
+
 export async function loadQuery(): Promise<QueryFn> {
-  const specifier = process.env.PROGRAMISH_QUERY_MODULE ?? '@anthropic-ai/claude-agent-sdk';
-  const mod = (await import(specifier)) as { query?: QueryFn };
+  const override = process.env.PROGRAMISH_QUERY_MODULE;
+  // A literal specifier (not a variable) so the release build can bundle the SDK into main.mjs.
+  const mod = (await (override
+    ? import(moduleSpecifier(override))
+    : import('@anthropic-ai/claude-agent-sdk'))) as {
+    query?: QueryFn;
+  };
   if (typeof mod.query !== 'function')
-    throw new Error(`Module ${specifier} does not export query().`);
+    throw new Error(
+      `Module ${override ?? '@anthropic-ai/claude-agent-sdk'} does not export query().`,
+    );
   return mod.query;
+}
+
+/**
+ * The Claude runtime binary to launch. The installed app ships the one that matches the
+ * SDK version and tells the bridge where it is; in development this is unset and the SDK
+ * finds its own copy in node_modules.
+ */
+export function claudeExecutable(base: NodeJS.ProcessEnv = process.env): string | undefined {
+  const path = base.PROGRAMISH_CLAUDE_EXECUTABLE?.trim();
+  return path ? path : undefined;
 }

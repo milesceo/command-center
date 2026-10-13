@@ -16,6 +16,12 @@ describe('formatTokens', () => {
     expect(formatTokens(1234)).toBe('1.23k');
     expect(formatTokens(12_400)).toBe('12.4k');
     expect(formatTokens(124_000)).toBe('124k');
+    // Whole numbers keep their zeros: these used to render as 1k, 15k, 2M.
+    expect(formatTokens(100_000)).toBe('100k');
+    expect(formatTokens(150_000)).toBe('150k');
+    expect(formatTokens(50_000)).toBe('50k');
+    expect(formatTokens(20_000_000)).toBe('20M');
+    expect(formatTokens(10_000_000)).toBe('10M');
     expect(formatTokens(3_100_000)).toBe('3.1M');
   });
 });

@@ -10,7 +10,11 @@ export function formatTokens(n: number): string {
   return `${trim(n / 1_000_000, n < 10_000_000 ? 2 : 1)}M`;
 }
 
-const trim = (n: number, digits: number) => n.toFixed(digits).replace(/\.?0+$/, '');
+/** Fixed decimals without trailing zeros, but never strips zeros from a whole number (`150` stays `150`). */
+const trim = (n: number, digits: number) => {
+  const fixed = n.toFixed(digits);
+  return fixed.includes('.') ? fixed.replace(/\.?0+$/, '') : fixed;
+};
 
 /** $12.34, $0.12, or four significant decimals for sub-cent amounts ($0.0003). */
 export function formatUsd(n: number): string {

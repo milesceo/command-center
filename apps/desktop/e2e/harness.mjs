@@ -25,7 +25,8 @@ import { build, createServer, preview } from 'vite';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const desktop = join(here, '..');
-const bridgeEntry = join(desktop, '../../packages/bridge/dist/main.mjs');
+const bridgeEntry =
+  process.env.E2E_BRIDGE_ENTRY ?? join(desktop, '../../packages/bridge/dist/main.mjs');
 const fakeSdk = join(desktop, '../../packages/bridge/test/fake-sdk.mjs');
 export const outDir = process.env.E2E_OUT ?? join(here, 'out');
 mkdirSync(outDir, { recursive: true });
@@ -186,6 +187,11 @@ export async function startHarness({ real = process.env.E2E_REAL === '1' } = {})
           });
           child.on('exit', () => void emit('bridge://exit', null));
           return null;
+        }
+        case 'data_location': {
+          // Stands in for the Rust command: a representative Windows path, never touched.
+          const dir = 'C:\\Users\\you\\AppData\\Roaming\\dev.engineerlish.programish';
+          return { dir, db_file: `${dir}\\programish.db` };
         }
         case 'preview_set':
           previewDocs.set(args.id, args.html);
