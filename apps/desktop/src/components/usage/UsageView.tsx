@@ -45,7 +45,7 @@ function Tile({ label, value, hint }: { label: string; value: string; hint?: str
       <p className="flex items-center gap-1 text-[11px] text-fg-subtle">
         {label}
         {hint && (
-          <span title={hint} className="inline-flex" aria-label={hint}>
+          <span title={hint} className="inline-flex" role="img" aria-label={hint}>
             <Info size={11} />
           </span>
         )}

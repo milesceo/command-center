@@ -131,6 +131,8 @@ export function SettingsView() {
         refreshCounts(),
       ]);
       usageStore.setState({ conversationTotals: {} });
+      // Emptying the open chat resets the selection, which normally returns to the chat view.
+      useUiStore.getState().setView('settings');
       toast('Data cleared');
     } catch (err) {
       toast(`Could not clear: ${err instanceof Error ? err.message : String(err)}`);

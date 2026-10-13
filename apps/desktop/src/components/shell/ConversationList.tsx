@@ -14,6 +14,7 @@ import {
   X,
 } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
+import { ListSkeleton } from '../ui/skeleton';
 import { cn } from '../../lib/cn';
 import type { Conversation, Project } from '../../lib/types';
 import { chatStore, useChat } from '../../stores/chat';
@@ -334,7 +335,12 @@ export function ConversationList() {
       {!searching && <NewProjectRow />}
 
       <nav aria-label="Conversations" className="min-h-0 flex-1 overflow-y-auto px-2 pb-2">
-        {error && <p className="px-2 py-1 text-xs text-danger">Could not load chats: {error}</p>}
+        {!loaded && !error && <ListSkeleton />}
+        {error && (
+          <p role="alert" className="px-2 py-1 text-xs text-danger">
+            Could not load chats: {error}
+          </p>
+        )}
         {!error && loaded && conversations.length === 0 && projects.length === 0 && (
           <p className="px-2 py-2 text-xs text-fg-subtle">
             {searching ? 'No chats match your search.' : 'No conversations yet.'}

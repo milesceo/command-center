@@ -10,6 +10,7 @@ import { useComposerStore } from '../../stores/composer';
 import { promptsStore, usePrompts } from '../../stores/prompts';
 import { toast } from '../../stores/toast';
 import { useUiStore } from '../../stores/ui';
+import { Skeleton } from '../ui/skeleton';
 import { Button } from '../ui/button';
 import { ConfirmDialog } from '../ui/dialog';
 import { PromptEditor } from './PromptEditor';
@@ -183,6 +184,12 @@ export function PromptsView() {
           <p role="alert" className="text-xs text-danger">
             {error}
           </p>
+        )}
+        {!loaded && !error && (
+          <div className="flex flex-col gap-2" role="status" aria-label="Loading prompts">
+            <Skeleton className="h-20 w-full" />
+            <Skeleton className="h-20 w-full" />
+          </div>
         )}
         {loaded && prompts.length === 0 && (
           <p className="rounded-panel border border-dashed border-border p-8 text-center text-xs text-fg-subtle">

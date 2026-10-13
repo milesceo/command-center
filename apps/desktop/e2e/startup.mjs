@@ -11,7 +11,14 @@ const median = (xs) => [...xs].sort((a, b) => a - b)[Math.floor(xs.length / 2)];
 const mb = (bytes) => Math.round((bytes / 1048576) * 10) / 10;
 
 const h = await startHarness({ real: false });
-const samples = { ready: [], interactive: [], heapMb: [], rssMb: [], initialJsKb: [], initialJsGzipKb: [] };
+const samples = {
+  ready: [],
+  interactive: [],
+  heapMb: [],
+  rssMb: [],
+  initialJsKb: [],
+  initialJsGzipKb: [],
+};
 
 /** Resident memory of Chromium's renderer processes (what the app's webview would occupy), from /proc. */
 function chromiumRssBytes() {
@@ -36,7 +43,9 @@ for (let i = 0; i < runs; i++) {
   samples.ready.push(Date.now() - t0); // page loaded and the bridge answered a ping
   const timing = await page.evaluate(() => {
     const nav = performance.getEntriesByType('navigation')[0];
-    const paints = Object.fromEntries(performance.getEntriesByType('paint').map((p) => [p.name, p.startTime]));
+    const paints = Object.fromEntries(
+      performance.getEntriesByType('paint').map((p) => [p.name, p.startTime]),
+    );
     const js = performance
       .getEntriesByType('resource')
       .filter((r) => r.name.endsWith('.js'))
@@ -49,7 +58,9 @@ for (let i = 0; i < runs; i++) {
   await page.waitForTimeout(3000); // idle
   const cdp = await page.context().newCDPSession(page);
   await cdp.send('Performance.enable');
-  const metrics = Object.fromEntries((await cdp.send('Performance.getMetrics')).metrics.map((m) => [m.name, m.value]));
+  const metrics = Object.fromEntries(
+    (await cdp.send('Performance.getMetrics')).metrics.map((m) => [m.name, m.value]),
+  );
   samples.heapMb.push(mb(metrics.JSHeapUsedSize));
   samples.rssMb.push(mb(chromiumRssBytes()));
   await app.close();
