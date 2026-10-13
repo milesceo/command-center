@@ -6,10 +6,11 @@ import {
   type ChatRequest,
 } from '@programish/protocol';
 import { runChat } from './chat';
+import { runUsage } from './usage-report';
 import { fromThrown } from './errors';
 import type { QueryFn } from './sdk';
 
-export const BRIDGE_VERSION = '0.2.0';
+export const BRIDGE_VERSION = '0.3.0';
 
 export interface BridgeDeps {
   /** Resolves the SDK `query`; called per chat so load failures are reportable. */
@@ -63,6 +64,22 @@ export class Bridge {
       case 'chat':
         await this.startChat(request);
         return;
+      case 'usage':
+        await this.readUsage(request.id);
+        return;
+    }
+  }
+
+  private async readUsage(id: string): Promise<void> {
+    try {
+      const query = await this.deps.getQuery();
+      await runUsage({ query, emit: this.deps.emit }, id);
+    } catch (err) {
+      this.deps.emit({
+        type: 'error',
+        id,
+        error: { ...fromThrown(err), code: 'sdk_unavailable' },
+      });
     }
   }
 

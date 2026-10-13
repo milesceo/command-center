@@ -68,6 +68,46 @@ describe('bridge process', () => {
     expect(bridge.events.at(-1)).toMatchObject({ type: 'chat.done', status: 'completed' });
   });
 
+  it('reports the usage the SDK result carried, and the plan windows', async () => {
+    const bridge = startBridge();
+    bridge.send(chat('c1', 'hello'));
+    await bridge.until((e) => e.some(isTerminalEvent));
+    bridge.stop();
+    const text = bridge.events.flatMap((e) => (e.type === 'chat.text' ? [e.text] : [])).join('');
+    const done = bridge.events.find((e) => e.type === 'chat.done');
+    expect(done).toMatchObject({
+      usage: {
+        inputTokens: 'hello'.length,
+        outputTokens: Math.ceil(text.length / 4),
+        cacheReadTokens: 1000,
+        cacheCreationTokens: 200,
+        models: [{ model: 'fake-model' }],
+      },
+    });
+    const limits = bridge.events.find((e) => e.type === 'chat.limits');
+    expect(limits).toMatchObject({
+      windows: [{ key: 'five_hour', utilization: 0.37 }, { key: 'seven_day' }],
+    });
+  });
+
+  it('answers a usage request with the plan windows', async () => {
+    const bridge = startBridge();
+    bridge.send({ type: 'usage', id: 'u1' });
+    await bridge.until((e) => e.some((x) => x.type === 'usage.report' || x.type === 'error'));
+    bridge.stop();
+    expect(bridge.events[0]).toMatchObject({
+      type: 'usage.report',
+      id: 'u1',
+      available: true,
+      subscriptionType: 'max',
+      windows: [
+        { key: 'five_hour', utilization: 0.41 },
+        { key: 'seven_day', utilization: 0.18 },
+        { key: 'model:Opus', utilization: 0.63 },
+      ],
+    });
+  });
+
   it('stops a running chat on cancel', async () => {
     const bridge = startBridge();
     bridge.send(chat('c1', 'slow please'));

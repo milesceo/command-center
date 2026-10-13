@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it } from 'vitest';
 import type { Db } from './db';
 import * as repo from './repo';
 import { createTestDb } from './sqlite-test-db';
+import { message, settings } from './test-fixtures';
 import { DEFAULT_SETTINGS, type Message } from './types';
 
 let db: Db;
@@ -10,20 +11,7 @@ beforeEach(() => {
 });
 
 function msg(conversationId: string, over: Partial<Message> = {}): Message {
-  return {
-    id: crypto.randomUUID(),
-    conversationId,
-    role: 'user',
-    content: 'hello',
-    attachments: [],
-    status: 'complete',
-    error: null,
-    model: null,
-    inputTokens: null,
-    outputTokens: null,
-    createdAt: 1,
-    ...over,
-  };
+  return message({ conversationId, ...over });
 }
 
 describe('schema', () => {
@@ -44,7 +32,7 @@ describe('conversations', () => {
   it('creates with settings and reads them back', async () => {
     const created = await repo.createConversation(
       db,
-      { model: 'opus', systemPrompt: 'be terse', toolsMode: 'readonly', cwd: '/repo' },
+      settings({ model: 'opus', systemPrompt: 'be terse', toolsMode: 'readonly', cwd: '/repo' }),
       100,
     );
     expect(await repo.getConversation(db, created.id)).toEqual(created);
@@ -63,12 +51,7 @@ describe('conversations', () => {
   it('renames and updates settings', async () => {
     const c = await repo.createConversation(db, DEFAULT_SETTINGS);
     await repo.renameConversation(db, c.id, 'Renamed');
-    await repo.updateSettings(db, c.id, {
-      model: 'haiku',
-      systemPrompt: 'x',
-      toolsMode: 'off',
-      cwd: null,
-    });
+    await repo.updateSettings(db, c.id, settings({ model: 'haiku', systemPrompt: 'x' }));
     expect(await repo.getConversation(db, c.id)).toMatchObject({
       title: 'Renamed',
       model: 'haiku',
@@ -96,6 +79,9 @@ describe('messages', () => {
       model: 'claude-x',
       inputTokens: 3,
       outputTokens: 4,
+      cacheReadTokens: 5,
+      cacheCreationTokens: 6,
+      costUsd: 0.0123,
     });
     await repo.insertMessage(db, m);
     expect(await repo.listMessages(db, c.id)).toEqual([m]);

@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 import { createTestDb } from '../lib/sqlite-test-db';
+import { message } from '../lib/test-fixtures';
 import * as repo from '../lib/repo';
 import { DEFAULT_SETTINGS, DEFAULT_TITLE } from '../lib/types';
 import { createConversationsStore, selectActiveSettings, titleFrom } from './conversations';
@@ -91,19 +92,15 @@ describe('conversations store', () => {
     const a = await repo.createConversation(db, DEFAULT_SETTINGS, 1);
     const b = await repo.createConversation(db, DEFAULT_SETTINGS, 2);
     await repo.renameConversation(db, a.id, 'Docker networking');
-    await repo.insertMessage(db, {
-      id: 'm1',
-      conversationId: b.id,
-      role: 'user',
-      content: 'how do I configure docker volumes',
-      attachments: [],
-      status: 'complete',
-      error: null,
-      model: null,
-      inputTokens: null,
-      outputTokens: null,
-      createdAt: 3,
-    });
+    await repo.insertMessage(
+      db,
+      message({
+        id: 'm1',
+        conversationId: b.id,
+        content: 'how do I configure docker volumes',
+        createdAt: 3,
+      }),
+    );
     await store.getState().setSearch('docker');
     expect(
       store

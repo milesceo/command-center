@@ -89,6 +89,13 @@ describe('requests', () => {
     expect(parseRequest(line)).toMatchObject({ ok: false });
   });
 
+  it('round-trips a usage request', () => {
+    expect(roundTripRequest({ type: 'usage', id: 'u' })).toEqual({
+      ok: true,
+      value: { type: 'usage', id: 'u' },
+    });
+  });
+
   it('requires a targetId on cancel', () => {
     expect(parseRequest('{"type":"cancel","id":"x"}')).toMatchObject({ ok: false });
   });
@@ -113,10 +120,56 @@ describe('events', () => {
       id: 'c',
       status: 'completed',
       model: 'm',
-      usage: { inputTokens: 1, outputTokens: 2 },
+      usage: {
+        inputTokens: 1,
+        outputTokens: 2,
+        cacheReadTokens: 3,
+        cacheCreationTokens: 4,
+        costUsd: 0.01,
+        models: [
+          {
+            model: 'm-a',
+            inputTokens: 1,
+            outputTokens: 2,
+            cacheReadTokens: 3,
+            cacheCreationTokens: 4,
+            costUsd: 0.01,
+          },
+        ],
+      },
       durationMs: 10,
     },
     { type: 'chat.done', id: 'c', status: 'cancelled' },
+    {
+      type: 'chat.limits',
+      id: 'c',
+      windows: [
+        { key: 'five_hour', label: '5-hour', utilization: 0.1, resetsAt: 1_791_916_800_000 },
+        { key: 'seven_day', label: 'Weekly', utilization: null, resetsAt: null },
+      ],
+    },
+    {
+      type: 'usage.report',
+      id: 'u',
+      available: true,
+      subscriptionType: 'max',
+      windows: [{ key: 'five_hour', label: '5-hour', utilization: 0.42, resetsAt: 5 }],
+      extraUsage: {
+        enabled: true,
+        usedCredits: 1.5,
+        monthlyLimit: 20,
+        utilization: 0.075,
+        currency: 'USD',
+      },
+    },
+    {
+      type: 'usage.report',
+      id: 'u',
+      available: false,
+      subscriptionType: null,
+      windows: [],
+      extraUsage: null,
+    },
     {
       type: 'error',
       id: 'c',
@@ -140,6 +193,26 @@ describe('events', () => {
     expect(parseEvent('{"type":"chat.done","id":"c","status":"weird"}')).toMatchObject({
       ok: false,
     });
+  });
+
+  it('rejects malformed usage and limit payloads', () => {
+    const done = (usage: unknown) =>
+      parseEvent(JSON.stringify({ type: 'chat.done', id: 'c', status: 'completed', usage }));
+    // A usage object without the cache fields (the v2 shape) is dropped rather than half-trusted.
+    expect(done({ inputTokens: 1, outputTokens: 2 })).toEqual({
+      ok: true,
+      value: { type: 'chat.done', id: 'c', status: 'completed' },
+    });
+    expect(
+      parseEvent(
+        '{"type":"chat.limits","id":"c","windows":[{"key":"k","label":"l","utilization":"x","resetsAt":null}]}',
+      ),
+    ).toMatchObject({ ok: false });
+    expect(
+      parseEvent(
+        '{"type":"usage.report","id":"u","available":"yes","subscriptionType":null,"windows":[],"extraUsage":null}',
+      ),
+    ).toMatchObject({ ok: false });
   });
 
   it('knows which events are terminal', () => {

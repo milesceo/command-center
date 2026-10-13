@@ -1,4 +1,4 @@
-import { Keyboard, Plus } from 'lucide-react';
+import { BarChart3, BookText, Keyboard, Plus } from 'lucide-react';
 import { conversationsStore } from '../../stores/conversations';
 import { useUiStore } from '../../stores/ui';
 import { Button } from '../ui/button';
@@ -8,6 +8,7 @@ import { ThemeToggle } from './ThemeToggle';
 
 export function Sidebar() {
   const open = useUiStore((s) => s.sidebarOpen);
+  const view = useUiStore((s) => s.view);
   if (!open) return null;
 
   return (
@@ -20,7 +21,10 @@ export function Sidebar() {
         <Button
           variant="secondary"
           className="w-full justify-start"
-          onClick={() => conversationsStore.getState().newChat()}
+          onClick={() => {
+            conversationsStore.getState().newChat();
+            useUiStore.getState().setView('chat');
+          }}
         >
           <Plus size={14} />
           New chat
@@ -28,6 +32,26 @@ export function Sidebar() {
       </div>
 
       <ConversationList />
+
+      <nav aria-label="Library" className="flex flex-col gap-0.5 border-t border-border p-2">
+        {(
+          [
+            ['prompts', 'Prompts', BookText],
+            ['usage', 'Usage', BarChart3],
+          ] as const
+        ).map(([id, label, Icon]) => (
+          <Button
+            key={id}
+            variant="ghost"
+            className="w-full justify-start"
+            aria-current={view === id ? 'page' : undefined}
+            onClick={() => useUiStore.getState().setView(view === id ? 'chat' : id)}
+          >
+            <Icon size={14} />
+            {label}
+          </Button>
+        ))}
+      </nav>
 
       <div className="flex items-center gap-1 border-t border-border p-2">
         <BridgeStatus />

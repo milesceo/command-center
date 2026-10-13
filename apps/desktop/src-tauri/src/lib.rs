@@ -22,6 +22,12 @@ fn migrations() -> Vec<Migration> {
             sql: include_str!("../migrations/0002_chat_core.sql"),
             kind: MigrationKind::Up,
         },
+        Migration {
+            version: 3,
+            description: "usage ledger, prompt library and projects",
+            sql: include_str!("../migrations/0003_usage_prompts_projects.sql"),
+            kind: MigrationKind::Up,
+        },
     ]
 }
 

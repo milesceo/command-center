@@ -4,9 +4,14 @@ import type { BridgeClient, ChatHandle } from '../lib/bridge';
 import { getBridgeClient } from '../lib/bridge-client';
 import { getDb, type Db } from '../lib/db';
 import * as repo from '../lib/repo';
+import * as projectsRepo from '../lib/repo-projects';
+import * as promptsRepo from '../lib/repo-prompts';
+import * as usageRepo from '../lib/repo-usage';
+import { resolveSystemPrompt } from '../lib/system-prompt';
 import type { Conversation, Message } from '../lib/types';
 import { useBridgeStore } from './bridge';
 import { conversationsStore, titleFrom } from './conversations';
+import { usageStore } from './usage';
 
 export interface ToolActivity {
   toolUseId: string;
@@ -54,6 +59,7 @@ export interface ChatDeps {
   database: () => Promise<Db>;
   client: () => BridgeClient;
   conversations: typeof conversationsStore;
+  usage: typeof usageStore;
   /** Resolves once the sidecar is running; rejects if it cannot start. */
   ensureConnected: () => Promise<void>;
   /**
@@ -95,6 +101,7 @@ export function createChatStore(deps: Partial<ChatDeps> = {}) {
   const database = deps.database ?? getDb;
   const client = deps.client ?? getBridgeClient;
   const conversations = deps.conversations ?? conversationsStore;
+  const usage = deps.usage ?? usageStore;
   const schedule = deps.schedule ?? defaultSchedule;
   const ensureConnected = deps.ensureConnected ?? defaultEnsureConnected;
   /** Live handles are not state: nothing renders them. */
@@ -124,6 +131,35 @@ export function createChatStore(deps: Partial<ChatDeps> = {}) {
         set({ messages: [...get().messages, message] });
     };
 
+    /** One ledger row per model the SDK reported; failures never affect the chat itself. */
+    const recordUsage = async (
+      conversationId: string,
+      messageId: string | null,
+      tokens: NonNullable<Extract<BridgeEvent, { type: 'chat.done' }>['usage']>,
+    ) => {
+      try {
+        const createdAt = Date.now();
+        await usageRepo.recordUsage(
+          await database(),
+          tokens.models.map((m) => ({
+            id: crypto.randomUUID(),
+            createdAt,
+            conversationId,
+            messageId,
+            model: m.model,
+            inputTokens: m.inputTokens,
+            outputTokens: m.outputTokens,
+            cacheReadTokens: m.cacheReadTokens,
+            cacheCreationTokens: m.cacheCreationTokens,
+            costUsd: m.costUsd ?? null,
+          })),
+        );
+        await usage.getState().refreshConversation(conversationId);
+      } catch (err) {
+        console.error('[usage] could not record usage', err);
+      }
+    };
+
     /** Stores the finished (or stopped/failed) reply and clears the live stream. */
     const finalize = async (
       conversationId: string,
@@ -138,12 +174,18 @@ export function createChatStore(deps: Partial<ChatDeps> = {}) {
       handles.delete(conversationId);
       if (!stream) return;
 
-      if (!stream.text) {
+      const done = outcome.event?.type === 'chat.done' ? outcome.event : undefined;
+      const tokens = done?.usage;
+      const keepsText = stream.text !== '';
+
+      // Tokens were spent whether or not there is any text to keep, so the ledger is written first.
+      if (tokens) await recordUsage(conversationId, keepsText ? stream.messageId : null, tokens);
+
+      if (!keepsText) {
         // Nothing to keep. A failure is shown as a banner instead.
         if (outcome.status === 'error' && outcome.error) setError(conversationId, outcome.error);
         return;
       }
-      const done = outcome.event?.type === 'chat.done' ? outcome.event : undefined;
       const message: Message = {
         id: stream.messageId,
         conversationId,
@@ -153,8 +195,11 @@ export function createChatStore(deps: Partial<ChatDeps> = {}) {
         status: outcome.status,
         error: outcome.error ?? null,
         model: done?.model ?? null,
-        inputTokens: done?.usage?.inputTokens ?? null,
-        outputTokens: done?.usage?.outputTokens ?? null,
+        inputTokens: tokens?.inputTokens ?? null,
+        outputTokens: tokens?.outputTokens ?? null,
+        cacheReadTokens: tokens?.cacheReadTokens ?? null,
+        cacheCreationTokens: tokens?.cacheCreationTokens ?? null,
+        costUsd: tokens?.costUsd ?? null,
         createdAt: Date.now(),
       };
       try {
@@ -183,11 +228,19 @@ export function createChatStore(deps: Partial<ChatDeps> = {}) {
         }));
       if (messages[messages.length - 1]?.role !== 'user') return;
 
+      // Conversation text, else its library prompt, else the project's default (variables rendered now).
+      const db = await database();
+      const [library, project] = await Promise.all([
+        promptsRepo.listPrompts(db),
+        conversation.projectId ? projectsRepo.getProject(db, conversation.projectId) : null,
+      ]);
+      const systemPrompt = resolveSystemPrompt(conversation, project, library).text;
+
       const request: Omit<ChatRequest, 'type' | 'id'> = {
         messages,
         tools: conversation.toolsMode,
         ...(conversation.model ? { model: conversation.model } : {}),
-        ...(conversation.systemPrompt ? { systemPrompt: conversation.systemPrompt } : {}),
+        ...(systemPrompt ? { systemPrompt } : {}),
         ...(conversation.toolsMode === 'readonly' && conversation.cwd
           ? { cwd: conversation.cwd }
           : {}),
@@ -244,6 +297,9 @@ export function createChatStore(deps: Partial<ChatDeps> = {}) {
                   : t,
               ),
             }));
+            break;
+          case 'chat.limits':
+            void usage.getState().noteWindows(event.windows);
             break;
           case 'chat.rate_limit':
             patchStream(conversationId, (s) => ({
@@ -352,6 +408,9 @@ export function createChatStore(deps: Partial<ChatDeps> = {}) {
           model: null,
           inputTokens: null,
           outputTokens: null,
+          cacheReadTokens: null,
+          cacheCreationTokens: null,
+          costUsd: null,
           createdAt: Date.now(),
         };
         await repo.insertMessage(await database(), message);

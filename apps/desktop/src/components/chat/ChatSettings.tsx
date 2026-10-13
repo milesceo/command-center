@@ -1,7 +1,16 @@
 import { FolderOpen, SlidersHorizontal } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
+import { extractVariables } from '../../lib/prompt-vars';
+import { resolveSystemPrompt } from '../../lib/system-prompt';
 import { isTauri } from '../../lib/tauri';
-import { conversationsStore, useActiveSettings } from '../../stores/conversations';
+import {
+  conversationsStore,
+  useActiveSettings,
+  useConversations,
+} from '../../stores/conversations';
+import { useProjects } from '../../stores/projects';
+import { usePrompts } from '../../stores/prompts';
+import { VariablesForm } from '../prompts/VariablesForm';
 import { Button } from '../ui/button';
 
 async function pickFolder(): Promise<string | null> {
@@ -19,11 +28,20 @@ export function ChatSettings() {
   const settings = useActiveSettings();
   const [open, setOpen] = useState(false);
   const [prompt, setPrompt] = useState(settings.systemPrompt ?? '');
+  const [askingVars, setAskingVars] = useState(false);
   const root = useRef<HTMLDivElement>(null);
+  const activeId = useConversations((s) => s.activeId);
+  const prompts = usePrompts((s) => s.prompts);
+  const projects = useProjects((s) => s.projects);
+  const systemPrompts = prompts.filter((p) => p.kind === 'system');
+  const project = projects.find((p) => p.id === settings.projectId) ?? null;
+  const attached = systemPrompts.find((p) => p.id === settings.systemPromptId) ?? null;
+  const effective = resolveSystemPrompt(settings, project, prompts);
   const update = conversationsStore.getState().updateSettings;
 
   useEffect(() => {
     if (!open) return;
+    if (askingVars) return;
     const onDown = (e: MouseEvent) => !root.current?.contains(e.target as Node) && setOpen(false);
     const onKey = (e: KeyboardEvent) => e.key === 'Escape' && setOpen(false);
     window.addEventListener('mousedown', onDown);
@@ -32,7 +50,7 @@ export function ChatSettings() {
       window.removeEventListener('mousedown', onDown);
       window.removeEventListener('keydown', onKey);
     };
-  }, [open]);
+  }, [open, askingVars]);
 
   const saveWhenDone = () => {
     const next = prompt.trim() === '' ? null : prompt;
@@ -57,8 +75,67 @@ export function ChatSettings() {
           aria-label="Chat settings"
           className="absolute bottom-9 left-0 z-20 w-80 rounded-panel border border-border-strong bg-elevated p-3 shadow-xl"
         >
+          <label className="block text-xs font-medium text-fg-muted" htmlFor="chat-project">
+            Project
+          </label>
+          <select
+            id="chat-project"
+            value={settings.projectId ?? ''}
+            onChange={(e) => {
+              const id = e.target.value || null;
+              if (activeId) void conversationsStore.getState().moveToProject(activeId, id);
+              else void update({ projectId: id });
+            }}
+            className="mt-1 mb-3 w-full rounded-control border border-border bg-surface p-1.5 text-xs outline-none focus:border-border-strong"
+          >
+            <option value="">No project</option>
+            {projects.map((p) => (
+              <option key={p.id} value={p.id}>
+                {p.name}
+              </option>
+            ))}
+          </select>
+
+          <label className="block text-xs font-medium text-fg-muted" htmlFor="system-prompt-lib">
+            Library system prompt
+          </label>
+          <div className="mt-1 flex items-center gap-2">
+            <select
+              id="system-prompt-lib"
+              value={settings.systemPromptId ?? ''}
+              onChange={(e) => {
+                const id = e.target.value || null;
+                const picked = systemPrompts.find((p) => p.id === id);
+                void update({ systemPromptId: id, systemPromptVars: {} });
+                if (picked && extractVariables(picked.body).length > 0) setAskingVars(true);
+              }}
+              className="min-w-0 flex-1 rounded-control border border-border bg-surface p-1.5 text-xs outline-none focus:border-border-strong"
+            >
+              <option value="">
+                {project?.defaultSystemPromptId ? 'Project default' : 'None'}
+              </option>
+              {systemPrompts.map((p) => (
+                <option key={p.id} value={p.id}>
+                  {p.title}
+                </option>
+              ))}
+            </select>
+            {attached && extractVariables(attached.body).length > 0 && (
+              <Button size="sm" onClick={() => setAskingVars(true)}>
+                Variables
+              </Button>
+            )}
+          </div>
+          <p className="mt-1 mb-3 text-[11px] text-fg-subtle" data-testid="system-prompt-source">
+            {effective.source === 'conversation' && 'In effect: the text below.'}
+            {effective.source === 'library' && `In effect: “${effective.title}” from the library.`}
+            {effective.source === 'project' &&
+              `In effect: “${effective.title}”, the project default.`}
+            {effective.source === 'none' && 'No system prompt in effect.'}
+          </p>
+
           <label className="block text-xs font-medium text-fg-muted" htmlFor="system-prompt">
-            System prompt
+            Custom system prompt (overrides the above)
           </label>
           <textarea
             id="system-prompt"
@@ -127,6 +204,20 @@ export function ChatSettings() {
             </div>
           )}
         </div>
+      )}
+      {askingVars && attached && (
+        <VariablesForm
+          title={`Variables for “${attached.title}”`}
+          body={attached.body}
+          variables={extractVariables(attached.body)}
+          initial={settings.systemPromptVars}
+          confirmLabel="Save"
+          onCancel={() => setAskingVars(false)}
+          onSubmit={(values) => {
+            void update({ systemPromptVars: values });
+            setAskingVars(false);
+          }}
+        />
       )}
     </div>
   );

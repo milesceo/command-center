@@ -4,10 +4,16 @@ import type { Attachment, BridgeError, ToolsMode } from '@programish/protocol';
 export interface ConversationSettings {
   /** Model alias; null lets the runtime choose. */
   model: string | null;
+  /** A custom system prompt written for this conversation. Wins over the library prompt and the project default. */
   systemPrompt: string | null;
+  /** A library system prompt attached to this conversation (used when there is no custom text). */
+  systemPromptId: string | null;
+  /** Values for the attached prompt's {{variables}}. */
+  systemPromptVars: Record<string, string>;
   toolsMode: ToolsMode;
   /** Working directory for read-only tools. */
   cwd: string | null;
+  projectId: string | null;
 }
 
 export interface Conversation extends ConversationSettings {
@@ -32,9 +38,35 @@ export interface Message {
   status: MessageStatus;
   error: BridgeError | null;
   model: string | null;
+  /** Uncached input tokens (rows written before cache accounting include cached tokens here). */
   inputTokens: number | null;
   outputTokens: number | null;
+  cacheReadTokens: number | null;
+  cacheCreationTokens: number | null;
+  /** The SDK's API-equivalent price for this reply; informational on a subscription. Null when not reported. */
+  costUsd: number | null;
   createdAt: number;
+}
+
+export type PromptKind = 'prompt' | 'system';
+
+export interface Prompt {
+  id: string;
+  kind: PromptKind;
+  title: string;
+  body: string;
+  tags: string[];
+  createdAt: number;
+  updatedAt: number;
+}
+
+export interface Project {
+  id: string;
+  name: string;
+  defaultSystemPromptId: string | null;
+  defaultSystemPromptVars: Record<string, string>;
+  createdAt: number;
+  updatedAt: number;
 }
 
 export const DEFAULT_TITLE = 'New chat';
@@ -42,6 +74,9 @@ export const DEFAULT_TITLE = 'New chat';
 export const DEFAULT_SETTINGS: ConversationSettings = {
   model: null,
   systemPrompt: null,
+  systemPromptId: null,
+  systemPromptVars: {},
   toolsMode: 'off',
   cwd: null,
+  projectId: null,
 };

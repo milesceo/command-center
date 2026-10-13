@@ -1,10 +1,14 @@
-import type { BridgeEvent, ChatRequest } from '@programish/protocol';
+import type { BridgeEvent, ChatRequest, ChatUsage } from '@programish/protocol';
 import { beforeEach, describe, expect, it } from 'vitest';
 import type { BridgeClient, ChatHandle } from '../lib/bridge';
 import * as repo from '../lib/repo';
+import * as projectsRepo from '../lib/repo-projects';
+import * as promptsRepo from '../lib/repo-prompts';
+import * as usageRepo from '../lib/repo-usage';
 import { createTestDb } from '../lib/sqlite-test-db';
 import { createChatStore } from './chat';
 import { createConversationsStore } from './conversations';
+import { createUsageStore } from './usage';
 
 type Req = Omit<ChatRequest, 'type' | 'id'>;
 
@@ -24,21 +28,45 @@ function fakeClient() {
 
 const settle = () => new Promise((r) => setTimeout(r, 0));
 
+/** A one-model usage object. */
+const usageOf = (input: number, output: number, over: Partial<ChatUsage> = {}): ChatUsage => ({
+  inputTokens: input,
+  outputTokens: output,
+  cacheReadTokens: 0,
+  cacheCreationTokens: 0,
+  models: [
+    {
+      model: 'm',
+      inputTokens: input,
+      outputTokens: output,
+      cacheReadTokens: 0,
+      cacheCreationTokens: 0,
+    },
+  ],
+  ...over,
+});
+
 function setup() {
   const db = createTestDb();
   const conversations = createConversationsStore(() => Promise.resolve(db));
   const fake = fakeClient();
+  const usage = createUsageStore({
+    database: () => Promise.resolve(db),
+    client: () => fake.client,
+    ensureConnected: () => Promise.resolve(),
+  });
   const chat = createChatStore({
     database: () => Promise.resolve(db),
     client: () => fake.client,
     ensureConnected: () => Promise.resolve(),
+    usage,
     conversations,
     schedule: (flush) => {
       queueMicrotask(flush);
       return () => {};
     },
   });
-  return { db, conversations, fake, chat };
+  return { db, conversations, fake, chat, usage };
 }
 
 let t: ReturnType<typeof setup>;
@@ -55,7 +83,7 @@ const reply = async (text: string, extra: Partial<BridgeEvent> = {}) => {
     id: run.id,
     status: 'completed',
     model: 'm',
-    usage: { inputTokens: 5, outputTokens: 6 },
+    usage: usageOf(5, 6),
     ...extra,
   } as BridgeEvent);
   await settle();
@@ -81,7 +109,7 @@ describe('chat store: sending', () => {
       id: run.id,
       status: 'completed',
       model: 'claude-x',
-      usage: { inputTokens: 5, outputTokens: 6 },
+      usage: usageOf(5, 6),
     });
     await settle();
     expect(t.chat.getState().streams[convoId]).toBeUndefined();
@@ -316,5 +344,194 @@ describe('chat store: persistence and isolation', () => {
     await t.chat.getState().send('hello');
     await pending;
     expect(t.chat.getState().messages.map((m) => m.content)).toEqual(['hello']);
+  });
+});
+
+describe('chat store: usage ledger', () => {
+  /** The numbers of a real SDK result: one word from haiku (see packages/bridge/test/fixtures/result-success.json). */
+  const real: ChatUsage = {
+    inputTokens: 2,
+    outputTokens: 4,
+    cacheReadTokens: 0,
+    cacheCreationTokens: 1225,
+    costUsd: 0.0002472,
+    models: [
+      {
+        model: 'claude-haiku-5-5',
+        inputTokens: 2,
+        outputTokens: 4,
+        cacheReadTokens: 0,
+        cacheCreationTokens: 1225,
+        costUsd: 0.0002472,
+      },
+    ],
+  };
+
+  it('records the SDK numbers exactly: ledger, message and the conversation total', async () => {
+    await t.chat.getState().send('ping');
+    const convoId = t.conversations.getState().activeId!;
+    await reply('pong', { usage: real });
+
+    const rows = await t.db.select<Record<string, unknown>>('SELECT * FROM usage_log');
+    expect(rows).toHaveLength(1);
+    expect(rows[0]).toMatchObject({
+      conversation_id: convoId,
+      message_id: t.chat.getState().messages[1]?.id,
+      model: 'claude-haiku-5-5',
+      input_tokens: 2,
+      output_tokens: 4,
+      cache_read_tokens: 0,
+      cache_creation_tokens: 1225,
+      cost_usd: 0.0002472,
+    });
+    expect(t.chat.getState().messages[1]).toMatchObject({
+      inputTokens: 2,
+      outputTokens: 4,
+      cacheReadTokens: 0,
+      cacheCreationTokens: 1225,
+      costUsd: 0.0002472,
+    });
+    expect(t.usage.getState().conversationTotals[convoId]).toMatchObject({
+      inputTokens: 2,
+      outputTokens: 4,
+      cacheCreationTokens: 1225,
+      costUsd: 0.0002472,
+      replies: 1,
+    });
+  });
+
+  it('writes one ledger row per model and totals them', async () => {
+    await t.chat.getState().send('ping');
+    const convoId = t.conversations.getState().activeId!;
+    const models = [
+      {
+        model: 'a',
+        inputTokens: 10,
+        outputTokens: 5,
+        cacheReadTokens: 100,
+        cacheCreationTokens: 20,
+        costUsd: 0.01,
+      },
+      {
+        model: 'b',
+        inputTokens: 1,
+        outputTokens: 1,
+        cacheReadTokens: 0,
+        cacheCreationTokens: 0,
+        costUsd: 0.02,
+      },
+    ];
+    await reply('x', {
+      usage: {
+        inputTokens: 11,
+        outputTokens: 6,
+        cacheReadTokens: 100,
+        cacheCreationTokens: 20,
+        costUsd: 0.03,
+        models,
+      },
+    });
+    expect(await t.db.select('SELECT model FROM usage_log ORDER BY model')).toEqual([
+      { model: 'a' },
+      { model: 'b' },
+    ]);
+    expect(await usageRepo.conversationTotals(t.db, convoId)).toMatchObject({
+      inputTokens: 11,
+      outputTokens: 6,
+      replies: 1,
+    });
+  });
+
+  it('records usage even when the reply had no text, and keeps it when the reply is regenerated', async () => {
+    await t.chat.getState().send('ping');
+    const run = t.fake.last();
+    run.emit({ type: 'chat.done', id: run.id, status: 'completed', usage: usageOf(7, 0) });
+    await settle();
+    expect(await t.db.select('SELECT message_id, input_tokens FROM usage_log')).toEqual([
+      { message_id: null, input_tokens: 7 },
+    ]);
+
+    await t.chat.getState().regenerate();
+    await reply('now with text', { usage: usageOf(8, 3) });
+    await t.chat.getState().regenerate(); // deletes that reply and asks again
+    const total = await usageRepo.usageTotals(t.db, 0);
+    expect(total).toMatchObject({ inputTokens: 15, outputTokens: 3 });
+  });
+
+  it('records nothing for a stopped reply, whose result the SDK never sends', async () => {
+    await t.chat.getState().send('ping');
+    const run = t.fake.last();
+    run.emit({ type: 'chat.text', id: run.id, text: 'partial' });
+    await settle();
+    run.emit({ type: 'chat.done', id: run.id, status: 'cancelled' });
+    await settle();
+    expect(await t.db.select('SELECT * FROM usage_log')).toEqual([]);
+  });
+
+  it('remembers the plan windows a chat reports', async () => {
+    await t.chat.getState().send('ping');
+    const run = t.fake.last();
+    run.emit({
+      type: 'chat.limits',
+      id: run.id,
+      windows: [{ key: 'five_hour', label: '5-hour', utilization: 0.1, resetsAt: 5 }],
+    });
+    await settle();
+    expect(await usageRepo.loadWindows(t.db)).toMatchObject([
+      { key: 'five_hour', utilization: 0.1, source: 'chat' },
+    ]);
+  });
+});
+
+describe('chat store: system prompts', () => {
+  const sent = () => t.fake.last().request.systemPrompt;
+
+  it('sends no system prompt unless one is configured', async () => {
+    await t.chat.getState().send('hi');
+    expect(sent()).toBeUndefined();
+  });
+
+  it('sends custom conversation text as written', async () => {
+    await t.conversations.getState().updateSettings({ systemPrompt: 'Be brief.' });
+    await t.chat.getState().send('hi');
+    expect(sent()).toBe('Be brief.');
+  });
+
+  it('renders an attached library prompt with its variables at send time', async () => {
+    const p = await promptsRepo.createPrompt(t.db, {
+      kind: 'system',
+      title: 'Terse',
+      body: 'Answer about {{topic}} tersely.',
+      tags: [],
+    });
+    await t.conversations
+      .getState()
+      .updateSettings({ systemPromptId: p.id, systemPromptVars: { topic: 'Rust' } });
+    await t.chat.getState().send('hi');
+    expect(sent()).toBe('Answer about Rust tersely.');
+    // Editing the library prompt changes later turns of every conversation that references it.
+    await promptsRepo.updatePrompt(t.db, p.id, {
+      kind: 'system',
+      title: 'Terse',
+      body: 'Only about {{topic}}.',
+      tags: [],
+    });
+    await reply('ok');
+    await t.chat.getState().send('again');
+    expect(sent()).toBe('Only about Rust.');
+  });
+
+  it("falls back to the project's default system prompt", async () => {
+    const p = await promptsRepo.createPrompt(t.db, {
+      kind: 'system',
+      title: 'House style',
+      body: 'Use {{lang}}.',
+      tags: [],
+    });
+    const project = await projectsRepo.createProject(t.db, 'Site');
+    await projectsRepo.setProjectSystemPrompt(t.db, project.id, p.id, { lang: 'TypeScript' });
+    await t.conversations.getState().updateSettings({ projectId: project.id });
+    await t.chat.getState().send('hi');
+    expect(sent()).toBe('Use TypeScript.');
   });
 });

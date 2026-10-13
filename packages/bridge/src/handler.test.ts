@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { PROTOCOL_VERSION, encodeMessage, type BridgeRequest } from '@programish/protocol';
 import { BRIDGE_VERSION, Bridge } from './handler';
 import type { QueryFn } from './sdk';
@@ -46,6 +46,23 @@ describe('Bridge', () => {
     bridge.handleLine(line(chat('c1')));
     await bridge.idle();
     expect(out.types).toEqual(['chat.text', 'chat.done']);
+  });
+
+  it('answers a usage request with a usage report', async () => {
+    const out = collector();
+    const query: QueryFn = () =>
+      Object.assign((async function* () {})(), {
+        usage_EXPERIMENTAL_MAY_CHANGE_DO_NOT_RELY_ON_THIS_API_YET: () =>
+          Promise.resolve({
+            subscription_type: null,
+            rate_limits_available: false,
+            rate_limits: null,
+          } as never),
+      });
+    const bridge = new Bridge({ getQuery: () => Promise.resolve(query), emit: out.emit });
+    bridge.handleLine(line({ type: 'usage', id: 'u1' }));
+    await vi.waitFor(() => expect(out.events).toHaveLength(1));
+    expect(out.events[0]).toMatchObject({ type: 'usage.report', id: 'u1', available: false });
   });
 
   it('cancels a running chat by id', async () => {

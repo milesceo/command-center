@@ -25,10 +25,59 @@ describe('translateMessage', () => {
         id: 'c1',
         status: 'completed',
         model: 'm1',
-        usage: { inputTokens: 3, outputTokens: 4 },
+        usage: {
+          inputTokens: 1,
+          outputTokens: 4,
+          cacheReadTokens: 1,
+          cacheCreationTokens: 1,
+          costUsd: 0.5,
+          models: [
+            {
+              model: 'm1',
+              inputTokens: 1,
+              outputTokens: 4,
+              cacheReadTokens: 1,
+              cacheCreationTokens: 1,
+              costUsd: 0.5,
+            },
+          ],
+        },
         durationMs: 12,
       },
     ]);
+  });
+
+  it('forwards plan windows on every rate-limit event, even routine ones', () => {
+    const { events } = run([
+      sdk.rateLimit({
+        status: 'allowed',
+        unifiedWindows: {
+          five_hour: { utilization: 0.25, resetsAt: 1_800_000_000 },
+          seven_day: { utilization: 0.5, resetsAt: 1_800_100_000 },
+        },
+      }),
+    ]);
+    expect(events).toEqual([
+      {
+        type: 'chat.limits',
+        id: 'c1',
+        windows: [
+          { key: 'five_hour', label: '5-hour', utilization: 0.25, resetsAt: 1_800_000_000_000 },
+          { key: 'seven_day', label: 'Weekly', utilization: 0.5, resetsAt: 1_800_100_000_000 },
+        ],
+      },
+    ]);
+  });
+
+  it('sends windows before the warning when a limit event carries both', () => {
+    const { events } = run([
+      sdk.rateLimit({
+        status: 'allowed_warning',
+        utilization: 0.9,
+        unifiedWindows: { five_hour: { utilization: 0.9, resetsAt: 1_800_000_000 } },
+      }),
+    ]);
+    expect(events.map((e) => e.type)).toEqual(['chat.limits', 'chat.rate_limit']);
   });
 
   it('falls back to the full assistant text when nothing was streamed', () => {

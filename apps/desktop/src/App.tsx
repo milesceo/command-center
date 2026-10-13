@@ -8,6 +8,9 @@ import { Sidebar } from './components/shell/Sidebar';
 import { useBridgeStore } from './stores/bridge';
 import { chatStore } from './stores/chat';
 import { conversationsStore, useConversations } from './stores/conversations';
+import { projectsStore } from './stores/projects';
+import { promptsStore } from './stores/prompts';
+import { usageStore } from './stores/usage';
 import { applyTheme, useUiStore } from './stores/ui';
 
 export function App() {
@@ -22,11 +25,19 @@ export function App() {
   useEffect(() => {
     void connect();
     void conversationsStore.getState().load();
+    void promptsStore.getState().load();
+    void projectsStore.getState().load();
   }, [connect]);
 
   // Show the selected conversation's history.
   useEffect(() => {
     void chatStore.getState().loadMessages(activeId);
+    if (activeId) void usageStore.getState().refreshConversation(activeId);
+  }, [activeId]);
+
+  // Picking or starting a conversation always brings the chat back into view.
+  useEffect(() => {
+    useUiStore.getState().setView('chat');
   }, [activeId]);
 
   return (

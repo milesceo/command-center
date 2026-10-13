@@ -5,6 +5,7 @@ import type {
 } from '@anthropic-ai/claude-agent-sdk';
 import type { BridgeError, BridgeEvent } from '@programish/protocol';
 import { fromAssistantError, fromFailureText, normalizeResetsAt } from './errors';
+import { usageFromResult, windowsFromRateLimitInfo } from './usage';
 
 /** Per-chat bookkeeping that spans several SDK messages. */
 export interface TurnState {
@@ -73,14 +74,18 @@ export function translateMessage(msg: SDKMessage, state: TurnState, id: string):
 
     case 'rate_limit_event': {
       const info = msg.rate_limit_info;
-      if (info.status === 'allowed') return [];
+      // Plan windows ride along on every rate-limit event, including the routine "allowed" ones.
+      const events: BridgeEvent[] = [];
+      const windows = windowsFromRateLimitInfo(info);
+      if (windows.length > 0) events.push({ type: 'chat.limits', id, windows });
+      if (info.status === 'allowed') return events;
       state.limit = info;
       const event: BridgeEvent = { type: 'chat.rate_limit', id, status: info.status };
       if (info.rateLimitType) event.limitType = info.rateLimitType;
       const resetsAt = normalizeResetsAt(info.resetsAt);
       if (resetsAt !== undefined) event.resetsAt = resetsAt;
       if (info.utilization !== undefined) event.utilization = info.utilization;
-      return [event];
+      return [...events, event];
     }
 
     case 'stream_event': {
@@ -139,14 +144,7 @@ export function translateMessage(msg: SDKMessage, state: TurnState, id: string):
           type: 'chat.done',
           id,
           status: 'completed',
-          usage: {
-            // Cached prompt tokens are reported separately but still count as input.
-            inputTokens:
-              msg.usage.input_tokens +
-              (msg.usage.cache_creation_input_tokens ?? 0) +
-              (msg.usage.cache_read_input_tokens ?? 0),
-            outputTokens: msg.usage.output_tokens,
-          },
+          usage: usageFromResult(msg, state.model),
           durationMs: msg.duration_ms,
         };
         if (state.model) done.model = state.model;

@@ -10,15 +10,21 @@ import {
   type KeyboardEvent,
 } from 'react';
 import { AttachmentError, MAX_ATTACHMENTS, readTextFile } from '../../lib/attachments';
+import { searchPrompts } from '../../lib/repo-prompts';
+import { applyInsertion, findSlashQuery } from '../../lib/slash';
 import { cn } from '../../lib/cn';
 import { chatStore, useChat } from '../../stores/chat';
+import { useComposerStore } from '../../stores/composer';
+import { usePrompts } from '../../stores/prompts';
 import {
   conversationsStore,
   useActiveSettings,
   useConversations,
 } from '../../stores/conversations';
 import { Button } from '../ui/button';
+import { usePromptActions } from '../prompts/usePromptActions';
 import { ChatSettings } from './ChatSettings';
+import { SlashMenu } from './SlashMenu';
 
 const MAX_HEIGHT_PX = 220;
 
@@ -32,7 +38,14 @@ export function Composer() {
   const [attachments, setAttachments] = useState<Attachment[]>([]);
   const [notice, setNotice] = useState<string | null>(null);
   const [dragging, setDragging] = useState(false);
+  const [caret, setCaret] = useState(0);
+  const [selectedItem, setSelectedItem] = useState(0);
+  /** The slash token the user dismissed with Escape; the menu stays closed for it. */
+  const [dismissed, setDismissed] = useState<string | null>(null);
   const area = useRef<HTMLTextAreaElement>(null);
+  const prompts = usePrompts((s) => s.prompts);
+  const actions = usePromptActions();
+  const pendingInsert = useComposerStore((s) => s.pending);
   const picker = useRef<HTMLInputElement>(null);
 
   // Grow with the content up to a cap, then scroll.
@@ -47,6 +60,44 @@ export function Composer() {
   useEffect(() => {
     area.current?.focus();
   }, [activeId]);
+
+  const slash = findSlashQuery(text, caret);
+  const slashKey = slash ? `${slash.start}:${slash.query}` : null;
+  const matches = slash ? searchPrompts(prompts, slash.query, 'prompt').slice(0, 8) : [];
+  const menuOpen = slash !== null && dismissed !== slashKey;
+
+  // Put the caret back where it belongs after a programmatic edit.
+  const placeCaret = (position: number) => {
+    setCaret(position);
+    requestAnimationFrame(() => {
+      area.current?.focus();
+      area.current?.setSelectionRange(position, position);
+    });
+  };
+
+  /** Replaces the `/query` token with a prompt (asking for its variables first). */
+  const chooseSlash = (prompt: (typeof prompts)[number]) => {
+    if (!slash) return;
+    const { start } = slash;
+    const end = area.current?.selectionStart ?? caret;
+    actions.requestText(prompt, (insertion) => {
+      const next = applyInsertion(text, start, end, insertion);
+      setText(next.text);
+      placeCaret(next.caret);
+    });
+  };
+
+  // Text sent over from the library ("Insert") lands at the caret, or at the end if the box is empty.
+  useEffect(() => {
+    if (!pendingInsert) return;
+    const at = area.current?.selectionStart ?? text.length;
+    const next = applyInsertion(text, at, area.current?.selectionEnd ?? at, pendingInsert.text);
+    setText(next.text);
+    placeCaret(next.caret);
+    useComposerStore.getState().consume(pendingInsert.id);
+    // `text` is read once for the insertion point; re-running on every keystroke would loop.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pendingInsert]);
 
   const addFiles = useCallback(async (files: File[]) => {
     const added: Attachment[] = [];
@@ -78,6 +129,24 @@ export function Composer() {
   };
 
   const onKeyDown = (e: KeyboardEvent<HTMLTextAreaElement>) => {
+    if (menuOpen) {
+      if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+        e.preventDefault();
+        const n = Math.max(1, matches.length);
+        setSelectedItem((i) => (i + (e.key === 'ArrowDown' ? 1 : n - 1)) % n);
+        return;
+      }
+      if ((e.key === 'Enter' || e.key === 'Tab') && !e.shiftKey && matches[selectedItem]) {
+        e.preventDefault();
+        chooseSlash(matches[selectedItem]);
+        return;
+      }
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        setDismissed(slashKey);
+        return;
+      }
+    }
     // isComposing: Enter confirms an IME candidate and must not send.
     if (e.key === 'Enter' && !e.shiftKey && !e.nativeEvent.isComposing) {
       e.preventDefault();
@@ -101,6 +170,7 @@ export function Composer() {
 
   return (
     <footer className="px-6 pb-5">
+      {actions.dialog}
       <div
         className={cn(
           'relative mx-auto w-full max-w-3xl rounded-panel border bg-elevated p-2 transition-colors focus-within:border-border-strong',
@@ -138,11 +208,25 @@ export function Composer() {
           </div>
         )}
 
+        {menuOpen && (
+          <SlashMenu
+            items={matches}
+            selected={Math.min(selectedItem, Math.max(0, matches.length - 1))}
+            libraryEmpty={prompts.length === 0}
+            onChoose={chooseSlash}
+            onHover={setSelectedItem}
+          />
+        )}
         <textarea
           ref={area}
           rows={1}
           value={text}
-          onChange={(e) => setText(e.target.value)}
+          onChange={(e) => {
+            setText(e.target.value);
+            setCaret(e.target.selectionStart);
+            setSelectedItem(0);
+          }}
+          onSelect={(e) => setCaret(e.currentTarget.selectionStart)}
           onKeyDown={onKeyDown}
           onPaste={onPaste}
           placeholder="Message Programish…"

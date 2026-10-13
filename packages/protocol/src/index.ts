@@ -11,7 +11,7 @@
  */
 
 /** Bumped on any breaking wire change so a stale sidecar can be detected. */
-export const PROTOCOL_VERSION = 2;
+export const PROTOCOL_VERSION = 3;
 
 /** Model aliases understood by the Claude Code runtime ('default' = its own choice). */
 export const MODEL_OPTIONS = [
@@ -30,7 +30,7 @@ export type ToolsMode = 'off' | 'readonly';
 
 // ---------------------------------------------------------------- requests
 
-export type BridgeRequest = PingRequest | ChatRequest | CancelRequest;
+export type BridgeRequest = PingRequest | ChatRequest | CancelRequest | UsageRequest;
 
 export interface PingRequest {
   type: 'ping';
@@ -74,6 +74,12 @@ export interface CancelRequest {
   targetId: string;
 }
 
+/** Asks for the claude.ai plan usage windows (5-hour, weekly, ...). Answered by one `usage.report`. */
+export interface UsageRequest {
+  type: 'usage';
+  id: string;
+}
+
 // ------------------------------------------------------------------ events
 
 export type BridgeEvent =
@@ -83,7 +89,9 @@ export type BridgeEvent =
   | ChatToolUseEvent
   | ChatToolResultEvent
   | ChatRateLimitEvent
-  | ChatDoneEvent;
+  | ChatLimitsEvent
+  | ChatDoneEvent
+  | UsageReportEvent;
 
 export interface PongEvent {
   type: 'pong';
@@ -129,9 +137,63 @@ export interface ChatRateLimitEvent {
   utilization?: number;
 }
 
-export interface ChatUsage {
+/** Token counts, kept separate so cached prompt tokens are never confused with fresh input. */
+export interface TokenCounts {
+  /** Uncached input tokens. */
   inputTokens: number;
   outputTokens: number;
+  cacheReadTokens: number;
+  cacheCreationTokens: number;
+}
+
+export interface ModelUsageEntry extends TokenCounts {
+  /** Model id as the runtime reports it (e.g. `claude-haiku-5-5`). */
+  model: string;
+  /** What the SDK says these tokens would cost at API list prices; absent when it does not say. Informational, not a bill. */
+  costUsd?: number;
+}
+
+/** Usage of one chat: totals plus the per-model breakdown they were summed from. */
+export interface ChatUsage extends TokenCounts {
+  costUsd?: number;
+  models: ModelUsageEntry[];
+}
+
+/**
+ * One plan usage window (rolling 5 hours, weekly, ...). `utilization` is the used
+ * fraction 0..1, `resetsAt` epoch milliseconds; either is null when unknown.
+ */
+export interface UsageWindow {
+  /** Stable id: `five_hour`, `seven_day`, `seven_day_opus`, `seven_day_sonnet`, `seven_day_oauth_apps` or `model:<name>`. */
+  key: string;
+  label: string;
+  utilization: number | null;
+  resetsAt: number | null;
+}
+
+/** Plan windows the runtime attached to a chat's rate-limit info. Informational; may be absent for some logins. */
+export interface ChatLimitsEvent {
+  type: 'chat.limits';
+  id: string;
+  windows: UsageWindow[];
+}
+
+export interface ExtraUsage {
+  enabled: boolean;
+  usedCredits: number | null;
+  monthlyLimit: number | null;
+  utilization: number | null;
+  currency: string | null;
+}
+
+export interface UsageReportEvent {
+  type: 'usage.report';
+  id: string;
+  /** False for API-key / third-party logins (and logins without profile access): no plan windows exist. */
+  available: boolean;
+  subscriptionType: string | null;
+  windows: UsageWindow[];
+  extraUsage: ExtraUsage | null;
 }
 
 export interface ChatDoneEvent {
@@ -284,6 +346,8 @@ export function parseRequest(line: string): ParseResult<BridgeRequest> {
       return { ok: true, value: { type: 'ping', id: v.id, sentAt: v.sentAt } };
     case 'chat':
       return parseChatRequest(v.id, v);
+    case 'usage':
+      return { ok: true, value: { type: 'usage', id: v.id } };
     case 'cancel':
       if (!isString(v.targetId)) return fail('invalid_message', 'Cancel needs a `targetId`.');
       return { ok: true, value: { type: 'cancel', id: v.id, targetId: v.targetId } };
@@ -300,9 +364,65 @@ function parseBridgeError(raw: unknown): BridgeError | null {
   return error;
 }
 
+function parseCounts(raw: Json): TokenCounts | null {
+  const { inputTokens, outputTokens, cacheReadTokens, cacheCreationTokens } = raw;
+  if (
+    !isNumber(inputTokens) ||
+    !isNumber(outputTokens) ||
+    !isNumber(cacheReadTokens) ||
+    !isNumber(cacheCreationTokens)
+  ) {
+    return null;
+  }
+  return { inputTokens, outputTokens, cacheReadTokens, cacheCreationTokens };
+}
+
 function parseUsage(raw: unknown): ChatUsage | undefined {
-  if (!isObject(raw) || !isNumber(raw.inputTokens) || !isNumber(raw.outputTokens)) return undefined;
-  return { inputTokens: raw.inputTokens, outputTokens: raw.outputTokens };
+  if (!isObject(raw)) return undefined;
+  const counts = parseCounts(raw);
+  if (!counts || !Array.isArray(raw.models)) return undefined;
+  const models: ModelUsageEntry[] = [];
+  for (const item of raw.models) {
+    if (!isObject(item) || !isString(item.model)) return undefined;
+    const entryCounts = parseCounts(item);
+    if (!entryCounts) return undefined;
+    const entry: ModelUsageEntry = { model: item.model, ...entryCounts };
+    if (isNumber(item.costUsd)) entry.costUsd = item.costUsd;
+    models.push(entry);
+  }
+  const usage: ChatUsage = { ...counts, models };
+  if (isNumber(raw.costUsd)) usage.costUsd = raw.costUsd;
+  return usage;
+}
+
+function parseWindows(raw: unknown): UsageWindow[] | null {
+  if (!Array.isArray(raw)) return null;
+  const windows: UsageWindow[] = [];
+  for (const item of raw) {
+    if (!isObject(item) || !isString(item.key) || !isString(item.label)) return null;
+    if (item.utilization !== null && !isNumber(item.utilization)) return null;
+    if (item.resetsAt !== null && !isNumber(item.resetsAt)) return null;
+    windows.push({
+      key: item.key,
+      label: item.label,
+      utilization: item.utilization,
+      resetsAt: item.resetsAt,
+    });
+  }
+  return windows;
+}
+
+function parseExtraUsage(raw: unknown): ExtraUsage | null | undefined {
+  if (raw === null) return null;
+  if (!isObject(raw) || typeof raw.enabled !== 'boolean') return undefined;
+  const nullableNumber = (v: unknown) => (isNumber(v) ? v : null);
+  return {
+    enabled: raw.enabled,
+    usedCredits: nullableNumber(raw.usedCredits),
+    monthlyLimit: nullableNumber(raw.monthlyLimit),
+    utilization: nullableNumber(raw.utilization),
+    currency: isString(raw.currency) ? raw.currency : null,
+  };
 }
 
 /** Validate one line received by the app. Never throws. */
@@ -366,6 +486,27 @@ export function parseEvent(line: string): ParseResult<BridgeEvent> {
       if (isNumber(v.resetsAt)) event.resetsAt = v.resetsAt;
       if (isNumber(v.utilization)) event.utilization = v.utilization;
       return { ok: true, value: event };
+    }
+    case 'chat.limits': {
+      const windows = parseWindows(v.windows);
+      return windows ? { ok: true, value: { type: 'chat.limits', id, windows } } : bad();
+    }
+    case 'usage.report': {
+      const windows = parseWindows(v.windows);
+      const extraUsage = parseExtraUsage(v.extraUsage);
+      if (!windows || extraUsage === undefined || typeof v.available !== 'boolean') return bad();
+      if (v.subscriptionType !== null && !isString(v.subscriptionType)) return bad();
+      return {
+        ok: true,
+        value: {
+          type: 'usage.report',
+          id,
+          available: v.available,
+          subscriptionType: v.subscriptionType,
+          windows,
+          extraUsage,
+        },
+      };
     }
     case 'chat.done': {
       if (v.status !== 'completed' && v.status !== 'cancelled') return bad();

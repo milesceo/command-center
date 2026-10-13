@@ -3,11 +3,14 @@ import { useChat } from '../../stores/chat';
 import { useConversations } from '../../stores/conversations';
 import { useUiStore } from '../../stores/ui';
 import { Composer } from '../chat/Composer';
+import { PromptsView } from '../prompts/PromptsView';
+import { ConversationUsage } from '../usage/ConversationUsage';
+import { UsageView } from '../usage/UsageView';
 import { MessageList } from '../chat/MessageList';
 import { Button } from '../ui/button';
 
 export function MainPanel() {
-  const { toggleSidebar, toggleRightPanel, rightPanelOpen } = useUiStore();
+  const { toggleSidebar, toggleRightPanel, rightPanelOpen, view } = useUiStore();
   const title = useConversations(
     (s) => s.conversations.find((c) => c.id === s.activeId)?.title ?? 'New chat',
   );
@@ -21,7 +24,12 @@ export function MainPanel() {
         <Button variant="ghost" size="icon" aria-label="Toggle sidebar" onClick={toggleSidebar}>
           <PanelLeft size={15} />
         </Button>
-        <h1 className="max-w-[60%] truncate text-xs text-fg-muted">{title}</h1>
+        <div className="flex min-w-0 max-w-[70%] items-center gap-2">
+          <h1 className="truncate text-xs text-fg-muted">
+            {view === 'usage' ? 'Usage' : view === 'prompts' ? 'Prompt library' : title}
+          </h1>
+          {view === 'chat' && activeId && <ConversationUsage conversationId={activeId} />}
+        </div>
         <Button
           variant="ghost"
           size="icon"
@@ -33,18 +41,28 @@ export function MainPanel() {
         </Button>
       </header>
 
-      {showTranscript ? (
-        <MessageList />
+      {view === 'usage' ? (
+        <UsageView />
+      ) : view === 'prompts' ? (
+        <PromptsView />
       ) : (
-        <section className="flex flex-1 flex-col items-center justify-center px-6">
-          <div className="w-full max-w-3xl">
-            <h2 className="text-xl font-semibold tracking-tight">What are we building?</h2>
-            <p className="mt-1 text-fg-muted">Ask about code, paste an error, or drop in a file.</p>
-          </div>
-        </section>
-      )}
+        <>
+          {showTranscript ? (
+            <MessageList />
+          ) : (
+            <section className="flex flex-1 flex-col items-center justify-center px-6">
+              <div className="w-full max-w-3xl">
+                <h2 className="text-xl font-semibold tracking-tight">What are we building?</h2>
+                <p className="mt-1 text-fg-muted">
+                  Ask about code, paste an error, or drop in a file.
+                </p>
+              </div>
+            </section>
+          )}
 
-      <Composer />
+          <Composer />
+        </>
+      )}
     </main>
   );
 }

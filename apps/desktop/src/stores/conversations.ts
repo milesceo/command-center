@@ -32,11 +32,26 @@ export interface ConversationsState {
   remove: (id: string) => Promise<void>;
   /** Settings for the active conversation, or for the draft when there is none. */
   updateSettings: (patch: Partial<ConversationSettings>) => Promise<void>;
+  /** Puts a conversation in a project (or takes it out with null). */
+  moveToProject: (id: string, projectId: string | null) => Promise<void>;
   /** Moves a conversation to the top of its group after new activity. */
   touch: (id: string) => Promise<void>;
 }
 
 const MAX_TITLE = 60;
+
+/** The settings part of a stored conversation. */
+export function settingsOf(c: Conversation): ConversationSettings {
+  return {
+    model: c.model,
+    systemPrompt: c.systemPrompt,
+    systemPromptId: c.systemPromptId,
+    systemPromptVars: c.systemPromptVars,
+    toolsMode: c.toolsMode,
+    cwd: c.cwd,
+    projectId: c.projectId,
+  };
+}
 
 /** First non-empty line of a message, trimmed to a sidebar-friendly length. */
 export function titleFrom(text: string): string {
@@ -144,14 +159,16 @@ export function createConversationsStore(database: () => Promise<Db> = getDb) {
           const db = await database();
           const current = await repo.getConversation(db, activeId);
           if (!current) return;
-          const next: ConversationSettings = {
-            model: current.model,
-            systemPrompt: current.systemPrompt,
-            toolsMode: current.toolsMode,
-            cwd: current.cwd,
-            ...patch,
-          };
-          await repo.updateSettings(db, activeId, next);
+          await repo.updateSettings(db, activeId, { ...settingsOf(current), ...patch });
+          await refresh();
+        }),
+
+      moveToProject: (id, projectId) =>
+        guarded(async () => {
+          const db = await database();
+          const current = await repo.getConversation(db, id);
+          if (!current) return;
+          await repo.updateSettings(db, id, { ...settingsOf(current), projectId });
           await refresh();
         }),
 
@@ -173,14 +190,7 @@ export function useConversations<T>(selector: (state: ConversationsState) => T):
 /** The settings in effect for the current view: the active conversation's, else the draft. */
 export function selectActiveSettings(state: ConversationsState): ConversationSettings {
   const active = state.conversations.find((c) => c.id === state.activeId);
-  return active
-    ? {
-        model: active.model,
-        systemPrompt: active.systemPrompt,
-        toolsMode: active.toolsMode,
-        cwd: active.cwd,
-      }
-    : state.draft;
+  return active ? settingsOf(active) : state.draft;
 }
 
 /**

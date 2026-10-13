@@ -2,6 +2,7 @@
 import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { Db } from './lib/db';
+import { message } from './lib/test-fixtures';
 import { createTestDb } from './lib/sqlite-test-db';
 
 const hoisted = vi.hoisted(() => ({ db: undefined as unknown as Db }));
@@ -63,19 +64,11 @@ describe('keyboard shortcuts', () => {
     act(() =>
       chatStore.setState({
         messages: [
-          {
+          message({
             id: 'm1',
-            conversationId: 'c',
             role: 'assistant',
-            attachments: [],
-            status: 'complete',
-            error: null,
-            model: null,
-            inputTokens: null,
-            outputTokens: null,
-            createdAt: 1,
             content: 'first\n```ts\nconst a = 1;\n```\nthen\n```py\nprint("last")\n```\n',
-          },
+          }),
         ],
       }),
     );

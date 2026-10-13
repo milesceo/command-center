@@ -22,6 +22,9 @@ interface ConversationRow {
   system_prompt: string | null;
   tools_mode: 'off' | 'readonly';
   cwd: string | null;
+  project_id: string | null;
+  system_prompt_id: string | null;
+  system_prompt_vars: string | null;
   created_at: number;
   updated_at: number;
   title_match?: number;
@@ -38,6 +41,9 @@ interface MessageRow {
   model: string | null;
   input_tokens: number | null;
   output_tokens: number | null;
+  cache_read_tokens: number | null;
+  cache_creation_tokens: number | null;
+  cost_usd: number | null;
   created_at: number;
 }
 
@@ -48,13 +54,21 @@ function toConversation(row: ConversationRow): Conversation {
     pinned: row.pinned === 1,
     model: row.model,
     systemPrompt: row.system_prompt,
+    systemPromptId: row.system_prompt_id,
+    systemPromptVars: parseJson<Record<string, string>>(row.system_prompt_vars, {}),
     toolsMode: row.tools_mode,
     cwd: row.cwd,
+    projectId: row.project_id,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   };
   if (row.title_match !== undefined) conversation.titleMatch = row.title_match === 1;
   return conversation;
+}
+
+/** Variable values are stored as JSON; an empty set is stored as NULL. */
+function varsJson(vars: Record<string, string>): string | null {
+  return Object.keys(vars).length > 0 ? JSON.stringify(vars) : null;
 }
 
 function parseJson<T>(raw: string | null, fallback: T): T {
@@ -78,6 +92,9 @@ function toMessage(row: MessageRow): Message {
     model: row.model,
     inputTokens: row.input_tokens,
     outputTokens: row.output_tokens,
+    cacheReadTokens: row.cache_read_tokens,
+    cacheCreationTokens: row.cache_creation_tokens,
+    costUsd: row.cost_usd,
     createdAt: row.created_at,
   };
 }
@@ -124,8 +141,9 @@ export async function createConversation(
 ): Promise<Conversation> {
   const id = crypto.randomUUID();
   await db.execute(
-    `INSERT INTO conversations (id, title, created_at, updated_at, model, system_prompt, tools_mode, cwd)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+    `INSERT INTO conversations
+       (id, title, created_at, updated_at, model, system_prompt, system_prompt_id, system_prompt_vars, tools_mode, cwd, project_id)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     [
       id,
       DEFAULT_TITLE,
@@ -133,8 +151,11 @@ export async function createConversation(
       now,
       settings.model,
       settings.systemPrompt,
+      settings.systemPromptId,
+      varsJson(settings.systemPromptVars),
       settings.toolsMode,
       settings.cwd,
+      settings.projectId,
     ],
   );
   return {
@@ -161,8 +182,20 @@ export async function updateSettings(
   settings: ConversationSettings,
 ): Promise<void> {
   await db.execute(
-    'UPDATE conversations SET model = ?, system_prompt = ?, tools_mode = ?, cwd = ? WHERE id = ?',
-    [settings.model, settings.systemPrompt, settings.toolsMode, settings.cwd, id],
+    `UPDATE conversations
+        SET model = ?, system_prompt = ?, system_prompt_id = ?, system_prompt_vars = ?,
+            tools_mode = ?, cwd = ?, project_id = ?
+      WHERE id = ?`,
+    [
+      settings.model,
+      settings.systemPrompt,
+      settings.systemPromptId,
+      varsJson(settings.systemPromptVars),
+      settings.toolsMode,
+      settings.cwd,
+      settings.projectId,
+      id,
+    ],
   );
 }
 
@@ -187,8 +220,9 @@ export async function listMessages(db: Db, conversationId: string): Promise<Mess
 export async function insertMessage(db: Db, message: Message): Promise<void> {
   await db.execute(
     `INSERT INTO messages
-       (id, conversation_id, role, content, created_at, attachments, status, error, model, input_tokens, output_tokens)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+       (id, conversation_id, role, content, created_at, attachments, status, error, model, input_tokens, output_tokens,
+        cache_read_tokens, cache_creation_tokens, cost_usd)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     [
       message.id,
       message.conversationId,
@@ -201,6 +235,9 @@ export async function insertMessage(db: Db, message: Message): Promise<void> {
       message.model,
       message.inputTokens,
       message.outputTokens,
+      message.cacheReadTokens,
+      message.cacheCreationTokens,
+      message.costUsd,
     ],
   );
 }

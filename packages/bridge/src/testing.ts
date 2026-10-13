@@ -33,18 +33,20 @@ export const sdk = {
     }) as unknown as SDKMessage,
   rateLimit: (info: Record<string, unknown>) =>
     ({ type: 'rate_limit_event', rate_limit_info: info }) as unknown as SDKMessage,
-  success: () =>
+  success: (over: Record<string, unknown> = {}) =>
     ({
       type: 'result',
       subtype: 'success',
       is_error: false,
       duration_ms: 12,
+      total_cost_usd: 0.5,
       usage: {
         input_tokens: 1,
         cache_creation_input_tokens: 1,
         cache_read_input_tokens: 1,
         output_tokens: 4,
       },
+      ...over,
     }) as unknown as SDKMessage,
   failure: (result: string, subtype = 'success') =>
     ({

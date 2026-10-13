@@ -7,6 +7,8 @@ import {
   type ChatRequest,
   type PingRequest,
   type PongEvent,
+  type UsageReportEvent,
+  type UsageRequest,
 } from '@programish/protocol';
 
 /** The raw line channel to the sidecar. Tauri implements it; tests fake it. */
@@ -42,6 +44,9 @@ interface Stream {
   onEvent: (event: BridgeEvent) => void;
   finish: () => void;
 }
+
+/** Reading plan usage starts a runtime process, which is slower than a ping. */
+const USAGE_TIMEOUT_MS = 35_000;
 
 const EXIT_MESSAGE = 'The Claude bridge process exited unexpectedly.';
 
@@ -87,6 +92,14 @@ export class BridgeClient {
     return toPingResult(event);
   }
 
+  /** Reads the plan usage windows (the bridge starts a short-lived runtime for this, about 2 s). */
+  async usage(): Promise<UsageReportEvent> {
+    const request: UsageRequest = { type: 'usage', id: crypto.randomUUID() };
+    const event = await this.request(request.id, encodeMessage(request), USAGE_TIMEOUT_MS);
+    if (event.type !== 'usage.report') throw new Error(`Unexpected reply: ${event.type}`);
+    return event;
+  }
+
   /**
    * Starts a chat. Every event for it goes to `onEvent`, ending with exactly
    * one terminal event, which is also synthesized if the bridge dies or the
@@ -116,12 +129,12 @@ export class BridgeClient {
     };
   }
 
-  private request(id: string, line: string): Promise<BridgeEvent> {
+  private request(id: string, line: string, timeoutMs = this.timeoutMs): Promise<BridgeEvent> {
     return new Promise((resolve, reject) => {
       const timer = setTimeout(() => {
         this.pending.delete(id);
         reject(new Error('Bridge did not respond in time.'));
-      }, this.timeoutMs);
+      }, timeoutMs);
       this.pending.set(id, { resolve, reject, timer });
       this.transport.send(line).catch((err: unknown) => {
         clearTimeout(timer);

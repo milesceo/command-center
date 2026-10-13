@@ -3,6 +3,7 @@ import { persist } from 'zustand/middleware';
 
 export type Theme = 'dark' | 'light';
 export type DiffMode = 'inline' | 'split';
+export type View = 'chat' | 'usage' | 'prompts';
 
 export const RIGHT_PANEL_MIN = 320;
 export const RIGHT_PANEL_MAX = 960;
@@ -18,6 +19,7 @@ interface UiState {
   diffMode: DiffMode;
   /** Transient (not persisted). */
   shortcutsOpen: boolean;
+  view: View;
 
   toggleTheme: () => void;
   toggleSidebar: () => void;
@@ -28,6 +30,7 @@ interface UiState {
   setDiffMode: (mode: DiffMode) => void;
   toggleDiffMode: () => void;
   setShortcutsOpen: (open: boolean) => void;
+  setView: (view: View) => void;
 }
 
 export const clampPanelWidth = (width: number) =>
@@ -44,6 +47,7 @@ export const useUiStore = create<UiState>()(
       wrapCode: false,
       diffMode: 'split',
       shortcutsOpen: false,
+      view: 'chat',
 
       toggleTheme: () => set((s) => ({ theme: s.theme === 'dark' ? 'light' : 'dark' })),
       toggleSidebar: () => set((s) => ({ sidebarOpen: !s.sidebarOpen })),
@@ -54,11 +58,12 @@ export const useUiStore = create<UiState>()(
       setDiffMode: (diffMode) => set({ diffMode }),
       toggleDiffMode: () => set((s) => ({ diffMode: s.diffMode === 'split' ? 'inline' : 'split' })),
       setShortcutsOpen: (shortcutsOpen) => set({ shortcutsOpen }),
+      setView: (view) => set({ view }),
     }),
     {
       name: 'programish-ui',
       // The shortcuts dialog should never reopen on its own after a restart.
-      partialize: ({ shortcutsOpen: _transient, ...persisted }) => persisted,
+      partialize: ({ shortcutsOpen: _a, view: _b, ...persisted }) => persisted,
     },
   ),
 );

@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { message as fixture } from '../../lib/test-fixtures';
 import type { Message } from '../../lib/types';
 import { chatStore } from '../../stores/chat';
 import { previewStore } from '../../stores/preview';
@@ -166,20 +167,12 @@ describe('comparing code', () => {
     const earlier = 'export function sum(a, b) {\n  return a + b;\n}\n\nexport const X = 1;';
     const later =
       'export function sum(a: number, b: number) {\n  return a + b;\n}\n\nexport const X = 1;';
-    const message: Message = {
+    const earlierMessage: Message = fixture({
       id: 'm1',
-      conversationId: 'c',
       role: 'assistant',
       content: fence('ts', earlier),
-      attachments: [],
-      status: 'complete',
-      error: null,
-      model: null,
-      inputTokens: null,
-      outputTokens: null,
-      createdAt: 1,
-    };
-    chatStore.setState({ messages: [message] });
+    });
+    chatStore.setState({ messages: [earlierMessage] });
     render(<Markdown text={fence('ts', later)} messageId="m2" />);
     fireEvent.click(screen.getByRole('button', { name: 'Diff against earlier version' }));
     expect(previewStore.getState().tabs[0]).toMatchObject({

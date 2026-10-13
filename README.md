@@ -2,7 +2,7 @@
 
 A personal desktop app for prompting about code. It is a lightweight, fast replacement for a general chat app, with coding-focused tools and visuals, powered by your existing Claude Code login (no API key handling).
 
-> **Status:** chat core. Streaming conversations work end to end; see the feature list below and [CLAUDE.md](CLAUDE.md#phase-status) for what is next.
+> **Status:** chat, code tools, usage and prompt library. Streaming conversations work end to end; see the feature list below and [CLAUDE.md](CLAUDE.md#phase-status) for what is next.
 
 ## Features
 
@@ -18,6 +18,9 @@ A personal desktop app for prompting about code. It is a lightweight, fast repla
 - Multiline composer (Enter sends, Shift+Enter inserts a newline); paste, drop or pick text files as attachments
 - Conversations saved in SQLite: rename, pin, delete (with confirmation), search by title and message content
 - Friendly messages for logged-out, usage-limit (with reset time) and rate-limit situations
+- Usage tracking from the SDK's own numbers: tokens (input, output, cache) per reply, running totals in the chat header, a Usage view with daily and weekly charts, per-model and top-conversation breakdowns, and your plan headroom and reset times when your login reports them. Cost is shown as "API-equivalent cost": informational on a subscription, not a bill
+- Prompt library: saved prompts and system prompts with tags and `{{variables}}` (a small form fills them in), `/` in the message box to search and insert, JSON import and export
+- Projects: group conversations and give a project a default system prompt; attach a library system prompt to a single chat
 - Virtualized transcript and per-frame update batching so long chats and fast streams stay smooth
 
 <!-- Screenshots: add dark and light shell captures here (docs/screenshots/). -->
