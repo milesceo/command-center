@@ -3,7 +3,8 @@ import { moduleSpecifier } from './sdk';
 
 describe('moduleSpecifier', () => {
   it('turns absolute paths into file URLs and leaves package names alone', () => {
-    expect(moduleSpecifier('/tmp/fake-sdk.mjs')).toBe('file:///tmp/fake-sdk.mjs');
+    // A POSIX path gains a drive letter when resolved on Windows, so only the shape is checked.
+    expect(moduleSpecifier('/tmp/fake-sdk.mjs')).toMatch(/^file:\/\/\/.*fake-sdk\.mjs$/);
     expect(moduleSpecifier('@anthropic-ai/claude-agent-sdk')).toBe(
       '@anthropic-ai/claude-agent-sdk',
     );
