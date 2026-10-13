@@ -2,7 +2,19 @@
 
 A personal desktop app for prompting about code. It is a lightweight, fast replacement for a general chat app, with coding-focused tools and visuals, powered by your existing Claude Code login (no API key handling).
 
-> **Status:** foundation phase. The shell, bridge wiring and database schema exist; chat is not built yet. See [CLAUDE.md](CLAUDE.md#phase-status).
+> **Status:** chat core. Streaming conversations work end to end; see the feature list below and [CLAUDE.md](CLAUDE.md#phase-status) for what is next.
+
+## Features
+
+- Streaming chat on your Claude subscription (through your Claude Code login), with a Stop button that keeps the partial reply so you can carry on
+- Model picker (Default, Sonnet, Opus, Haiku) and a per-conversation system prompt
+- Plain chat by default; optional read-only file access (Read/Glob/Grep) for one folder you choose
+- Markdown with GitHub tables, syntax-highlighted code blocks and copy buttons
+- Copy any message, edit and resend an earlier message, regenerate the last reply
+- Multiline composer (Enter sends, Shift+Enter inserts a newline); paste, drop or pick text files as attachments
+- Conversations saved in SQLite: rename, pin, delete (with confirmation), search by title and message content
+- Friendly messages for logged-out, usage-limit (with reset time) and rate-limit situations
+- Virtualized transcript and per-frame update batching so long chats and fast streams stay smooth
 
 <!-- Screenshots: add dark and light shell captures here (docs/screenshots/). -->
 
@@ -57,7 +69,7 @@ pnpm dev        # launches the Tauri app (builds the bridge first)
 pnpm dev:web    # UI only in a browser; the bridge shows as offline
 ```
 
-In the app, the sidebar footer shows the bridge status. It starts the sidecar, sends a `ping`, and displays the `pong` round-trip time; click it to ping again.
+In the app, the sidebar footer shows the bridge status (the `ping`/`pong` round-trip time); click it to ping again, or to restart the bridge if it stopped. Sign in once with `claude` in a terminal; Programish never asks for or stores credentials.
 
 ## Scripts
 

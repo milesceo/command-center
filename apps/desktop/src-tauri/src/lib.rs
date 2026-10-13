@@ -8,16 +8,26 @@ const DB_URL: &str = "sqlite:programish.db";
 /// Schema migrations, applied in order by the SQL plugin on first `load`.
 /// Add new files under `migrations/` and append them here; never edit shipped ones.
 fn migrations() -> Vec<Migration> {
-    vec![Migration {
-        version: 1,
-        description: "initial schema: conversations and messages",
-        sql: include_str!("../migrations/0001_initial.sql"),
-        kind: MigrationKind::Up,
-    }]
+    vec![
+        Migration {
+            version: 1,
+            description: "initial schema: conversations and messages",
+            sql: include_str!("../migrations/0001_initial.sql"),
+            kind: MigrationKind::Up,
+        },
+        Migration {
+            version: 2,
+            description: "chat core: pinning, conversation settings, message metadata",
+            sql: include_str!("../migrations/0002_chat_core.sql"),
+            kind: MigrationKind::Up,
+        },
+    ]
 }
 
 pub fn run() {
     tauri::Builder::default()
+        .plugin(tauri_plugin_opener::init())
+        .plugin(tauri_plugin_dialog::init())
         .plugin(
             tauri_plugin_sql::Builder::default()
                 .add_migrations(DB_URL, migrations())

@@ -23,7 +23,12 @@ export default tseslint.config(
     rules: reactHooks.configs.recommended.rules,
   },
   {
-    files: ['packages/bridge/**/*.ts', '*.js', '*.config.*'],
+    // The harness runs in Node but also ships functions into the page, so it needs both sets of globals.
+    files: ['apps/desktop/e2e/**/*.mjs'],
+    languageOptions: { globals: { ...globals.node, ...globals.browser } },
+  },
+  {
+    files: ['packages/bridge/**/*.{ts,mjs}', '*.js', '*.config.*'],
     languageOptions: { globals: globals.node },
   },
 );

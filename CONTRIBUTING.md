@@ -26,6 +26,10 @@ Programish is a personal project, but it is developed like a team project: small
 2. Register it, in order, in `migrations()` in `src-tauri/src/lib.rs`.
 3. Extend `src/lib/schema.test.ts` so the schema is exercised by Vitest.
 
+## End-to-end checks
+
+`pnpm --filter @programish/desktop e2e` drives the real UI in headless Chromium against the real bridge process and a real SQLite file, with the Tauri side emulated (`apps/desktop/e2e/harness.mjs`). It is not part of CI because it needs a Chromium binary (`E2E_CHROMIUM`). Run it, and `E2E_PROD=1 node apps/desktop/e2e/perf.mjs`, after touching streaming, the transcript or the stores.
+
 ## Adding a bridge message
 
 1. Add the request and/or event types, parser and tests in `packages/protocol`.

@@ -14,6 +14,8 @@ use std::thread;
 use tauri::{AppHandle, Emitter, State};
 
 const LINE_EVENT: &str = "bridge://line";
+/// Fired when the sidecar's stdout closes, so the UI can fail in-flight chats instead of hanging.
+const EXIT_EVENT: &str = "bridge://exit";
 
 struct Running {
     child: Child,
@@ -86,6 +88,7 @@ pub fn bridge_start(app: AppHandle, state: State<'_, BridgeState>) -> Result<(),
             // Emit failures only mean the window is gone; nothing useful to do.
             let _ = app.emit(LINE_EVENT, line);
         }
+        let _ = app.emit(EXIT_EVENT, ());
     });
     thread::spawn(move || {
         for line in BufReader::new(stderr).lines().map_while(Result::ok) {

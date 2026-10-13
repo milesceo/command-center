@@ -1,9 +1,19 @@
-import { PanelLeft, PanelRight, SendHorizontal } from 'lucide-react';
+import { PanelLeft, PanelRight } from 'lucide-react';
+import { useChat } from '../../stores/chat';
+import { useConversations } from '../../stores/conversations';
 import { useUiStore } from '../../stores/ui';
+import { Composer } from '../chat/Composer';
+import { MessageList } from '../chat/MessageList';
 import { Button } from '../ui/button';
 
 export function MainPanel() {
   const { toggleSidebar, toggleRightPanel, rightPanelOpen } = useUiStore();
+  const title = useConversations(
+    (s) => s.conversations.find((c) => c.id === s.activeId)?.title ?? 'New chat',
+  );
+  const hasContent = useChat((s) => s.messages.length > 0 || Object.keys(s.streams).length > 0);
+  const activeId = useConversations((s) => s.activeId);
+  const showTranscript = hasContent && activeId !== null;
 
   return (
     <main className="flex min-w-0 flex-1 flex-col">
@@ -11,7 +21,7 @@ export function MainPanel() {
         <Button variant="ghost" size="icon" aria-label="Toggle sidebar" onClick={toggleSidebar}>
           <PanelLeft size={15} />
         </Button>
-        <span className="text-xs text-fg-muted">New chat</span>
+        <h1 className="max-w-[60%] truncate text-xs text-fg-muted">{title}</h1>
         <Button
           variant="ghost"
           size="icon"
@@ -23,29 +33,18 @@ export function MainPanel() {
         </Button>
       </header>
 
-      <section className="flex flex-1 flex-col items-center justify-center px-6">
-        <div className="w-full max-w-2xl">
-          <h1 className="text-xl font-semibold tracking-tight">What are we building?</h1>
-          <p className="mt-1 text-fg-muted">
-            Ask about code, paste an error, or describe a change. Chat arrives in the next phase.
-          </p>
-        </div>
-      </section>
+      {showTranscript ? (
+        <MessageList />
+      ) : (
+        <section className="flex flex-1 flex-col items-center justify-center px-6">
+          <div className="w-full max-w-3xl">
+            <h2 className="text-xl font-semibold tracking-tight">What are we building?</h2>
+            <p className="mt-1 text-fg-muted">Ask about code, paste an error, or drop in a file.</p>
+          </div>
+        </section>
+      )}
 
-      <footer className="px-6 pb-5">
-        <div className="mx-auto flex w-full max-w-2xl items-end gap-2 rounded-panel border border-border bg-elevated p-2 focus-within:border-border-strong">
-          <textarea
-            rows={1}
-            disabled
-            placeholder="Message Programish…"
-            aria-label="Message"
-            className="selectable max-h-40 min-h-8 flex-1 resize-none bg-transparent px-2 py-1.5 font-mono text-[13px] outline-none placeholder:text-fg-subtle"
-          />
-          <Button variant="primary" size="icon" disabled aria-label="Send">
-            <SendHorizontal size={14} />
-          </Button>
-        </div>
-      </footer>
+      <Composer />
     </main>
   );
 }

@@ -4,13 +4,33 @@
  * Transport: newline-delimited JSON (one JSON object per line) over the
  * sidecar's stdin/stdout. stderr is reserved for human-readable logs and is
  * never parsed. Source-only package: consumers compile it directly.
+ *
+ * Streaming model: a `chat` request is answered by any number of `chat.*`
+ * events that all carry the request's `id`, ending with exactly one terminal
+ * event: `chat.done` (completed or cancelled) or `error`.
  */
 
 /** Bumped on any breaking wire change so a stale sidecar can be detected. */
-export const PROTOCOL_VERSION = 1;
+export const PROTOCOL_VERSION = 2;
 
-/** Messages the app sends to the bridge. Every request carries a unique `id`. */
-export type BridgeRequest = PingRequest;
+/** Model aliases understood by the Claude Code runtime ('default' = its own choice). */
+export const MODEL_OPTIONS = [
+  { id: 'default', label: 'Default' },
+  { id: 'sonnet', label: 'Sonnet' },
+  { id: 'opus', label: 'Opus' },
+  { id: 'haiku', label: 'Haiku' },
+] as const;
+
+/**
+ * Tool access for a conversation. Plain chat is the default.
+ * - `off`: no tools at all.
+ * - `readonly`: Read/Glob/Grep inside `cwd`; anything else is denied, never prompted.
+ */
+export type ToolsMode = 'off' | 'readonly';
+
+// ---------------------------------------------------------------- requests
+
+export type BridgeRequest = PingRequest | ChatRequest | CancelRequest;
 
 export interface PingRequest {
   type: 'ping';
@@ -19,8 +39,51 @@ export interface PingRequest {
   sentAt: number;
 }
 
-/** Messages the bridge sends to the app. Stream events reference the request `id`. */
-export type BridgeEvent = PongEvent | ErrorEvent;
+/** A text file the user attached to a message. Binary files are rejected client-side. */
+export interface Attachment {
+  name: string;
+  text: string;
+}
+
+export interface ChatMessage {
+  role: 'user' | 'assistant';
+  content: string;
+  attachments?: Attachment[];
+}
+
+/**
+ * The app owns conversation history (SQLite is the source of truth), so each
+ * request carries the whole transcript. The last message must be from the user.
+ */
+export interface ChatRequest {
+  type: 'chat';
+  id: string;
+  messages: ChatMessage[];
+  /** Alias from MODEL_OPTIONS, or a full model id. Omitted = runtime default. */
+  model?: string;
+  systemPrompt?: string;
+  tools: ToolsMode;
+  /** Working directory for tools. Required for `readonly`. */
+  cwd?: string;
+}
+
+/** Stops the chat started by the request whose id is `targetId`. */
+export interface CancelRequest {
+  type: 'cancel';
+  id: string;
+  targetId: string;
+}
+
+// ------------------------------------------------------------------ events
+
+export type BridgeEvent =
+  | PongEvent
+  | ErrorEvent
+  | ChatTextEvent
+  | ChatToolUseEvent
+  | ChatToolResultEvent
+  | ChatRateLimitEvent
+  | ChatDoneEvent;
 
 export interface PongEvent {
   type: 'pong';
@@ -31,6 +94,55 @@ export interface PongEvent {
   bridgeVersion: string;
 }
 
+/** An incremental piece of the assistant's reply text. */
+export interface ChatTextEvent {
+  type: 'chat.text';
+  id: string;
+  text: string;
+}
+
+export interface ChatToolUseEvent {
+  type: 'chat.tool_use';
+  id: string;
+  toolUseId: string;
+  name: string;
+  /** Short human-readable summary of the input (e.g. a file path), never the raw payload. */
+  summary: string;
+}
+
+export interface ChatToolResultEvent {
+  type: 'chat.tool_result';
+  id: string;
+  toolUseId: string;
+  isError: boolean;
+}
+
+/** Non-terminal heads-up that usage is getting high. A hard stop arrives as an `error`. */
+export interface ChatRateLimitEvent {
+  type: 'chat.rate_limit';
+  id: string;
+  status: 'allowed_warning' | 'rejected';
+  limitType?: string;
+  /** Epoch milliseconds when the limit resets, when the runtime says. */
+  resetsAt?: number;
+  /** 0..1 fraction of the limit used, when known. */
+  utilization?: number;
+}
+
+export interface ChatUsage {
+  inputTokens: number;
+  outputTokens: number;
+}
+
+export interface ChatDoneEvent {
+  type: 'chat.done';
+  id: string;
+  status: 'completed' | 'cancelled';
+  model?: string;
+  usage?: ChatUsage;
+  durationMs?: number;
+}
+
 export interface ErrorEvent {
   type: 'error';
   /** Request id when the error relates to one; absent for unparseable input. */
@@ -38,12 +150,37 @@ export interface ErrorEvent {
   error: BridgeError;
 }
 
-export type BridgeErrorCode = 'invalid_message' | 'unknown_request' | 'internal';
+export type BridgeErrorCode =
+  | 'invalid_message'
+  | 'unknown_request'
+  | 'internal'
+  /** Not logged in to Claude Code (or the login expired). */
+  | 'auth_required'
+  /** Subscription usage window exhausted; `resetsAt` says when it reopens. */
+  | 'usage_limit'
+  /** Transient request-rate throttling; retrying shortly works. */
+  | 'rate_limited'
+  | 'overloaded'
+  /** Account-level problem: billing, org access, hold or verification. */
+  | 'account'
+  | 'model_not_found'
+  | 'invalid_request'
+  /** The Claude Code runtime could not be started. */
+  | 'sdk_unavailable'
+  /** A chat with this id is already running. */
+  | 'busy';
 
 export interface BridgeError {
   code: BridgeErrorCode;
+  /** Technical, English description for logs and "details". Not meant as UI copy. */
   message: string;
+  /** Epoch milliseconds, for `usage_limit` / `rate_limited` when known. */
+  resetsAt?: number;
+  /** Which window was hit (e.g. `five_hour`, `seven_day`), when known. */
+  limitType?: string;
 }
+
+// ----------------------------------------------------------------- codec
 
 /** Serialize a message as a single NDJSON line (including trailing newline). */
 export function encodeMessage(message: BridgeRequest | BridgeEvent): string {
@@ -52,7 +189,13 @@ export function encodeMessage(message: BridgeRequest | BridgeEvent): string {
 
 export type ParseResult<T> = { ok: true; value: T } | { ok: false; error: BridgeError };
 
-function parseObject(line: string): ParseResult<Record<string, unknown>> {
+type Json = Record<string, unknown>;
+
+function fail(code: BridgeErrorCode, message: string): { ok: false; error: BridgeError } {
+  return { ok: false, error: { code, message } };
+}
+
+function parseObject(line: string): ParseResult<Json> {
   let raw: unknown;
   try {
     raw = JSON.parse(line);
@@ -62,28 +205,104 @@ function parseObject(line: string): ParseResult<Record<string, unknown>> {
   if (typeof raw !== 'object' || raw === null || Array.isArray(raw)) {
     return fail('invalid_message', 'Message must be a JSON object.');
   }
-  return { ok: true, value: raw as Record<string, unknown> };
+  return { ok: true, value: raw as Json };
 }
 
-function fail(code: BridgeErrorCode, message: string): { ok: false; error: BridgeError } {
-  return { ok: false, error: { code, message } };
+const isString = (v: unknown): v is string => typeof v === 'string';
+const isNumber = (v: unknown): v is number => typeof v === 'number' && Number.isFinite(v);
+const isObject = (v: unknown): v is Json =>
+  typeof v === 'object' && v !== null && !Array.isArray(v);
+
+function parseAttachments(raw: unknown): Attachment[] | undefined | null {
+  if (raw === undefined) return undefined;
+  if (!Array.isArray(raw)) return null;
+  const out: Attachment[] = [];
+  for (const item of raw) {
+    if (!isObject(item) || !isString(item.name) || !isString(item.text)) return null;
+    out.push({ name: item.name, text: item.text });
+  }
+  return out;
+}
+
+function parseMessages(raw: unknown): ChatMessage[] | null {
+  if (!Array.isArray(raw) || raw.length === 0) return null;
+  const out: ChatMessage[] = [];
+  for (const item of raw) {
+    if (!isObject(item)) return null;
+    if (item.role !== 'user' && item.role !== 'assistant') return null;
+    if (!isString(item.content)) return null;
+    const attachments = parseAttachments(item.attachments);
+    if (attachments === null) return null;
+    const message: ChatMessage = { role: item.role, content: item.content };
+    if (attachments) message.attachments = attachments;
+    out.push(message);
+  }
+  return out;
+}
+
+function parseChatRequest(id: string, v: Json): ParseResult<ChatRequest> {
+  const messages = parseMessages(v.messages);
+  if (!messages) return fail('invalid_message', 'Chat needs a non-empty, well-formed `messages`.');
+  if (messages[messages.length - 1]?.role !== 'user') {
+    return fail('invalid_message', 'The last chat message must be from the user.');
+  }
+  if (v.tools !== 'off' && v.tools !== 'readonly') {
+    return fail('invalid_message', 'Chat `tools` must be "off" or "readonly".');
+  }
+  const request: ChatRequest = { type: 'chat', id, messages, tools: v.tools };
+  if (v.model !== undefined) {
+    if (!isString(v.model)) return fail('invalid_message', '`model` must be a string.');
+    request.model = v.model;
+  }
+  if (v.systemPrompt !== undefined) {
+    if (!isString(v.systemPrompt))
+      return fail('invalid_message', '`systemPrompt` must be a string.');
+    request.systemPrompt = v.systemPrompt;
+  }
+  if (v.cwd !== undefined) {
+    if (!isString(v.cwd)) return fail('invalid_message', '`cwd` must be a string.');
+    request.cwd = v.cwd;
+  }
+  if (request.tools === 'readonly' && !request.cwd) {
+    return fail('invalid_message', 'Read-only tools need a working directory (`cwd`).');
+  }
+  return { ok: true, value: request };
 }
 
 /** Validate one line received by the bridge. Never throws. */
 export function parseRequest(line: string): ParseResult<BridgeRequest> {
   const parsed = parseObject(line);
   if (!parsed.ok) return parsed;
-  const { type, id, sentAt } = parsed.value;
-  if (typeof id !== 'string' || id.length === 0) {
+  const v = parsed.value;
+  if (!isString(v.id) || v.id.length === 0) {
     return fail('invalid_message', 'Request is missing a string `id`.');
   }
-  if (type === 'ping') {
-    if (typeof sentAt !== 'number') {
-      return fail('invalid_message', 'Ping is missing a numeric `sentAt`.');
-    }
-    return { ok: true, value: { type, id, sentAt } };
+  switch (v.type) {
+    case 'ping':
+      if (!isNumber(v.sentAt))
+        return fail('invalid_message', 'Ping is missing a numeric `sentAt`.');
+      return { ok: true, value: { type: 'ping', id: v.id, sentAt: v.sentAt } };
+    case 'chat':
+      return parseChatRequest(v.id, v);
+    case 'cancel':
+      if (!isString(v.targetId)) return fail('invalid_message', 'Cancel needs a `targetId`.');
+      return { ok: true, value: { type: 'cancel', id: v.id, targetId: v.targetId } };
+    default:
+      return fail('unknown_request', `Unknown request type: ${String(v.type)}`);
   }
-  return fail('unknown_request', `Unknown request type: ${String(type)}`);
+}
+
+function parseBridgeError(raw: unknown): BridgeError | null {
+  if (!isObject(raw) || !isString(raw.code) || !isString(raw.message)) return null;
+  const error: BridgeError = { code: raw.code as BridgeErrorCode, message: raw.message };
+  if (isNumber(raw.resetsAt)) error.resetsAt = raw.resetsAt;
+  if (isString(raw.limitType)) error.limitType = raw.limitType;
+  return error;
+}
+
+function parseUsage(raw: unknown): ChatUsage | undefined {
+  if (!isObject(raw) || !isNumber(raw.inputTokens) || !isNumber(raw.outputTokens)) return undefined;
+  return { inputTokens: raw.inputTokens, outputTokens: raw.outputTokens };
 }
 
 /** Validate one line received by the app. Never throws. */
@@ -91,28 +310,78 @@ export function parseEvent(line: string): ParseResult<BridgeEvent> {
   const parsed = parseObject(line);
   if (!parsed.ok) return parsed;
   const v = parsed.value;
-  if (v.type === 'pong' && typeof v.id === 'string' && typeof v.sentAt === 'number') {
-    if (typeof v.protocolVersion !== 'number' || typeof v.bridgeVersion !== 'string') {
-      return fail('invalid_message', 'Pong is missing version fields.');
-    }
-    return {
-      ok: true,
-      value: {
-        type: 'pong',
-        id: v.id,
-        sentAt: v.sentAt,
-        protocolVersion: v.protocolVersion,
-        bridgeVersion: v.bridgeVersion,
-      },
-    };
+  const bad = () => fail('invalid_message', 'Unrecognized event shape.');
+
+  if (v.type === 'error') {
+    const error = parseBridgeError(v.error);
+    if (!error) return bad();
+    const event: ErrorEvent = { type: 'error', error };
+    if (isString(v.id)) event.id = v.id;
+    return { ok: true, value: event };
   }
-  if (v.type === 'error' && typeof v.error === 'object' && v.error !== null) {
-    const e = v.error as Partial<BridgeError>;
-    if (typeof e.code === 'string' && typeof e.message === 'string') {
-      const event: ErrorEvent = { type: 'error', error: { code: e.code, message: e.message } };
-      if (typeof v.id === 'string') event.id = v.id;
+
+  if (!isString(v.id)) return bad();
+  const id = v.id;
+
+  switch (v.type) {
+    case 'pong':
+      if (!isNumber(v.sentAt) || !isNumber(v.protocolVersion) || !isString(v.bridgeVersion)) {
+        return fail('invalid_message', 'Pong is missing version fields.');
+      }
+      return {
+        ok: true,
+        value: {
+          type: 'pong',
+          id,
+          sentAt: v.sentAt,
+          protocolVersion: v.protocolVersion,
+          bridgeVersion: v.bridgeVersion,
+        },
+      };
+    case 'chat.text':
+      if (!isString(v.text)) return bad();
+      return { ok: true, value: { type: 'chat.text', id, text: v.text } };
+    case 'chat.tool_use':
+      if (!isString(v.toolUseId) || !isString(v.name) || !isString(v.summary)) return bad();
+      return {
+        ok: true,
+        value: {
+          type: 'chat.tool_use',
+          id,
+          toolUseId: v.toolUseId,
+          name: v.name,
+          summary: v.summary,
+        },
+      };
+    case 'chat.tool_result':
+      if (!isString(v.toolUseId) || typeof v.isError !== 'boolean') return bad();
+      return {
+        ok: true,
+        value: { type: 'chat.tool_result', id, toolUseId: v.toolUseId, isError: v.isError },
+      };
+    case 'chat.rate_limit': {
+      if (v.status !== 'allowed_warning' && v.status !== 'rejected') return bad();
+      const event: ChatRateLimitEvent = { type: 'chat.rate_limit', id, status: v.status };
+      if (isString(v.limitType)) event.limitType = v.limitType;
+      if (isNumber(v.resetsAt)) event.resetsAt = v.resetsAt;
+      if (isNumber(v.utilization)) event.utilization = v.utilization;
       return { ok: true, value: event };
     }
+    case 'chat.done': {
+      if (v.status !== 'completed' && v.status !== 'cancelled') return bad();
+      const event: ChatDoneEvent = { type: 'chat.done', id, status: v.status };
+      if (isString(v.model)) event.model = v.model;
+      const usage = parseUsage(v.usage);
+      if (usage) event.usage = usage;
+      if (isNumber(v.durationMs)) event.durationMs = v.durationMs;
+      return { ok: true, value: event };
+    }
+    default:
+      return bad();
   }
-  return fail('invalid_message', 'Unrecognized event shape.');
+}
+
+/** Events that end a chat stream; after one of these nothing else arrives for that id. */
+export function isTerminalEvent(event: BridgeEvent): boolean {
+  return event.type === 'chat.done' || event.type === 'error';
 }

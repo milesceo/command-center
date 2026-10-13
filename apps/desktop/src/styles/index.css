@@ -65,36 +65,193 @@
   --radius-panel: 10px;
 }
 
-html,
-body,
-#root {
-  height: 100%;
+/* Base styles live in the base layer so Tailwind utilities (e.g. outline-none) can override them. */
+@layer base {
+  html,
+  body,
+  #root {
+    height: 100%;
+  }
+
+  body {
+    background: var(--bg);
+    color: var(--fg);
+    font-family: var(--font-sans);
+    font-size: 13px;
+    line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
+    /* A desktop app, not a web page: no accidental text selection of chrome. */
+    user-select: none;
+    overflow: hidden;
+  }
+
+  /* Content the user may want to copy opts back in. */
+  .selectable {
+    user-select: text;
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 1px;
+  }
+
+  /* Slim, quiet scrollbars. */
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: var(--border-strong) transparent;
+  }
 }
 
-body {
-  background: var(--bg);
-  color: var(--fg);
-  font-family: var(--font-sans);
-  font-size: 13px;
-  line-height: 1.5;
-  -webkit-font-smoothing: antialiased;
-  /* A desktop app, not a web page: no accidental text selection of chrome. */
-  user-select: none;
-  overflow: hidden;
-}
-
-/* Content the user may want to copy opts back in. */
-.selectable {
+/* ---- Markdown in chat messages ------------------------------------------ */
+.md {
   user-select: text;
+  line-height: 1.6;
+  overflow-wrap: anywhere;
+}
+.md > * + * {
+  margin-top: 0.75em;
+}
+.md h1,
+.md h2,
+.md h3,
+.md h4 {
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  line-height: 1.3;
+  margin-top: 1.2em;
+}
+.md h1 {
+  font-size: 1.25em;
+}
+.md h2 {
+  font-size: 1.12em;
+}
+.md h3,
+.md h4 {
+  font-size: 1em;
+}
+.md ul,
+.md ol {
+  padding-left: 1.4em;
+}
+.md ul {
+  list-style: disc;
+}
+.md ol {
+  list-style: decimal;
+}
+.md li + li {
+  margin-top: 0.25em;
+}
+.md a {
+  color: var(--accent);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  cursor: pointer;
+}
+.md blockquote {
+  border-left: 2px solid var(--border-strong);
+  padding-left: 0.9em;
+  color: var(--fg-muted);
+}
+.md hr {
+  border: 0;
+  border-top: 1px solid var(--border);
+}
+.md :not(pre) > code {
+  font-family: var(--font-mono);
+  font-size: 0.88em;
+  background: var(--hover);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 0.1em 0.35em;
+}
+.md table {
+  display: block;
+  overflow-x: auto;
+  border-collapse: collapse;
+}
+.md th,
+.md td {
+  border: 1px solid var(--border);
+  padding: 0.35em 0.7em;
+  text-align: left;
+}
+.md th {
+  background: var(--surface);
+  font-weight: 600;
 }
 
-:focus-visible {
-  outline: 2px solid var(--accent);
-  outline-offset: 1px;
+/* ---- Code blocks (highlight.js tokens mapped to theme variables) --------- */
+.code-block pre {
+  margin: 0;
+  overflow-x: auto;
+  padding: 0.8em 1em;
+  font-family: var(--font-mono);
+  font-size: 12.5px;
+  line-height: 1.55;
+}
+.code-block code {
+  font-family: inherit;
+}
+.hljs-comment,
+.hljs-quote {
+  color: var(--fg-subtle);
+  font-style: italic;
+}
+.hljs-keyword,
+.hljs-selector-tag,
+.hljs-literal,
+.hljs-doctag {
+  color: var(--accent);
+}
+.hljs-string,
+.hljs-regexp,
+.hljs-addition {
+  color: var(--success);
+}
+.hljs-number,
+.hljs-symbol,
+.hljs-bullet,
+.hljs-meta {
+  color: var(--warning);
+}
+.hljs-title,
+.hljs-section,
+.hljs-built_in,
+.hljs-type,
+.hljs-class .hljs-title {
+  color: var(--fg);
+  font-weight: 600;
+}
+.hljs-attr,
+.hljs-attribute,
+.hljs-variable,
+.hljs-template-variable,
+.hljs-property {
+  color: var(--fg-muted);
+}
+.hljs-deletion {
+  color: var(--danger);
+}
+.hljs-emphasis {
+  font-style: italic;
+}
+.hljs-strong {
+  font-weight: 700;
 }
 
-/* Slim, quiet scrollbars. */
-* {
-  scrollbar-width: thin;
-  scrollbar-color: var(--border-strong) transparent;
+@keyframes caret-pulse {
+  50% {
+    opacity: 0.25;
+  }
+}
+.caret {
+  display: inline-block;
+  width: 0.5em;
+  height: 0.5em;
+  margin-left: 0.25em;
+  border-radius: 9999px;
+  background: var(--accent);
+  animation: caret-pulse 1s ease-in-out infinite;
 }

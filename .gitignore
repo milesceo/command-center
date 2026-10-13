@@ -13,3 +13,4 @@ coverage/
 apps/desktop/src-tauri/gen/
 apps/desktop/src-tauri/binaries/
 *.tsbuildinfo
+apps/desktop/e2e/out/

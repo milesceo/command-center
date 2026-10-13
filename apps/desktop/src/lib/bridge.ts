@@ -1,7 +1,10 @@
 import {
   encodeMessage,
+  isTerminalEvent,
   parseEvent,
   type BridgeEvent,
+  type CancelRequest,
+  type ChatRequest,
   type PingRequest,
   type PongEvent,
 } from '@programish/protocol';
@@ -12,6 +15,8 @@ export interface BridgeTransport {
   send(line: string): Promise<void>;
   /** Subscribe to stdout lines. Returns an unsubscribe function. */
   onLine(handler: (line: string) => void): Promise<() => void>;
+  /** Subscribe to the sidecar process ending. */
+  onExit(handler: () => void): Promise<() => void>;
 }
 
 export interface PingResult {
@@ -20,21 +25,36 @@ export interface PingResult {
   protocolVersion: number;
 }
 
+/** Handle for a running chat. `done` resolves after the terminal event was delivered. */
+export interface ChatHandle {
+  id: string;
+  cancel(): void;
+  done: Promise<void>;
+}
+
 interface Pending {
   resolve: (event: BridgeEvent) => void;
   reject: (error: Error) => void;
   timer: ReturnType<typeof setTimeout>;
 }
 
+interface Stream {
+  onEvent: (event: BridgeEvent) => void;
+  finish: () => void;
+}
+
+const EXIT_MESSAGE = 'The Claude bridge process exited unexpectedly.';
+
 /**
- * Request/response layer over a line transport. Responses are matched to
- * requests by `id`; unmatched events go to `subscribe` listeners (this is
- * where streamed chat events will arrive in later phases).
+ * Request/response and streaming layer over a line transport. Events are
+ * routed by request `id`: one-shot requests (ping) resolve a promise, chats
+ * deliver every event to their handler until the terminal one.
  */
 export class BridgeClient {
   private pending = new Map<string, Pending>();
-  private listeners = new Set<(event: BridgeEvent) => void>();
-  private unlisten: (() => void) | undefined;
+  private streams = new Map<string, Stream>();
+  private exitListeners = new Set<() => void>();
+  private unlisten: (() => void)[] = [];
 
   constructor(
     private readonly transport: BridgeTransport,
@@ -43,18 +63,21 @@ export class BridgeClient {
 
   async connect(): Promise<void> {
     // Subscribe before starting so the sidecar's first output can't be missed.
-    this.unlisten = await this.transport.onLine((line) => this.handleLine(line));
+    this.disconnect();
+    this.unlisten.push(await this.transport.onLine((line) => this.handleLine(line)));
+    this.unlisten.push(await this.transport.onExit(() => this.handleExit()));
     await this.transport.start();
   }
 
   disconnect(): void {
-    this.unlisten?.();
-    this.unlisten = undefined;
+    this.unlisten.forEach((off) => off());
+    this.unlisten = [];
   }
 
-  subscribe(listener: (event: BridgeEvent) => void): () => void {
-    this.listeners.add(listener);
-    return () => this.listeners.delete(listener);
+  /** Called when the sidecar dies; in-flight work has already been failed by then. */
+  onExit(listener: () => void): () => void {
+    this.exitListeners.add(listener);
+    return () => this.exitListeners.delete(listener);
   }
 
   async ping(): Promise<PingResult> {
@@ -62,6 +85,35 @@ export class BridgeClient {
     const event = await this.request(request.id, encodeMessage(request));
     if (event.type !== 'pong') throw new Error(`Unexpected reply: ${event.type}`);
     return toPingResult(event);
+  }
+
+  /**
+   * Starts a chat. Every event for it goes to `onEvent`, ending with exactly
+   * one terminal event, which is also synthesized if the bridge dies or the
+   * request cannot be written.
+   */
+  chat(
+    request: Omit<ChatRequest, 'type' | 'id'>,
+    onEvent: (event: BridgeEvent) => void,
+  ): ChatHandle {
+    const id = crypto.randomUUID();
+    let finish!: () => void;
+    const done = new Promise<void>((resolve) => (finish = resolve));
+    this.streams.set(id, { onEvent, finish });
+
+    const message: ChatRequest = { type: 'chat', id, ...request };
+    this.transport.send(encodeMessage(message)).catch((err: unknown) => {
+      this.failStream(id, err instanceof Error ? err.message : String(err));
+    });
+
+    return {
+      id,
+      done,
+      cancel: () => {
+        const cancel: CancelRequest = { type: 'cancel', id: crypto.randomUUID(), targetId: id };
+        this.transport.send(encodeMessage(cancel)).catch(() => undefined);
+      },
+    };
   }
 
   private request(id: string, line: string): Promise<BridgeEvent> {
@@ -86,15 +138,47 @@ export class BridgeClient {
       return;
     }
     const event = parsed.value;
-    const pending = event.id === undefined ? undefined : this.pending.get(event.id);
-    if (pending && event.id !== undefined) {
+    if (event.id === undefined) {
+      console.warn(
+        '[bridge] error without request id:',
+        event.type === 'error' ? event.error.message : '',
+      );
+      return;
+    }
+
+    const stream = this.streams.get(event.id);
+    if (stream) {
+      if (isTerminalEvent(event)) this.streams.delete(event.id);
+      stream.onEvent(event);
+      if (isTerminalEvent(event)) stream.finish();
+      return;
+    }
+
+    const pending = this.pending.get(event.id);
+    if (pending) {
       clearTimeout(pending.timer);
       this.pending.delete(event.id);
       if (event.type === 'error') pending.reject(new Error(event.error.message));
       else pending.resolve(event);
-      return;
     }
-    for (const listener of this.listeners) listener(event);
+  }
+
+  private failStream(id: string, message: string): void {
+    const stream = this.streams.get(id);
+    if (!stream) return;
+    this.streams.delete(id);
+    stream.onEvent({ type: 'error', id, error: { code: 'internal', message } });
+    stream.finish();
+  }
+
+  private handleExit(): void {
+    for (const [id, p] of this.pending) {
+      clearTimeout(p.timer);
+      p.reject(new Error(EXIT_MESSAGE));
+      this.pending.delete(id);
+    }
+    for (const id of [...this.streams.keys()]) this.failStream(id, EXIT_MESSAGE);
+    for (const listener of this.exitListeners) listener();
   }
 }
 
