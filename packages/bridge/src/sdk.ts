@@ -1,3 +1,5 @@
+import { isAbsolute } from 'node:path';
+import { pathToFileURL } from 'node:url';
 import type {
   Options,
   SDKControlGetUsageResponse,
@@ -22,10 +24,22 @@ export type QueryFn = (params: {
  * `PROGRAMISH_QUERY_MODULE` points at a module exporting `query`; it exists so
  * the end-to-end harness can run the real bridge process without a Claude login.
  */
+/**
+ * `import()` takes URLs, and on Windows a path like `D:\\a\\fake-sdk.mjs` reads as a URL with the
+ * scheme `d:` and fails. Absolute filesystem paths become file URLs; package names pass through.
+ */
+export function moduleSpecifier(specifier: string): string {
+  return isAbsolute(specifier) || /^[A-Za-z]:[\\/]/.test(specifier)
+    ? pathToFileURL(specifier).href
+    : specifier;
+}
+
 export async function loadQuery(): Promise<QueryFn> {
   const override = process.env.PROGRAMISH_QUERY_MODULE;
   // A literal specifier (not a variable) so the release build can bundle the SDK into main.mjs.
-  const mod = (await (override ? import(override) : import('@anthropic-ai/claude-agent-sdk'))) as {
+  const mod = (await (override
+    ? import(moduleSpecifier(override))
+    : import('@anthropic-ai/claude-agent-sdk'))) as {
     query?: QueryFn;
   };
   if (typeof mod.query !== 'function')
