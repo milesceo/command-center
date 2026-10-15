@@ -6,6 +6,9 @@ import { MainPanel } from './components/shell/MainPanel';
 import { RightPanel } from './components/shell/RightPanel';
 import { CommandPalette } from './components/palette/CommandPalette';
 import { Sidebar } from './components/shell/Sidebar';
+import { LockGate } from './components/lock/LockGate';
+import { ClassicTitleBar } from './components/shell/WindowControls';
+import { IdeShell } from './ide/IdeShell';
 import { useBridgeStore } from './stores/bridge';
 import { chatStore } from './stores/chat';
 import { conversationsStore, useConversations } from './stores/conversations';
@@ -17,6 +20,7 @@ import { applyTheme, useUiStore } from './stores/ui';
 
 export function App() {
   const theme = useUiStore((s) => s.theme);
+  const layout = useUiStore((s) => s.layout);
   const activeId = useConversations((s) => s.activeId);
   const connect = useBridgeStore((s) => s.connect);
 
@@ -48,11 +52,22 @@ export function App() {
 
   return (
     <div className="flex h-full bg-bg text-fg">
-      <Sidebar />
-      <MainPanel />
-      <RightPanel />
-      <ShortcutsDialog />
-      <CommandPalette />
+      <LockGate>
+        {layout === 'ide' ? (
+          <IdeShell />
+        ) : (
+          <div className="flex h-full min-w-0 flex-1 flex-col">
+            <ClassicTitleBar />
+            <div className="flex min-h-0 flex-1">
+              <Sidebar />
+              <MainPanel />
+              <RightPanel />
+            </div>
+          </div>
+        )}
+        <ShortcutsDialog />
+        <CommandPalette />
+      </LockGate>
       <Toaster />
     </div>
   );

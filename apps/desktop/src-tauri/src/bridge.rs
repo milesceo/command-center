@@ -78,6 +78,16 @@ fn installed_launch(exe_dir: &Path, resource_dir: &Path) -> Result<Launch, Strin
     })
 }
 
+/// The first real `node` on PATH. Windows' CreateProcess searches the app's own folder before
+/// PATH, and `tauri dev` leaves an empty placeholder `node.exe` there (error 193), so a bare
+/// `node` would pick that up. Empty files are skipped for the same reason.
+fn find_on_path(base: &str) -> Option<PathBuf> {
+    let name = exe_name(base);
+    std::env::split_paths(&std::env::var_os("PATH")?)
+        .map(|dir| dir.join(&name))
+        .find(|p| p.metadata().is_ok_and(|m| m.is_file() && m.len() > 0))
+}
+
 /// Development: the workspace bundle run by the `node` on PATH, with the SDK finding its own runtime.
 fn dev_launch(entry: PathBuf) -> Result<Launch, String> {
     if !entry.exists() {
@@ -87,7 +97,7 @@ fn dev_launch(entry: PathBuf) -> Result<Launch, String> {
         ));
     }
     Ok(Launch {
-        program: PathBuf::from("node"),
+        program: find_on_path("node").unwrap_or_else(|| PathBuf::from("node")),
         args: vec![entry],
         env: vec![],
     })

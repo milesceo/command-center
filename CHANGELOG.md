@@ -6,6 +6,17 @@ All notable changes to Programish are recorded here. The format follows
 
 ## [Unreleased]
 
+### Added
+
+- An editor-style layout: threads grouped by project in an explorer, the code Claude writes as
+  tabbed files with versions, diffs and live preview, the conversation docked as an assistant
+  panel, an activity panel with per-reply usage, and a status bar with model, context fill and
+  plan headroom. The original layout is still available from the command palette.
+- An animated ASCII landing page that asks for a PIN you choose on first launch, locks on demand
+  (`Ctrl+L`) and after inactivity, and waits longer after repeated wrong PINs. Set, change or remove
+  the PIN and the idle timeout in Settings. It keeps casual access out; it does not encrypt your
+  chats on disk.
+
 ## [1.0.0] - 2026-10-14
 
 First release. Programish is the Claude client I wanted for day-to-day coding: small, fast, and

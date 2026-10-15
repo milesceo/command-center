@@ -23,11 +23,14 @@ const { chatStore } = await import('./stores/chat');
 const { previewStore } = await import('./stores/preview');
 const { useUiStore } = await import('./stores/ui');
 const { useToastStore } = await import('./stores/toast');
+const { useLockStore } = await import('./stores/lock');
 
 beforeEach(() => {
   chatStore.setState({ messages: [], streams: {}, loadedFor: null, errors: {} });
   previewStore.setState({ tabs: [], activeId: null, compare: null });
+  useLockStore.setState({ phase: 'unlocked', hasPin: false });
   useUiStore.setState({
+    layout: 'classic',
     rightPanelOpen: false,
     diffMode: 'split',
     shortcutsOpen: false,

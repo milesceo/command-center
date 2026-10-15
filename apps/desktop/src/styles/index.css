@@ -21,6 +21,9 @@
   --fg-subtle: #8a8a96;
   --accent: #8b93ff;
   --accent-fg: #0b0b0d;
+  --traffic-close: #ff5f57;
+  --traffic-minimize: #febc2e;
+  --traffic-maximize: #28c840;
   --success: #4ade80;
   --danger: #f87171;
   --warning: #fbbf24;
@@ -353,4 +356,32 @@
   background: var(--diff-del-strong);
   color: inherit;
   border-radius: 2px;
+}
+
+/* ---- Lock screen ------------------------------------------------------- */
+@keyframes pin-shake {
+  0%,
+  100% {
+    transform: translateX(0);
+  }
+  20% {
+    transform: translateX(-8px);
+  }
+  40% {
+    transform: translateX(7px);
+  }
+  60% {
+    transform: translateX(-5px);
+  }
+  80% {
+    transform: translateX(3px);
+  }
+}
+.pin-shake {
+  animation: pin-shake 0.36s ease-in-out;
+}
+@media (prefers-reduced-motion: reduce) {
+  .pin-shake {
+    animation: none;
+  }
 }

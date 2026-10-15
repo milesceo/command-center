@@ -67,10 +67,20 @@ This repo is the owner's professional portfolio; all work is attributed to them 
 - **Projects** are a flat grouping of conversations with an optional default system prompt; deleting one ungroups its chats.
 - **Selectors must be referentially stable** (this bit twice again: `?? []` and `.filter()` inside a `useStore` selector). Select the raw value and derive it with `useMemo`/a module constant.
 
+### IDE shell and app lock design decisions
+
+- **The default layout is an editor-style shell** (`apps/desktop/src/ide`): floating rounded panes on a dark canvas, a unified toolbar with a command pill, an icon rail, a frosted explorer (threads grouped by project, plus the open thread's files), a tabbed editor with breadcrumbs, the conversation docked on the right as the assistant, an optional activity panel and a status bar (`ide/shared/Hud.tsx`). The original sidebar layout is untouched and stays one setting away (`ui.layout`: `ide` | `classic`, palette command "Use classic layout"); the older e2e scripts and the App tests drive the classic one. Usage, Prompts and Settings open as views in the editor area.
+- **Files are derived, not stored.** `ide/shared/files.ts` groups a thread's code blocks into files with versions (same file name first, else the most similar earlier block of the same language, the heuristic behind "compare with earlier version"). Nothing is written to disk and no tool can edit the user's files; that still needs the permission UI.
+- **The app lock is a screen lock, not encryption.** `lib/app-lock.ts` (pure, tested) stores a 4 to 8 digit PIN as a salted PBKDF2-SHA-256 hash (150k iterations) in localStorage (`programish-lock`); `stores/lock.ts` owns the phase (`setup` | `locked` | `unlocked`), the idle timeout and the lockout (5 free attempts, then 30 s doubling to 5 min, persisted so a restart does not reset it). The chat database is NOT encrypted; never describe the lock as encryption. `LockGate` renders nothing of the app while locked, so no conversation text is in the DOM behind it. First launch asks the user to choose a PIN twice and offers an explicit "continue without a PIN". A forgotten PIN cannot be recovered: the only way back in erases the PIN and all local data (`clearData(db, 'everything')`) after typing DELETE.
+- **The landing page is generated text.** `lib/ascii-field.ts` is a pure, deterministic frame generator (a plasma field plus a 5x5-pixel wordmark); `AsciiBackdrop` writes frames straight into two `<pre>` elements at 24 fps (no React state, no per-frame render) and paints one still frame under `prefers-reduced-motion`.
+- **e2e harness:** `launch({ layout, lock })` defaults to `classic` and `skip` so older scripts keep working; `e2e/ide.mjs` captures the shell and the lock flow.
+
 ## Folder structure
 
 ```
-apps/desktop/src/components/{ui,shell,chat}  generic components / app shell / chat UI
+apps/desktop/src/components/{ui,shell,chat}  generic components / classic app shell / chat UI
+apps/desktop/src/ide                     editor-style shell (explorer, editor, assistant, activity panel) + shared/ file and thread helpers
+apps/desktop/src/components/lock         PIN lock screen, ASCII backdrop and gate
 apps/desktop/src/stores                  Zustand stores (ui, bridge, conversations, chat)
 apps/desktop/src/lib                     bridge client, tauri helpers, db + repo, errors, markdown utils
 apps/desktop/e2e                         browser end-to-end harness (real UI + real bridge process + real SQLite file)
@@ -97,13 +107,14 @@ packages/bridge/test/fake-sdk.mjs        scripted stand-in for the SDK (PROGRAMI
 
 Update this section at the end of every phase.
 
-| Phase                | Status    | Notes                                                                                                                                                                                                                                                                                    |
-| -------------------- | --------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| 1. Foundation        | Done      | Monorepo, app shell (theme, sidebar, panels), protocol + bridge ping/pong, SQLite schema, CI, docs. Merged in PR #1.                                                                                                                                                                     |
-| 2. Chat core         | Done      | Real streaming chat via the Agent SDK, stop, model select, per-conversation system prompt and read-only tools, friendly auth/limit errors, markdown + code blocks, edit/regenerate/copy, attachments, conversations (rename/pin/delete/search), virtualized transcript. Merged in PR #2. |
-| 3. Code tools        | Done      | Shiki code blocks (actions, line numbers, collapse, wrap), diff view (inline/side-by-side, word-level), sandboxed live preview panel (HTML/SVG/Mermaid/Markdown, tabs, console, viewport widths, streaming auto-update), shortcuts + dialog. Merged in PR #3.                            |
-| 4. Usage and prompts | Done      | Usage ledger from SDK results, Usage view (daily/weekly charts, models, top chats, plan headroom where the SDK reports it), per-chat totals in the header, prompt library with `{{variables}}`, `/` insert, import/export, projects with default system prompts. Merged in PR #4.        |
-| 5. Release           | In review | Command palette, settings view, accessibility and focus audit (axe-core clean), performance pass, installable build: the bridge, Node and the Claude runtime are bundled as a Tauri sidecar, Windows NSIS installer, tag-triggered release workflow, CHANGELOG, v1.0.0.                  |
+| Phase                | Status    | Notes                                                                                                                                                                                                                                                                                                  |
+| -------------------- | --------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| 1. Foundation        | Done      | Monorepo, app shell (theme, sidebar, panels), protocol + bridge ping/pong, SQLite schema, CI, docs. Merged in PR #1.                                                                                                                                                                                   |
+| 2. Chat core         | Done      | Real streaming chat via the Agent SDK, stop, model select, per-conversation system prompt and read-only tools, friendly auth/limit errors, markdown + code blocks, edit/regenerate/copy, attachments, conversations (rename/pin/delete/search), virtualized transcript. Merged in PR #2.               |
+| 3. Code tools        | Done      | Shiki code blocks (actions, line numbers, collapse, wrap), diff view (inline/side-by-side, word-level), sandboxed live preview panel (HTML/SVG/Mermaid/Markdown, tabs, console, viewport widths, streaming auto-update), shortcuts + dialog. Merged in PR #3.                                          |
+| 4. Usage and prompts | Done      | Usage ledger from SDK results, Usage view (daily/weekly charts, models, top chats, plan headroom where the SDK reports it), per-chat totals in the header, prompt library with `{{variables}}`, `/` insert, import/export, projects with default system prompts. Merged in PR #4.                      |
+| 5. Release           | Done      | Command palette, settings view, accessibility and focus audit (axe-core clean), performance pass, installable build: the bridge, Node and the Claude runtime are bundled as a Tauri sidecar, Windows NSIS installer, tag-triggered release workflow, CHANGELOG. Released as v1.0.0 (tag on `08d0fc6`). |
+| 6. Editor shell      | In review | Editor-style layout (explorer, tabbed files with versions/diff/preview, docked assistant, activity panel, status bar), animated ASCII PIN landing page with idle auto-lock, macOS-style custom title bar and frameless window. Classic layout kept. Draft PR #7. See `docs/HANDOFF.md`.                |
 
 Known gaps after v1.0.0:
 

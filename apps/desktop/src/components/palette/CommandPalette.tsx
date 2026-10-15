@@ -10,7 +10,10 @@ import type { Conversation } from '../../lib/types';
 import { cn } from '../../lib/cn';
 import { conversationsStore } from '../../stores/conversations';
 import { useComposerStore } from '../../stores/composer';
+import { useIdeStore } from '../../stores/ide';
+import { useLockStore } from '../../stores/lock';
 import { usePrompts } from '../../stores/prompts';
+import { toast } from '../../stores/toast';
 import { useUiStore, type View } from '../../stores/ui';
 import { usePromptActions } from '../prompts/usePromptActions';
 
@@ -58,6 +61,43 @@ function useCommands(conversations: Conversation[]): {
         run: goto('prompts'),
       },
       { id: 'open-chat', title: 'Back to chat', group: 'Actions', run: goto('chat') },
+      {
+        id: 'lock',
+        title: 'Lock Programish',
+        group: 'Actions',
+        shortcut: 'Mod+L',
+        keywords: 'pin screen lock',
+        run: () => {
+          const lock = useLockStore.getState();
+          if (lock.hasPin) lock.lock();
+          else {
+            toast('Set a PIN in Settings to use the lock');
+            ui().setView('settings');
+          }
+        },
+      },
+      {
+        id: 'toggle-assistant',
+        title: 'Toggle assistant panel',
+        group: 'Actions',
+        shortcut: 'Mod+Shift+A',
+        run: () => useIdeStore.getState().toggleAssistant(),
+      },
+      {
+        id: 'toggle-activity',
+        title: 'Toggle activity panel',
+        group: 'Actions',
+        shortcut: 'Mod+J',
+        keywords: 'usage tokens replies',
+        run: () => useIdeStore.getState().toggleBottom(),
+      },
+      {
+        id: 'layout',
+        title: ui().layout === 'ide' ? 'Use classic layout' : 'Use editor layout',
+        group: 'Actions',
+        keywords: 'ide sidebar columns',
+        run: () => ui().setLayout(ui().layout === 'ide' ? 'classic' : 'ide'),
+      },
       {
         id: 'toggle-sidebar',
         title: 'Toggle sidebar',

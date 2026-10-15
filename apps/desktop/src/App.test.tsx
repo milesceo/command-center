@@ -87,6 +87,7 @@ const { App } = await import('./App');
 const { chatStore } = await import('./stores/chat');
 const { conversationsStore } = await import('./stores/conversations');
 const { useUiStore } = await import('./stores/ui');
+const { useLockStore } = await import('./stores/lock');
 
 function resetStores() {
   conversationsStore.setState({
@@ -97,7 +98,14 @@ function resetStores() {
     error: null,
   });
   chatStore.setState({ loadedFor: null, messages: [], streams: {}, errors: {} });
-  useUiStore.setState({ theme: 'dark', sidebarOpen: true, rightPanelOpen: false });
+  // These tests cover the classic layout; the editor shell and the lock have their own tests.
+  useUiStore.setState({
+    theme: 'dark',
+    layout: 'classic',
+    sidebarOpen: true,
+    rightPanelOpen: false,
+  });
+  useLockStore.setState({ phase: 'unlocked', hasPin: false });
 }
 beforeEach(resetStores);
 

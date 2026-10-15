@@ -131,7 +131,16 @@ export async function startHarness({ real = process.env.E2E_REAL === '1' } = {})
   const previewDocs = new Map();
 
   /** Opens the app like a fresh launch: new page, new sidecar process, same database. */
-  async function launch({ viewport = { width: 1200, height: 780 }, theme } = {}) {
+  /**
+   * `layout` is 'classic' (the original sidebar layout the older scripts drive) or 'ide'.
+   * `lock` is 'skip' (no PIN, straight in) or 'setup' (the first-run PIN prompt).
+   */
+  async function launch({
+    viewport = { width: 1200, height: 780 },
+    theme,
+    layout = 'classic',
+    lock = 'skip',
+  } = {}) {
     const context = await browser.newContext({
       viewport,
       permissions: ['clipboard-read', 'clipboard-write'],
@@ -217,20 +226,30 @@ export async function startHarness({ real = process.env.E2E_REAL === '1' } = {})
     page.on('console', (m) => m.type() === 'error' && consoleErrors.push(m.text()));
     page.on('pageerror', (e) => consoleErrors.push(String(e)));
     await page.addInitScript(installTauriShim);
-    if (theme)
-      await page.addInitScript(
-        (t) =>
-          localStorage.setItem(
-            'programish-ui',
-            JSON.stringify({
-              state: { theme: t, sidebarOpen: true, rightPanelOpen: false },
-              version: 0,
-            }),
-          ),
-        theme,
+    await page.addInitScript(
+      ([t, l]) => {
+        localStorage.setItem(
+          'programish-ui',
+          JSON.stringify({
+            state: { theme: t, layout: l, sidebarOpen: true, rightPanelOpen: false },
+            version: 0,
+          }),
+        );
+      },
+      [theme ?? 'dark', layout],
+    );
+    if (lock === 'skip') {
+      await page.addInitScript(() =>
+        localStorage.setItem(
+          'programish-lock-prefs',
+          JSON.stringify({ skipped: true, autoLockMinutes: 0, failures: 0, lockedUntil: 0 }),
+        ),
       );
+    }
     await page.goto(url);
-    await page.waitForSelector('aside >> text=/Bridge ready|pong \\d+ms/');
+    if (lock === 'setup') await page.waitForSelector('[data-testid="lock-screen"]');
+    else if (layout === 'ide') await page.waitForSelector('[data-testid="ide-shell"]');
+    else await page.waitForSelector('aside >> text=/Bridge ready|pong \\d+ms/');
     return {
       page,
       killBridge: () => child?.kill('SIGKILL'),

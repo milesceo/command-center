@@ -4,6 +4,8 @@ import { persist } from 'zustand/middleware';
 export type Theme = 'dark' | 'light';
 export type DiffMode = 'inline' | 'split';
 export type View = 'chat' | 'usage' | 'prompts' | 'settings';
+/** `ide` is the editor-style shell; `classic` is the original sidebar-and-column chat layout. */
+export type Layout = 'ide' | 'classic';
 
 export const RIGHT_PANEL_MIN = 320;
 export const RIGHT_PANEL_MAX = 960;
@@ -11,6 +13,7 @@ export const RIGHT_PANEL_DEFAULT = 480;
 
 interface UiState {
   theme: Theme;
+  layout: Layout;
   sidebarOpen: boolean;
   rightPanelOpen: boolean;
   rightPanelWidth: number;
@@ -23,6 +26,7 @@ interface UiState {
   view: View;
 
   toggleTheme: () => void;
+  setLayout: (layout: Layout) => void;
   toggleSidebar: () => void;
   toggleRightPanel: () => void;
   setRightPanelOpen: (open: boolean) => void;
@@ -43,6 +47,7 @@ export const useUiStore = create<UiState>()(
   persist(
     (set) => ({
       theme: 'dark',
+      layout: 'ide',
       sidebarOpen: true,
       rightPanelOpen: false,
       rightPanelWidth: RIGHT_PANEL_DEFAULT,
@@ -53,6 +58,7 @@ export const useUiStore = create<UiState>()(
       view: 'chat',
 
       toggleTheme: () => set((s) => ({ theme: s.theme === 'dark' ? 'light' : 'dark' })),
+      setLayout: (layout) => set({ layout }),
       toggleSidebar: () => set((s) => ({ sidebarOpen: !s.sidebarOpen })),
       toggleRightPanel: () => set((s) => ({ rightPanelOpen: !s.rightPanelOpen })),
       setRightPanelOpen: (rightPanelOpen) => set({ rightPanelOpen }),
