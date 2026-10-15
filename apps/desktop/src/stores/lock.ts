@@ -8,8 +8,8 @@ import {
   type LockRecord,
 } from '../lib/app-lock';
 
-const RECORD_KEY = 'programish-lock';
-const PREFS_KEY = 'programish-lock-prefs';
+const RECORD_KEY = 'geeked-lock';
+const PREFS_KEY = 'geeked-lock-prefs';
 
 /** Minutes of inactivity before locking; 0 turns it off. */
 export const AUTO_LOCK_CHOICES = [0, 5, 15, 30, 60] as const;

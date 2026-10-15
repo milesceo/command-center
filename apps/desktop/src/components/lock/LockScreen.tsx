@@ -236,9 +236,8 @@ function ForgetPanel({ onCancel }: { onCancel: () => void }) {
           Forgot your PIN?
         </h2>
         <p className="mt-2 text-fg-muted">
-          A PIN cannot be recovered. To get back in, Programish erases the PIN and every
-          conversation, prompt and project stored on this computer. Your Claude login is not
-          touched.
+          A PIN cannot be recovered. To get back in, Geeked erases the PIN and every conversation,
+          prompt and project stored on this computer. Your Claude login is not touched.
         </p>
         <label className="mt-3 block text-fg-subtle" htmlFor="forget-confirm">
           Type DELETE to confirm

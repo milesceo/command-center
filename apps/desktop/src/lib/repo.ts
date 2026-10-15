@@ -1,4 +1,4 @@
-import type { Attachment, BridgeError } from '@programish/protocol';
+import type { Attachment, BridgeError } from '@geeked/protocol';
 import type { Db } from './db';
 import {
   DEFAULT_TITLE,

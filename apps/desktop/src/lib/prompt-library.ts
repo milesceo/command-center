@@ -1,7 +1,8 @@
+import { LEGACY_LIBRARY_FORMAT } from './legacy';
 import type { Prompt, PromptKind } from './types';
 
 /** JSON file format for exporting and importing the prompt library. */
-export const LIBRARY_FORMAT = 'programish-prompts';
+export const LIBRARY_FORMAT = 'geeked-prompts';
 export const LIBRARY_VERSION = 1;
 
 export interface LibraryFile {
@@ -55,11 +56,11 @@ export function parseLibraryFile(text: string): LibraryPrompt[] {
   } catch {
     throw new LibraryFileError('That file is not valid JSON.');
   }
-  if (!isObject(raw) || raw.format !== LIBRARY_FORMAT) {
-    throw new LibraryFileError('That file is not a Programish prompt library.');
+  if (!isObject(raw) || (raw.format !== LIBRARY_FORMAT && raw.format !== LEGACY_LIBRARY_FORMAT)) {
+    throw new LibraryFileError('That file is not a Geeked prompt library.');
   }
   if (typeof raw.version !== 'number' || raw.version > LIBRARY_VERSION) {
-    throw new LibraryFileError('That library was made by a newer version of Programish.');
+    throw new LibraryFileError('That library was made by a newer version of Geeked.');
   }
   if (!Array.isArray(raw.prompts)) throw new LibraryFileError('The library has no prompt list.');
   if (raw.prompts.length > MAX_PROMPTS)

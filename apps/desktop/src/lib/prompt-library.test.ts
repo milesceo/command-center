@@ -26,7 +26,7 @@ describe('library file', () => {
       new Date('2026-01-01T00:00:00Z'),
     );
     expect(file).toMatchObject({
-      format: 'programish-prompts',
+      format: 'geeked-prompts',
       version: 1,
       exportedAt: '2026-01-01T00:00:00.000Z',
     });
@@ -35,11 +35,11 @@ describe('library file', () => {
 
   it('refuses files that are not libraries, with a readable reason', () => {
     expect(() => parseLibraryFile('nope')).toThrow('not valid JSON');
-    expect(() => parseLibraryFile('{"prompts":[]}')).toThrow('not a Programish prompt library');
-    expect(() =>
-      parseLibraryFile('{"format":"programish-prompts","version":99,"prompts":[]}'),
-    ).toThrow('newer version');
-    expect(() => parseLibraryFile('{"format":"programish-prompts","version":1}')).toThrow(
+    expect(() => parseLibraryFile('{"prompts":[]}')).toThrow('not a Geeked prompt library');
+    expect(() => parseLibraryFile('{"format":"geeked-prompts","version":99,"prompts":[]}')).toThrow(
+      'newer version',
+    );
+    expect(() => parseLibraryFile('{"format":"geeked-prompts","version":1}')).toThrow(
       'no prompt list',
     );
   });
@@ -47,7 +47,7 @@ describe('library file', () => {
   it('validates every prompt and names the one that is wrong', () => {
     const bad = (item: unknown) =>
       parseLibraryFile(
-        JSON.stringify({ format: 'programish-prompts', version: 1, prompts: [prompt(), item] }),
+        JSON.stringify({ format: 'geeked-prompts', version: 1, prompts: [prompt(), item] }),
       );
     expect(() => bad({ ...prompt(), id: '' })).toThrow('Prompt 2 has no id');
     expect(() => bad({ ...prompt(), kind: 'weird' })).toThrow('Prompt 2 has an unknown kind');
@@ -60,7 +60,7 @@ describe('library file', () => {
   it('accepts a prompt without tags or timestamps', () => {
     const [p] = parseLibraryFile(
       JSON.stringify({
-        format: 'programish-prompts',
+        format: 'geeked-prompts',
         version: 1,
         prompts: [{ id: 'a', kind: 'prompt', title: ' T ', body: '' }],
       }),

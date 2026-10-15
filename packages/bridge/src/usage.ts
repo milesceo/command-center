@@ -9,7 +9,7 @@ import type {
   ModelUsageEntry,
   UsageReportEvent,
   UsageWindow,
-} from '@programish/protocol';
+} from '@geeked/protocol';
 import { normalizeResetsAt } from './errors';
 
 /**

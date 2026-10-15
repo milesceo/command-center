@@ -1,7 +1,7 @@
 import { isTauri } from './tauri';
 
 /** Must match the connection string registered in src-tauri/src/lib.rs. */
-export const DB_URL = 'sqlite:programish.db';
+export const DB_URL = 'sqlite:geeked.db';
 
 /** The subset of the SQL plugin's Database that the app uses (also implemented over node:sqlite in tests). */
 export interface Db {

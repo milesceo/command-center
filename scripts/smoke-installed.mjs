@@ -51,7 +51,7 @@ const child = spawn(node, [main], {
   env: {
     PATH: process.env.PATH ?? '',
     SystemRoot: process.env.SystemRoot ?? '',
-    PROGRAMISH_CLAUDE_EXECUTABLE: claude,
+    GEEKED_CLAUDE_EXECUTABLE: claude,
   },
   stdio: ['pipe', 'pipe', 'inherit'],
 });

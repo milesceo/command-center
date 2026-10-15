@@ -24,7 +24,7 @@ describe('buildHtmlDocument', () => {
       '<!doctype html><html><head><title>t</title><script>boom()</script></head><body></body></html>',
       'f2',
     );
-    expect(doc.indexOf('programish-preview')).toBeLessThan(doc.indexOf('boom()'));
+    expect(doc.indexOf('geeked-preview')).toBeLessThan(doc.indexOf('boom()'));
     expect(doc.match(/<head/g)).toHaveLength(1);
   });
 

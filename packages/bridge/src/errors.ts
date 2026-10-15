@@ -1,5 +1,5 @@
 import type { SDKAssistantMessageError, SDKRateLimitInfo } from '@anthropic-ai/claude-agent-sdk';
-import type { BridgeError } from '@programish/protocol';
+import type { BridgeError } from '@geeked/protocol';
 
 /**
  * The runtime reports reset times as unix timestamps; depending on the source

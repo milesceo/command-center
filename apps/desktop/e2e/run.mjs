@@ -308,7 +308,7 @@ if (!real) {
     await panel().waitFor();
   };
 
-  await app.page.evaluate(() => localStorage.removeItem('programish-ui'));
+  await app.page.evaluate(() => localStorage.removeItem('geeked-ui'));
   await app.close();
   app = await h.launch({ theme: 'dark' });
   await newChat();
@@ -691,10 +691,10 @@ if (!real) {
     await openView('Prompts');
     await page.getByRole('button', { name: 'Export' }).click();
     await page.waitForSelector('text=Library exported');
-    const file = [...h.saved.entries()].find(([path]) => path.endsWith('programish-prompts.json'));
+    const file = [...h.saved.entries()].find(([path]) => path.endsWith('geeked-prompts.json'));
     assert.ok(file, 'export wrote the file');
     const exported = JSON.parse(file[1]);
-    assert.equal(exported.format, 'programish-prompts');
+    assert.equal(exported.format, 'geeked-prompts');
     assert.equal(exported.prompts.length, 2);
 
     await page.getByRole('button', { name: 'Delete Pirate' }).click();
@@ -702,7 +702,7 @@ if (!real) {
     assert.equal(await page.getByTestId('prompt-item').count(), 1);
 
     await page.getByTestId('import-input').setInputFiles({
-      name: 'programish-prompts.json',
+      name: 'geeked-prompts.json',
       mimeType: 'application/json',
       buffer: Buffer.from(file[1]),
     });
@@ -890,10 +890,10 @@ if (!real) {
       .click();
     await p2.getByRole('button', { name: /Export all data/ }).click();
     await p2.waitForSelector('text=Data exported');
-    const exported = [...h.saved.entries()].find(([path]) => path.endsWith('programish-data.json'));
+    const exported = [...h.saved.entries()].find(([path]) => path.endsWith('geeked-data.json'));
     assert.ok(exported, 'export file written');
     const data = JSON.parse(exported[1]);
-    assert.equal(data.format, 'programish-data');
+    assert.equal(data.format, 'geeked-data');
     assert.ok(data.tables.conversations.length > 5 && data.tables.messages.length > 5);
 
     await p2.getByRole('button', { name: 'Clear usage history' }).click();

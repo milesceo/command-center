@@ -1,4 +1,4 @@
-import type { BridgeError } from '@programish/protocol';
+import type { BridgeError } from '@geeked/protocol';
 
 /** User-facing copy for a bridge error. The raw message is kept for a "details" disclosure. */
 export interface FriendlyError {
@@ -46,7 +46,7 @@ export function describeError(error: BridgeError, now = Date.now()): FriendlyErr
     case 'auth_required':
       return {
         title: 'Not logged in to Claude',
-        body: 'Programish uses your Claude Code login. Open a terminal, run `claude`, sign in, then retry.',
+        body: 'Geeked uses your Claude Code login. Open a terminal, run `claude`, sign in, then retry.',
       };
     case 'usage_limit': {
       const label = limitLabel(error.limitType);
@@ -83,7 +83,7 @@ export function describeError(error: BridgeError, now = Date.now()): FriendlyErr
     case 'sdk_unavailable':
       return {
         title: "Couldn't start the Claude runtime",
-        body: 'Make sure Node.js and Claude Code are installed, then restart Programish.',
+        body: 'Make sure Node.js and Claude Code are installed, then restart Geeked.',
         details: error.message,
       };
     case 'busy':

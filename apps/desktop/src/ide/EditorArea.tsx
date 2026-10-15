@@ -190,7 +190,7 @@ function Welcome() {
     <section className={paneClass} aria-label="Welcome">
       <div className="grid min-h-0 flex-1 place-items-center overflow-auto p-8">
         <div className="w-full max-w-xl">
-          <h1 className="font-mono text-2xl font-semibold tracking-tight">programish</h1>
+          <h1 className="font-mono text-2xl font-semibold tracking-tight">geeked</h1>
           <p className="mt-1 text-fg-muted">
             An editor for conversations with Claude. Code that comes back in a reply opens here as a
             file, with versions, diffs and a live preview. Talk to the assistant on the right.

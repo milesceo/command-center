@@ -1,4 +1,4 @@
-import type { Attachment, BridgeError, BridgeEvent, ChatRequest } from '@programish/protocol';
+import type { Attachment, BridgeError, BridgeEvent, ChatRequest } from '@geeked/protocol';
 import { createStore, useStore } from 'zustand';
 import type { BridgeClient, ChatHandle } from '../lib/bridge';
 import { getBridgeClient } from '../lib/bridge-client';

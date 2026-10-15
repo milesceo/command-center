@@ -1,4 +1,4 @@
-import { MODEL_OPTIONS } from '@programish/protocol';
+import { MODEL_OPTIONS } from '@geeked/protocol';
 import { Search } from 'lucide-react';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { filterCommands, type Command } from '../../lib/commands';
@@ -63,7 +63,7 @@ function useCommands(conversations: Conversation[]): {
       { id: 'open-chat', title: 'Back to chat', group: 'Actions', run: goto('chat') },
       {
         id: 'lock',
-        title: 'Lock Programish',
+        title: 'Lock Geeked',
         group: 'Actions',
         shortcut: 'Mod+L',
         keywords: 'pin screen lock',

@@ -13,7 +13,7 @@
 export const PREVIEW_CSP =
   "default-src 'none'; script-src 'unsafe-inline' 'unsafe-eval' https:; style-src 'unsafe-inline' https:; img-src data: blob: https:; font-src data: https:; media-src data: blob: https:; connect-src 'none'; form-action 'none'; base-uri 'none'";
 
-export const CONSOLE_SOURCE = 'programish-preview';
+export const CONSOLE_SOURCE = 'geeked-preview';
 
 export type ConsoleLevel = 'log' | 'info' | 'warn' | 'error' | 'debug';
 

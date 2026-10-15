@@ -1,4 +1,4 @@
-import { MODEL_OPTIONS } from '@programish/protocol';
+import { MODEL_OPTIONS } from '@geeked/protocol';
 import { Download, FolderOpen, Trash2 } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { clearData, countData, exportAll, type ClearScope, type DataCounts } from '../../lib/data';
@@ -75,7 +75,7 @@ export function SettingsView() {
   const exportData = async () => {
     try {
       const file = await exportAll(await getDb());
-      if (await saveTextFile('programish-data.json', JSON.stringify(file, null, 2)))
+      if (await saveTextFile('geeked-data.json', JSON.stringify(file, null, 2)))
         toast('Data exported');
     } catch (err) {
       toast(`Could not export: ${err instanceof Error ? err.message : String(err)}`);
@@ -230,8 +230,8 @@ export function SettingsView() {
 
         <Section title="About">
           <p className="text-xs text-fg-muted">
-            Programish {version && `v${version}`}. Chats run on your Claude subscription through
-            your Claude Code login; no API key is stored or used.
+            Geeked {version && `v${version}`}. Chats run on your Claude subscription through your
+            Claude Code login; no API key is stored or used.
           </p>
           <div>
             <Button size="sm" onClick={() => settings.reset()}>

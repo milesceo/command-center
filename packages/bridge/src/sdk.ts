@@ -21,7 +21,7 @@ export type QueryFn = (params: {
  * Loads the SDK lazily so `ping` stays instant and a missing/broken install
  * becomes a reportable `sdk_unavailable` error instead of a crash at startup.
  *
- * `PROGRAMISH_QUERY_MODULE` points at a module exporting `query`; it exists so
+ * `GEEKED_QUERY_MODULE` points at a module exporting `query`; it exists so
  * the end-to-end harness can run the real bridge process without a Claude login.
  */
 /**
@@ -35,7 +35,7 @@ export function moduleSpecifier(specifier: string): string {
 }
 
 export async function loadQuery(): Promise<QueryFn> {
-  const override = process.env.PROGRAMISH_QUERY_MODULE;
+  const override = process.env.GEEKED_QUERY_MODULE;
   // A literal specifier (not a variable) so the release build can bundle the SDK into main.mjs.
   const mod = (await (override
     ? import(moduleSpecifier(override))
@@ -55,6 +55,6 @@ export async function loadQuery(): Promise<QueryFn> {
  * finds its own copy in node_modules.
  */
 export function claudeExecutable(base: NodeJS.ProcessEnv = process.env): string | undefined {
-  const path = base.PROGRAMISH_CLAUDE_EXECUTABLE?.trim();
+  const path = base.GEEKED_CLAUDE_EXECUTABLE?.trim();
   return path ? path : undefined;
 }

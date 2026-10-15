@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import { PROTOCOL_VERSION, encodeMessage, type BridgeRequest } from '@programish/protocol';
+import { PROTOCOL_VERSION, encodeMessage, type BridgeRequest } from '@geeked/protocol';
 import { BRIDGE_VERSION, Bridge } from './handler';
 import type { QueryFn } from './sdk';
 import { collector, scripted, sdk } from './testing';

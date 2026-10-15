@@ -1,4 +1,4 @@
-import type { UsageReportEvent, UsageWindow } from '@programish/protocol';
+import type { UsageReportEvent, UsageWindow } from '@geeked/protocol';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { BridgeClient } from '../lib/bridge';
 import * as repo from '../lib/repo-usage';

@@ -1,4 +1,4 @@
-import type { UsageReportEvent, UsageWindow } from '@programish/protocol';
+import type { UsageReportEvent, UsageWindow } from '@geeked/protocol';
 import { createStore, useStore } from 'zustand';
 import type { BridgeClient } from '../lib/bridge';
 import { getBridgeClient } from '../lib/bridge-client';

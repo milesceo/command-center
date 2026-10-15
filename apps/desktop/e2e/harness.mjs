@@ -94,14 +94,14 @@ function installTauriShim() {
 }
 
 export async function startHarness({ real = process.env.E2E_REAL === '1' } = {}) {
-  const dbFile = join(mkdtempSync(join(tmpdir(), 'programish-e2e-')), 'programish.db');
+  const dbFile = join(mkdtempSync(join(tmpdir(), 'geeked-e2e-')), 'geeked.db');
   const db = openDatabase(dbFile);
   // E2E_PROD=1 serves the production build, which is what perf numbers should be taken from
   // (the dev server runs React's slower development build with StrictMode double rendering).
   let server;
   let url;
   if (process.env.E2E_PROD === '1') {
-    const outDir = mkdtempSync(join(tmpdir(), 'programish-dist-'));
+    const outDir = mkdtempSync(join(tmpdir(), 'geeked-dist-'));
     await build({
       root: desktop,
       logLevel: 'error',
@@ -122,7 +122,7 @@ export async function startHarness({ real = process.env.E2E_REAL === '1' } = {})
   const browser = await chromium.launch({ executablePath: findChromium() });
   const consoleErrors = [];
   const saved = new Map();
-  const saveDir = mkdtempSync(join(tmpdir(), 'programish-save-'));
+  const saveDir = mkdtempSync(join(tmpdir(), 'geeked-save-'));
   // The CSP the Rust protocol handler sends with every preview document: read from the source so the two cannot drift.
   const previewCsp = /const PREVIEW_CSP: &str = "([^"]+)"/.exec(
     readFileSync(join(desktop, 'src-tauri/src/preview.rs'), 'utf8'),
@@ -181,7 +181,7 @@ export async function startHarness({ real = process.env.E2E_REAL === '1' } = {})
           if (child && child.exitCode === null) return null;
           child = spawn(process.execPath, [bridgeEntry], {
             stdio: ['pipe', 'pipe', 'inherit'],
-            env: real ? process.env : { ...process.env, PROGRAMISH_QUERY_MODULE: fakeSdk },
+            env: real ? process.env : { ...process.env, GEEKED_QUERY_MODULE: fakeSdk },
           });
           // Writing to a killed sidecar raises EPIPE; the app learns of it from the exit event.
           child.stdin.on('error', () => {});
@@ -199,8 +199,8 @@ export async function startHarness({ real = process.env.E2E_REAL === '1' } = {})
         }
         case 'data_location': {
           // Stands in for the Rust command: a representative Windows path, never touched.
-          const dir = 'C:\\Users\\you\\AppData\\Roaming\\dev.engineerlish.programish';
-          return { dir, db_file: `${dir}\\programish.db` };
+          const dir = 'C:\\Users\\you\\AppData\\Roaming\\com.engineerlish.geeked';
+          return { dir, db_file: `${dir}\\geeked.db` };
         }
         case 'preview_set':
           previewDocs.set(args.id, args.html);
@@ -229,7 +229,7 @@ export async function startHarness({ real = process.env.E2E_REAL === '1' } = {})
     await page.addInitScript(
       ([t, l]) => {
         localStorage.setItem(
-          'programish-ui',
+          'geeked-ui',
           JSON.stringify({
             state: { theme: t, layout: l, sidebarOpen: true, rightPanelOpen: false },
             version: 0,
@@ -241,7 +241,7 @@ export async function startHarness({ real = process.env.E2E_REAL === '1' } = {})
     if (lock === 'skip') {
       await page.addInitScript(() =>
         localStorage.setItem(
-          'programish-lock-prefs',
+          'geeked-lock-prefs',
           JSON.stringify({ skipped: true, autoLockMinutes: 0, failures: 0, lockedUntil: 0 }),
         ),
       );

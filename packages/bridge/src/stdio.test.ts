@@ -7,7 +7,7 @@ import {
   parseEvent,
   type BridgeEvent,
   type BridgeRequest,
-} from '@programish/protocol';
+} from '@geeked/protocol';
 
 // Runs the built sidecar as a real process: the same wiring Tauri uses, with a
 // fake SDK module standing in for the (login-requiring) Claude runtime.
@@ -17,7 +17,7 @@ const fakeSdk = fileURLToPath(new URL('../test/fake-sdk.mjs', import.meta.url));
 function startBridge() {
   const child = spawn(process.execPath, [entry], {
     stdio: ['pipe', 'pipe', 'ignore'],
-    env: { ...process.env, PROGRAMISH_QUERY_MODULE: fakeSdk },
+    env: { ...process.env, GEEKED_QUERY_MODULE: fakeSdk },
   });
   const events: BridgeEvent[] = [];
   let buf = '';

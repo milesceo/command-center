@@ -1,4 +1,4 @@
-import type { Attachment, BridgeError, ToolsMode } from '@programish/protocol';
+import type { Attachment, BridgeError, ToolsMode } from '@geeked/protocol';
 
 /** Per-conversation knobs; also used for the not-yet-created "new chat" draft. */
 export interface ConversationSettings {

@@ -70,7 +70,7 @@ function main() {
   if (process.argv.includes('--placeholder')) return placeholders(triple, exe);
 
   // 1. The bridge, self-contained.
-  execFileSync('pnpm', ['--filter', '@programish/bridge', 'build:release'], {
+  execFileSync('pnpm', ['--filter', '@geeked/bridge', 'build:release'], {
     cwd: root,
     stdio: 'inherit',
     shell: process.platform === 'win32',

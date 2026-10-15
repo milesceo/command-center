@@ -14,7 +14,7 @@ export function Sidebar() {
   return (
     <aside className="flex w-64 shrink-0 flex-col border-r border-border bg-surface">
       <div className="flex items-center justify-between px-3 pt-3 pb-2">
-        <span className="px-1 text-[13px] font-semibold tracking-tight">Programish</span>
+        <span className="px-1 text-[13px] font-semibold tracking-tight">Geeked</span>
       </div>
 
       <div className="px-3 pb-2">

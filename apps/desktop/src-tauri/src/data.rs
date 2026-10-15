@@ -5,8 +5,8 @@ use std::path::PathBuf;
 use serde::Serialize;
 use tauri::{AppHandle, Manager};
 
-/// Same file name as `DB_URL` in lib.rs (`sqlite:programish.db`).
-pub const DB_FILE: &str = "programish.db";
+/// Same file name as `DB_URL` in lib.rs (`sqlite:geeked.db`).
+pub const DB_FILE: &str = "geeked.db";
 
 #[derive(Serialize)]
 pub struct DataLocation {

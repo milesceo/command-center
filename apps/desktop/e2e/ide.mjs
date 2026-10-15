@@ -1,5 +1,5 @@
 // Captures the editor-style shell and the PIN lock screen with the fake SDK and a few seeded threads.
-//   pnpm --filter @programish/bridge build
+//   pnpm --filter @geeked/bridge build
 //   E2E_CHROMIUM=<chrome> E2E_OUT=../../docs/ide node e2e/ide.mjs
 import { join } from 'node:path';
 import { outDir, startHarness } from './harness.mjs';

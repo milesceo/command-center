@@ -1,6 +1,6 @@
 import { tmpdir } from 'node:os';
 import { describe, expect, it } from 'vitest';
-import type { ChatRequest } from '@programish/protocol';
+import type { ChatRequest } from '@geeked/protocol';
 import { DEFAULT_SYSTEM_PROMPT, buildOptions } from './options';
 
 const base: ChatRequest = {
@@ -57,14 +57,14 @@ describe('Claude runtime location', () => {
 
   it('uses the runtime the installed app points at', () => {
     const options = buildOptions(request, new AbortController(), () => {}, {
-      PROGRAMISH_CLAUDE_EXECUTABLE: 'C:\\Program Files\\Programish\\claude.exe',
+      GEEKED_CLAUDE_EXECUTABLE: 'C:\\Program Files\\Geeked\\claude.exe',
     });
-    expect(options.pathToClaudeCodeExecutable).toBe('C:\\Program Files\\Programish\\claude.exe');
+    expect(options.pathToClaudeCodeExecutable).toBe('C:\\Program Files\\Geeked\\claude.exe');
   });
 
   it('leaves the SDK to find its own copy when nothing is configured', () => {
     for (const value of [undefined, '', '   ']) {
-      const env = value === undefined ? {} : { PROGRAMISH_CLAUDE_EXECUTABLE: value };
+      const env = value === undefined ? {} : { GEEKED_CLAUDE_EXECUTABLE: value };
       const options = buildOptions(request, new AbortController(), () => {}, env);
       expect('pathToClaudeCodeExecutable' in options).toBe(false);
     }

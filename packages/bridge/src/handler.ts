@@ -4,7 +4,7 @@ import {
   type BridgeEvent,
   type BridgeRequest,
   type ChatRequest,
-} from '@programish/protocol';
+} from '@geeked/protocol';
 import { runChat } from './chat';
 import { runUsage } from './usage-report';
 import { fromThrown } from './errors';

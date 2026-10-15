@@ -1,10 +1,10 @@
 import { tmpdir } from 'node:os';
 import type { Options } from '@anthropic-ai/claude-agent-sdk';
-import type { ChatRequest } from '@programish/protocol';
+import type { ChatRequest } from '@geeked/protocol';
 import { claudeExecutable } from './sdk';
 
 export const DEFAULT_SYSTEM_PROMPT = [
-  'You are Claude, chatting with a software developer in a desktop app called Programish.',
+  'You are Claude, chatting with a software developer in a desktop app called Geeked.',
   'Be direct and concise. Prefer working code over prose, use fenced code blocks with a language tag,',
   'and say so plainly when you are unsure.',
 ].join(' ');
@@ -12,7 +12,7 @@ export const DEFAULT_SYSTEM_PROMPT = [
 const READONLY_TOOLS = ['Read', 'Glob', 'Grep'];
 
 /**
- * Environment for the runtime. Programish is meant to run on the user's Claude
+ * Environment for the runtime. Geeked is meant to run on the user's Claude
  * subscription; a stray API key in the environment would silently make the
  * runtime bill the API instead, so those variables are removed (not read).
  */

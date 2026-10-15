@@ -39,7 +39,7 @@ describe('prompts store', () => {
     await store.getState().create(input());
     await store.getState().create(input({ kind: 'system', title: 'Pirate', body: 'Arr' }));
     const json = store.getState().exportJson();
-    expect(JSON.parse(json)).toMatchObject({ format: 'programish-prompts', version: 1 });
+    expect(JSON.parse(json)).toMatchObject({ format: 'geeked-prompts', version: 1 });
 
     const otherDb = createTestDb();
     const other = createPromptsStore(() => Promise.resolve(otherDb));

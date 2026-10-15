@@ -1,5 +1,5 @@
 import { createInterface } from 'node:readline';
-import { encodeMessage } from '@programish/protocol';
+import { encodeMessage } from '@geeked/protocol';
 import { Bridge } from './handler';
 import { loadQuery } from './sdk';
 

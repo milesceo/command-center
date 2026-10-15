@@ -12,7 +12,7 @@ export function isTauri(): boolean {
 export function createTauriTransport(): BridgeTransport {
   const requireTauri = () => {
     if (!isTauri())
-      throw new Error('Chat needs the Programish desktop app; this is a browser preview.');
+      throw new Error('Chat needs the Geeked desktop app; this is a browser preview.');
   };
   return {
     async start() {

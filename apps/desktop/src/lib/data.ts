@@ -11,7 +11,7 @@ const TABLES = [
 ] as const;
 export type Table = (typeof TABLES)[number];
 
-export const EXPORT_FORMAT = 'programish-data';
+export const EXPORT_FORMAT = 'geeked-data';
 export const EXPORT_VERSION = 1;
 
 export interface DataExport {

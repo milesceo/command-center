@@ -1,6 +1,6 @@
 # Contributing
 
-Programish is a personal project, but it is developed like a team project: small changes, reviewed through pull requests, with CI green before merging.
+Geeked is a personal project, but it is developed like a team project: small changes, reviewed through pull requests, with CI green before merging.
 
 ## Workflow
 
@@ -40,7 +40,7 @@ Previewed code is untrusted. Read the "Preview isolation" notes in `CLAUDE.md` b
 
 ## End-to-end checks
 
-`pnpm --filter @programish/desktop e2e` drives the real UI in headless Chromium against the real bridge process and a real SQLite file, with the Tauri side emulated (`apps/desktop/e2e/harness.mjs`). It is not part of CI because it needs a Chromium binary (`E2E_CHROMIUM`). Run it, and `E2E_PROD=1 node apps/desktop/e2e/perf.mjs`, after touching streaming, the transcript or the stores.
+`pnpm --filter @geeked/desktop e2e` drives the real UI in headless Chromium against the real bridge process and a real SQLite file, with the Tauri side emulated (`apps/desktop/e2e/harness.mjs`). It is not part of CI because it needs a Chromium binary (`E2E_CHROMIUM`). Run it, and `E2E_PROD=1 node apps/desktop/e2e/perf.mjs`, after touching streaming, the transcript or the stores.
 
 ## Accessibility and performance checks
 

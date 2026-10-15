@@ -81,10 +81,10 @@ export function AppLockSection() {
   return (
     <Section
       title="App lock"
-      hint="A PIN screen when Programish starts or sits idle. It keeps casual snoopers out; it does not encrypt your chats on disk."
+      hint="A PIN screen when Geeked starts or sits idle. It keeps casual snoopers out; it does not encrypt your chats on disk."
     >
       {!hasPin && mode === 'idle' && (
-        <Row label="PIN" hint="No PIN is set, so Programish opens straight to your threads.">
+        <Row label="PIN" hint="No PIN is set, so Geeked opens straight to your threads.">
           <Button size="sm" onClick={() => setMode('add')}>
             Set a PIN
           </Button>

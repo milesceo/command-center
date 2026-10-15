@@ -2,7 +2,7 @@
 //!
 //! The frontend never talks to the process directly: it calls `bridge_start` /
 //! `bridge_send` and receives each stdout line as a `bridge://line` event. The
-//! lines are NDJSON defined by the `@programish/protocol` package; Rust treats
+//! lines are NDJSON defined by the `@geeked/protocol` package; Rust treats
 //! them as opaque strings so the protocol lives in exactly one place (TypeScript).
 
 use std::io::{BufRead, BufReader, Write};
@@ -66,7 +66,7 @@ fn installed_launch(exe_dir: &Path, resource_dir: &Path) -> Result<Launch, Strin
     ] {
         if !path.is_file() {
             return Err(format!(
-                "The {what} is missing at {}. Reinstall Programish.",
+                "The {what} is missing at {}. Reinstall Geeked.",
                 path.display()
             ));
         }
@@ -74,7 +74,7 @@ fn installed_launch(exe_dir: &Path, resource_dir: &Path) -> Result<Launch, Strin
     Ok(Launch {
         program: node,
         args: vec![main],
-        env: vec![("PROGRAMISH_CLAUDE_EXECUTABLE", claude)],
+        env: vec![("GEEKED_CLAUDE_EXECUTABLE", claude)],
     })
 }
 
@@ -92,7 +92,7 @@ fn find_on_path(base: &str) -> Option<PathBuf> {
 fn dev_launch(entry: PathBuf) -> Result<Launch, String> {
     if !entry.exists() {
         return Err(format!(
-            "Bridge entry not found at {}. Run `pnpm --filter @programish/bridge build`.",
+            "Bridge entry not found at {}. Run `pnpm --filter @geeked/bridge build`.",
             entry.display()
         ));
     }
@@ -104,7 +104,7 @@ fn dev_launch(entry: PathBuf) -> Result<Launch, String> {
 }
 
 fn resolve_launch(app: &AppHandle) -> Result<Launch, String> {
-    if let Ok(path) = std::env::var("PROGRAMISH_BRIDGE_ENTRY") {
+    if let Ok(path) = std::env::var("GEEKED_BRIDGE_ENTRY") {
         return dev_launch(PathBuf::from(path));
     }
     if cfg!(debug_assertions) {
@@ -207,7 +207,7 @@ mod tests {
     }
 
     fn scratch(name: &str) -> PathBuf {
-        let dir = std::env::temp_dir().join(format!("programish-{name}-{}", std::process::id()));
+        let dir = std::env::temp_dir().join(format!("geeked-{name}-{}", std::process::id()));
         let _ = fs::remove_dir_all(&dir);
         fs::create_dir_all(&dir).unwrap();
         dir
@@ -227,7 +227,7 @@ mod tests {
         assert_eq!(
             launch.env,
             vec![(
-                "PROGRAMISH_CLAUDE_EXECUTABLE",
+                "GEEKED_CLAUDE_EXECUTABLE",
                 res.join("bridge").join(exe_name("claude"))
             )]
         );
@@ -255,22 +255,22 @@ mod tests {
     #[test]
     fn verbatim_windows_prefixes_are_dropped_but_unc_paths_are_kept() {
         assert_eq!(
-            plain_path(PathBuf::from(r"\\?\D:\a\_temp\Programish")),
-            PathBuf::from(r"D:\a\_temp\Programish")
+            plain_path(PathBuf::from(r"\\?\D:\a\_temp\Geeked")),
+            PathBuf::from(r"D:\a\_temp\Geeked")
         );
         assert_eq!(
             plain_path(PathBuf::from(r"\\?\UNC\server\share")),
             PathBuf::from(r"\\?\UNC\server\share")
         );
         assert_eq!(
-            plain_path(PathBuf::from("/usr/lib/Programish")),
-            PathBuf::from("/usr/lib/Programish")
+            plain_path(PathBuf::from("/usr/lib/Geeked")),
+            PathBuf::from("/usr/lib/Geeked")
         );
     }
 
     #[test]
     fn dev_launch_needs_the_built_bundle() {
         let err = dev_launch(PathBuf::from("/definitely/not/here.mjs")).unwrap_err();
-        assert!(err.contains("pnpm --filter @programish/bridge build"));
+        assert!(err.contains("pnpm --filter @geeked/bridge build"));
     }
 }

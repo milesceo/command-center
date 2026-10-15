@@ -9,7 +9,7 @@ import {
   type PongEvent,
   type UsageReportEvent,
   type UsageRequest,
-} from '@programish/protocol';
+} from '@geeked/protocol';
 
 /** The raw line channel to the sidecar. Tauri implements it; tests fake it. */
 export interface BridgeTransport {

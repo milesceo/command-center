@@ -62,7 +62,7 @@ export function isHighlightable(language: string): boolean {
   return language in LOADERS;
 }
 
-const THEME_NAME = 'programish';
+const THEME_NAME = 'geeked';
 
 let highlighter: Promise<HighlighterCore> | undefined;
 const loaded = new Map<string, Promise<void>>();

@@ -1,10 +1,21 @@
 # Changelog
 
-All notable changes to Programish are recorded here. The format follows
+All notable changes to Geeked (called Programish until 1.1.0) are recorded here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and the project uses
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+
+### Changed
+
+- The app is now called **Geeked** (it was Programish): window title, installer, executable
+  (`geeked.exe`), workspace packages (`@geeked/*`), Rust crate, environment variables
+  (`GEEKED_*`) and export file names. Prompt libraries exported under the old name still import.
+- The bundle identifier is now `com.engineerlish.geeked`, which moves the app data folder. On
+  the first start Geeked copies the database and the saved settings (theme, layout, PIN lock)
+  from the old location, verifies every file, and only then records the migration. The old
+  data is never deleted or modified; remove it yourself once you are satisfied. A new installer
+  installs beside the old Programish app, which you can uninstall afterwards.
 
 ### Added
 

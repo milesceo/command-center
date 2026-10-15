@@ -71,7 +71,7 @@ starts the Claude login.
 3. Clone and set the identity **repo-locally** (never globally):
    ```
    git clone https://github.com/engineerlish/programish.git
-   cd programish
+   cd geeked
    git config user.name engineerlish
    git config user.email 143038945+engineerlish@users.noreply.github.com
    git config core.autocrlf false
@@ -85,7 +85,7 @@ starts the Claude login.
 
 Checks: `pnpm check` (format, lint, typecheck, tests). Browser-only UI: `pnpm dev:web` (no bridge,
 so no chat). Screenshots/e2e need Chrome: set `E2E_CHROMIUM` and run `node apps/desktop/e2e/ide.mjs`
-after `pnpm --filter @programish/bridge build`.
+after `pnpm --filter @geeked/bridge build`.
 
 ## Git rules reminder
 

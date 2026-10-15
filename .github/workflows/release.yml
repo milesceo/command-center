@@ -54,7 +54,7 @@ jobs:
       # beforeBuildCommand bundles the bridge, copies node.exe and the SDK's claude.exe, then
       # builds the frontend; `tauri build` compiles the app and packages the NSIS installer.
       - name: Build the installer
-        run: pnpm --filter @programish/desktop tauri build --bundles nsis
+        run: pnpm --filter @geeked/desktop tauri build --bundles nsis
 
       - name: Locate the installer
         id: installer
@@ -69,7 +69,7 @@ jobs:
         shell: pwsh
         run: |
           $installer = (Resolve-Path "${{ steps.installer.outputs.path }}").Path
-          $target = Join-Path $env:RUNNER_TEMP 'Programish'
+          $target = Join-Path $env:RUNNER_TEMP 'Geeked'
           # /D must be the last argument and must not be quoted.
           $p = Start-Process -FilePath $installer -ArgumentList '/S', "/D=$target" -Wait -PassThru
           if ($p.ExitCode -ne 0) { throw "installer exited with $($p.ExitCode)" }
@@ -83,8 +83,8 @@ jobs:
       - name: Launch the installed app and check it starts its bridge
         shell: pwsh
         run: |
-          $app = Join-Path $env:INSTALL_DIR 'programish.exe'
-          if (-not (Test-Path $app)) { throw "programish.exe is not in $env:INSTALL_DIR" }
+          $app = Join-Path $env:INSTALL_DIR 'geeked.exe'
+          if (-not (Test-Path $app)) { throw "geeked.exe is not in $env:INSTALL_DIR" }
           $out = Join-Path $env:RUNNER_TEMP 'app.out.log'
           $err = Join-Path $env:RUNNER_TEMP 'app.err.log'
           $proc = Start-Process -FilePath $app -PassThru -RedirectStandardOutput $out -RedirectStandardError $err
@@ -105,14 +105,14 @@ jobs:
           $bridge = $null
           for ($i = 0; $i -lt 60 -and -not $bridge; $i++) {
             Start-Sleep -Milliseconds 500
-            if ($proc.HasExited) { Show-State; throw "programish.exe exited early with code $($proc.ExitCode)" }
+            if ($proc.HasExited) { Show-State; throw "geeked.exe exited early with code $($proc.ExitCode)" }
             $bridge = Get-CimInstance Win32_Process -Filter "ParentProcessId = $($proc.Id) AND Name = 'node.exe'"
           }
           if (-not $bridge) { Show-State; throw 'the app never started its bridge' }
           Write-Host "bridge: $($bridge.CommandLine)"
           if ($bridge.CommandLine -notlike "*$env:INSTALL_DIR*main.mjs*") { Show-State; throw 'the bridge is not the bundled one' }
           Start-Sleep -Seconds 5
-          if ($proc.HasExited) { Show-State; throw "programish.exe crashed with code $($proc.ExitCode)" }
+          if ($proc.HasExited) { Show-State; throw "geeked.exe crashed with code $($proc.ExitCode)" }
           Stop-Process -Id $proc.Id -Force
 
       - name: Checksum
@@ -139,7 +139,7 @@ jobs:
           cd apps/desktop/src-tauri/target/release/bundle/nsis
           gh release create "$GITHUB_REF_NAME" \
             --repo "$GITHUB_REPOSITORY" \
-            --title "Programish ${GITHUB_REF_NAME#v}" \
+            --title "Geeked ${GITHUB_REF_NAME#v}" \
             --notes-file "$GITHUB_WORKSPACE/release-notes.md" \
             --verify-tag \
             ./*-setup.exe ./SHA256SUMS.txt

@@ -1,7 +1,7 @@
 import { useEffect, useRef } from 'react';
 import { bannerFrame, bannerRows, bannerWidth, fieldFrame } from '../../lib/ascii-field';
 
-const WORD = 'PROGRAMISH';
+const WORD = 'GEEKED';
 const FPS = 24;
 /** Below this many columns the wordmark is drawn at one column per pixel; above, doubled. */
 const WIDE = 130;

@@ -1,5 +1,5 @@
 // A stand-in for @anthropic-ai/claude-agent-sdk used by process-level tests and
-// the e2e harness (via PROGRAMISH_QUERY_MODULE). Behavior is chosen by the prompt:
+// the e2e harness (via GEEKED_QUERY_MODULE). Behavior is chosen by the prompt:
 //   "slow ..."  streams words forever-ish (until aborted), to exercise Stop
 //   "login ..." behaves like a logged-out runtime
 //   "limit ..." behaves like an exhausted 5-hour window

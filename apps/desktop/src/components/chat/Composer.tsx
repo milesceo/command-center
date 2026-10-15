@@ -1,5 +1,5 @@
 import { ArrowUp, Paperclip, Square, X } from 'lucide-react';
-import { MODEL_OPTIONS, type Attachment } from '@programish/protocol';
+import { MODEL_OPTIONS, type Attachment } from '@geeked/protocol';
 import {
   useCallback,
   useEffect,
@@ -229,7 +229,7 @@ export function Composer() {
           onSelect={(e) => setCaret(e.currentTarget.selectionStart)}
           onKeyDown={onKeyDown}
           onPaste={onPaste}
-          placeholder="Message Programish…"
+          placeholder="Message Geeked…"
           aria-label="Message"
           className="selectable block max-h-56 min-h-9 w-full resize-none bg-transparent px-2 py-1.5 font-mono text-[13px] outline-none placeholder:text-fg-subtle"
         />

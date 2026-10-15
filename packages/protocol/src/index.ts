@@ -1,5 +1,5 @@
 /**
- * Wire protocol between the Programish desktop app and the bridge sidecar.
+ * Wire protocol between the Geeked desktop app and the bridge sidecar.
  *
  * Transport: newline-delimited JSON (one JSON object per line) over the
  * sidecar's stdin/stdout. stderr is reserved for human-readable logs and is

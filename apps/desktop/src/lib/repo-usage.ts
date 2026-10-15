@@ -1,4 +1,4 @@
-import type { UsageWindow } from '@programish/protocol';
+import type { UsageWindow } from '@geeked/protocol';
 import type { Db } from './db';
 
 /**

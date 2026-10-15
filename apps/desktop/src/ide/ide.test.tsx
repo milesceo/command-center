@@ -138,7 +138,7 @@ describe('lock screen', () => {
     expect(await screen.findByTestId('ide-shell')).toBeTruthy();
     expect(useLockStore.getState().hasPin).toBe(true);
     // Only a hash is stored.
-    expect(localStorage.getItem('programish-lock')).not.toContain('4821');
+    expect(localStorage.getItem('geeked-lock')).not.toContain('4821');
   });
 
   it('rejects a mismatched confirmation', async () => {

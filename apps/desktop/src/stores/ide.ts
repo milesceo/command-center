@@ -92,7 +92,7 @@ export const useIdeStore = create<IdeState>()(
         })),
     }),
     {
-      name: 'programish-ide',
+      name: 'geeked-ide',
       partialize: ({
         assistantOpen,
         assistantWidth,
