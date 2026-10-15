@@ -6,7 +6,8 @@ export type ShortcutId =
   | 'togglePreview'
   | 'toggleDiffMode'
   | 'toggleSidebar'
-  | 'showShortcuts';
+  | 'showShortcuts'
+  | 'toggleQa';
 
 export interface Shortcut {
   id: ShortcutId;
@@ -26,6 +27,11 @@ export const SHORTCUTS: readonly Shortcut[] = [
   },
   { id: 'toggleSidebar', keys: 'Mod+B', description: 'Show or hide the sidebar' },
   { id: 'showShortcuts', keys: 'Mod+/', description: 'Show this list' },
+  {
+    id: 'toggleQa',
+    keys: 'Mod+Shift+Q',
+    description: 'Show or hide the QA checklist (when enabled)',
+  },
 ];
 
 /** Shortcuts that are built into controls rather than handled globally (documented in the dialog). */

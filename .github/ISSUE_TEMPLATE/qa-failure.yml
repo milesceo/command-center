@@ -1,0 +1,47 @@
+name: QA failure
+description: A manual test item from the in-app QA panel (or docs/TESTING.md) did not pass.
+title: 'QA <ID>: '
+labels: ['qa-failure', 'needs-triage']
+body:
+  - type: input
+    id: item
+    attributes:
+      label: Checklist item
+      description: The ID shown in the QA panel, for example `LOCK-03`.
+      placeholder: LOCK-03
+    validations:
+      required: true
+  - type: dropdown
+    id: severity
+    attributes:
+      label: How bad is it?
+      options:
+        - Blocker (cannot use the app, or a security or privacy problem)
+        - Major (a feature is broken or confusing)
+        - Minor (cosmetic or small)
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected
+      description: What the checklist said should happen.
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: What happened instead
+      description: Paste a screenshot straight into this box if it helps.
+    validations:
+      required: true
+  - type: textarea
+    id: build
+    attributes:
+      label: Build
+      description: The QA panel's "Report" button fills this in (version, platform, tier, theme).
+      render: text
+  - type: textarea
+    id: notes
+    attributes:
+      label: Anything else

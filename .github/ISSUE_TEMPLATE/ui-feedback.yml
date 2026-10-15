@@ -1,0 +1,34 @@
+name: UI feedback
+description: Something about how a screen looks, feels or is laid out that you want changed.
+title: 'UI: '
+labels: ['ui-feedback', 'needs-triage']
+body:
+  - type: input
+    id: screen
+    attributes:
+      label: Which screen or component
+      placeholder: Lock screen, onboarding step 4, provider picker, ...
+    validations:
+      required: true
+  - type: textarea
+    id: change
+    attributes:
+      label: What should change
+      description: Be as specific as you like (sizes, spacing, colors, copy). A screenshot or a Figma link helps.
+    validations:
+      required: true
+  - type: input
+    id: reference
+    attributes:
+      label: Figma frame or Storybook story (optional)
+      placeholder: https://www.figma.com/design/...
+  - type: dropdown
+    id: priority
+    attributes:
+      label: Priority
+      options:
+        - Do next
+        - Soon
+        - Whenever
+    validations:
+      required: true

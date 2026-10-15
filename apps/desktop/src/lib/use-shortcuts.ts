@@ -5,6 +5,7 @@ import { isMacPlatform, matchShortcut, type ShortcutId } from './shortcuts';
 import { chatStore } from '../stores/chat';
 import { conversationsStore } from '../stores/conversations';
 import { previewStore } from '../stores/preview';
+import { useQa } from '../stores/qa';
 import { toast } from '../stores/toast';
 import { useUiStore } from '../stores/ui';
 
@@ -45,6 +46,9 @@ async function run(id: ShortcutId) {
       return;
     case 'showShortcuts':
       ui.setShortcutsOpen(!ui.shortcutsOpen);
+      return;
+    case 'toggleQa':
+      useQa.getState().toggleOpen();
       return;
   }
 }

@@ -94,6 +94,12 @@ This repo is the owner's professional portfolio; all work is attributed to them 
 - **Status dots** (`components/status/StatusDot`) sit in the chat header picker and on the Settings AI agents cards; hover shows the summary, click shows incidents with links. **New models**: the first time a provider is seen its list is a silent baseline; afterwards a new chat-capable id for a _connected_ (enabled) provider produces one dismissible notice and is added to that provider's model picker (`mergeModels`). Embedding, speech and image ids are never announced.
 - The status repo is a data source, not a dependency: with no network and no cache the dots are grey and everything else works. Never let a feed value reach a shell, a URL other than an `http(s)` link the user clicks, or HTML.
 
+### Manual testing and design tools
+
+- **Manual test list**: `apps/desktop/src/qa/checklist.ts` is the single source (dependency-free so Node can load it). The in-app **QA panel** (`qa/QaPanel`, Ctrl+Shift+Q; on by default in dev builds, Settings > About > QA checklist panel for release builds) shows it with one-click setup (`qa/scenarios.ts`: safe, in-memory or Settings-level only; never sets a PIN, writes a key or erases data), Pass / Fail / Skip, and a **Report on GitHub** button that opens a prefilled `qa-failure.yml` issue (no token; the user presses Submit). `pnpm qa:docs` renders it to `docs/TESTING.md`, and `pnpm check` fails when that file is stale. When a change adds something automation cannot verify, add items there and list their IDs under "Needs your eyes" in the PR. Bump an item's `rev` when its question changes.
+- **GitHub is the tracker**: labels `qa-failure`, `ui-feedback`, `needs-triage`, `severity:*`, `area:*`; issue forms in `.github/ISSUE_TEMPLATE`; PR template in `.github/pull_request_template.md`.
+- **Design tools** (`docs/design-tools.md`): Storybook (`pnpm storybook`, stories beside components, toolbar sets theme/palette/density/motion/tier, MCP at `http://localhost:6006/mcp` via `.mcp.json`) and Figma (official MCP plugin; `pnpm design:tokens` exports `docs/design/tokens.json`, checked in `pnpm check`). Add a story for any new reusable component or screen.
+
 ## Folder structure
 
 ```

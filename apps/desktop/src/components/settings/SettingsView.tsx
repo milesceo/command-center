@@ -19,6 +19,8 @@ import { checkName, NAME_MAX } from '../../lib/prefs';
 import { usePrefs } from '../../stores/prefs';
 import { CODE_FONT_SIZES, useSettings } from '../../stores/settings';
 import { toast } from '../../stores/toast';
+import { useQa } from '../../stores/qa';
+import { Switch } from '../ui/switch';
 import { useUiStore } from '../../stores/ui';
 import { usageStore } from '../../stores/usage';
 import { Button } from '../ui/button';
@@ -53,6 +55,7 @@ const CLEAR_COPY: Record<ClearScope, { button: string; title: string; body: stri
 /** Preferences, defaults for new chats, and what the app stores (with export and clear). */
 export function SettingsView() {
   const settings = useSettings((s) => s);
+  const qaEnabled = useQa((s) => s.enabled);
   const prefs = usePrefs((s) => s.prefs);
   const [name, setName] = useState(prefs.profile.name);
   const nameCheck = checkName(name);
@@ -298,6 +301,16 @@ export function SettingsView() {
             ChatGPT through your subscriptions and their official CLIs, Grok through an API key or
             its CLI. Keys stay in the Windows Credential Manager.
           </p>
+          <Row
+            label="QA checklist panel"
+            hint="A testing aid: the manual test list with one-click setup and GitHub issue reports. Ctrl+Shift+Q."
+          >
+            <Switch
+              label="QA checklist panel"
+              checked={qaEnabled}
+              onChange={(v) => useQa.getState().setEnabled(v)}
+            />
+          </Row>
           <div className="flex flex-wrap gap-2">
             <Button size="sm" onClick={() => settings.reset()}>
               Reset code font and new-chat settings

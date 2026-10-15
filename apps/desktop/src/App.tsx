@@ -25,6 +25,7 @@ import { useUiStore } from './stores/ui';
 import { useStatus } from './stores/status';
 import { useVisibility } from './stores/visibility';
 import { ModelNotices } from './components/status/ModelNotices';
+import { QaPanel } from './qa/QaPanel';
 
 export function App() {
   const layout = useUiStore((s) => s.layout);
@@ -126,6 +127,7 @@ export function App() {
             <ShortcutsDialog />
             <CommandPalette />
             <ModelNotices />
+            <QaPanel />
           </>
         )}
       </LockGate>

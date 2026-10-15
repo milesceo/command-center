@@ -8,6 +8,10 @@ All notable changes to Geeked (called Programish until 1.1.0) are recorded here.
 
 ### Added
 
+- A QA checklist panel (Ctrl+Shift+Q) with one-click setup, Pass/Fail/Skip and prefilled GitHub
+  issue reports, a generated `docs/TESTING.md`, issue forms and a PR template.
+- Storybook with stories for the UI, a toolbar for theme, palette, density, motion and tier, and
+  an MCP server for Claude; a design-token export for Figma.
 - A launch splash with the spinning 3D ASCII logo, and PIN entry on eight circles with a reveal
   toggle (the circles are the input; a hidden field takes the typing). Home keeps a still logo.
 - Provider status dots and new-model notices, read from the public

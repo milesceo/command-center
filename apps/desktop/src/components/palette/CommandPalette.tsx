@@ -12,6 +12,7 @@ import { conversationsStore } from '../../stores/conversations';
 import { useComposerStore } from '../../stores/composer';
 import { useIdeStore } from '../../stores/ide';
 import { useLockStore } from '../../stores/lock';
+import { useQa } from '../../stores/qa';
 import { usePrompts } from '../../stores/prompts';
 import { toast } from '../../stores/toast';
 import { useUiStore, type View } from '../../stores/ui';
@@ -74,6 +75,21 @@ function useCommands(conversations: Conversation[]): {
             toast('Set a PIN in Settings to use the lock');
             ui().setView('settings');
           }
+        },
+      },
+      {
+        id: 'qa-panel',
+        title: 'Show QA checklist',
+        group: 'Actions',
+        shortcut: 'Mod+Shift+Q',
+        keywords: 'test testing checklist manual qa',
+        run: () => {
+          const qa = useQa.getState();
+          if (!qa.enabled) {
+            toast('Turn on the QA checklist in Settings > About first');
+            return;
+          }
+          qa.setOpen(true);
         },
       },
       {
