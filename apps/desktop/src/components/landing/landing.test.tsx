@@ -36,10 +36,19 @@ afterEach(() => {
 });
 
 describe('landing view', () => {
-  it('shows the mark, the ASCII logo and a launch message', async () => {
+  it('shows the mark, a still ASCII logo and a launch message', async () => {
+    vi.useFakeTimers();
     render(<LandingView />);
     expect(screen.getByTestId('geeked-mark')).toBeTruthy();
-    expect(screen.getByTestId('ascii-logo')).toBeTruthy();
+    // The corner logo does not spin on Home, even on the fastest tier.
+    const logo = screen.getByTestId('ascii-logo');
+    expect(logo.getAttribute('data-size')).toBe('corner');
+    expect(logo.getAttribute('data-fps')).toBe('0');
+    const frame = logo.textContent;
+    expect(frame?.replace(/\s/g, '').length).toBeGreaterThan(50);
+    await act(async () => void (await vi.advanceTimersByTimeAsync(3000)));
+    expect(screen.getByTestId('ascii-logo').textContent).toBe(frame);
+    vi.useRealTimers();
     // The element is re-keyed when the line arrives, so look it up again each time.
     await waitFor(() =>
       expect(screen.getByTestId('launch-message').textContent?.length).toBeGreaterThan(0),

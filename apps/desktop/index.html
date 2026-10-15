@@ -15,9 +15,66 @@
         }
       } catch (_) {}
     </script>
+    <style>
+      /* The launch frame, visible before any script runs; React replaces it with the splash. */
+      html,
+      body {
+        margin: 0;
+        height: 100%;
+        background: #0b0b0d;
+      }
+      html[data-theme='light'],
+      html[data-theme='light'] body {
+        background: #fcfcfd;
+      }
+      .boot {
+        position: fixed;
+        inset: 0;
+        display: grid;
+        place-items: center;
+      }
+      .boot-logo {
+        margin: 0;
+        width: 120ch;
+        height: calc(16 * 1.15em);
+        overflow: hidden;
+        font:
+          700 min(12px, calc((100vw - 48px) / 72)) / 1.15 'Geist Mono Variable',
+          ui-monospace,
+          'Cascadia Code',
+          Consolas,
+          monospace;
+        color: #8b93ff;
+      }
+      html[data-theme='light'] .boot-logo {
+        color: #5b63e6;
+      }
+    </style>
   </head>
   <body>
-    <div id="root"></div>
+    <div id="root">
+      <!-- boot-logo:start -->
+      <div class="boot">
+        <pre class="boot-logo" aria-hidden="true">
+                                                                                                                        
+                                                                                                                        
+                                                                                                                        
+             !!!!!!!!!!!!!!! !!=======                                                                                  
+           !!!!!!!!!!!!!!!!!!!!==============!!============== !===                                                      
+          !!!!!!,,,,,,,,,,,,!!!==============!!==============!!===    !!!!==!!!==================                       
+          !!!!!!!!!!!!!!!!!!!!!====         !!!===...........!!=== !!!!=====!!!========================                 
+          !!!!!!!!!!!!!!!!!!!!!===========  !!!============ !!!=======!=== !!!!==..........==============               
+          !!!!!!!,,,,,,,,!!!!!!===========  !!!============ !!!========..  !!!!=================  =======               
+          !!!!!!!!!!!!!!!!!!!!!!==          !!!===........  !!!=========== !!!!=================  =======               
+             !!!!!!!!!!!!  !!!!!=============!!==============!!=== !!!!=== !!!!==  ..    =======  =======               
+             !,,,,,,,,,!!  !!!!!=============!!==============!!===  ...!!!==!!!==========================               
+                                             ................!....    !!!!===!!========================                 
+                                                                                             ........                   
+                                                                                                                        
+                                                                                                                        </pre>
+      </div>
+      <!-- boot-logo:end -->
+    </div>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>

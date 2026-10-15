@@ -4,6 +4,7 @@ import { AUTO_LOCK_CHOICES, type AutoLockMinutes } from '../../lib/prefs';
 import { useLockStore } from '../../stores/lock';
 import { usePrefs } from '../../stores/prefs';
 import { toast } from '../../stores/toast';
+import { PinCircles } from '../pin/PinCircles';
 import { PinSetup } from '../prefs/PinSetup';
 import { Button } from '../ui/button';
 import { Segmented } from '../ui/segmented';
@@ -27,6 +28,7 @@ export function AppLockSection() {
   const setAutoLock = usePrefs((s) => s.setAutoLock);
   const [mode, setMode] = useState<Mode>('idle');
   const [current, setCurrent] = useState('');
+  const [revealCurrent, setRevealCurrent] = useState(false);
   const [next, setNext] = useState<string | null>(null);
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
@@ -36,6 +38,7 @@ export function AppLockSection() {
   const reset = () => {
     setMode('idle');
     setCurrent('');
+    setRevealCurrent(false);
     setNext(null);
     setError('');
     setAttempt((n) => n + 1);
@@ -127,18 +130,19 @@ export function AppLockSection() {
           }}
         >
           {needsCurrent && (
-            <label className="flex flex-col gap-1 text-[12px] text-fg-muted">
-              Current PIN
-              <input
-                type="password"
-                autoComplete="off"
-                autoFocus
-                maxLength={PIN_MAX * 2}
+            <div className="flex flex-col gap-2">
+              <p id="current-pin-label" className="text-[12px] text-fg-muted">
+                Current PIN
+              </p>
+              <PinCircles
                 value={current}
-                onChange={(e) => setCurrent(e.target.value)}
-                className="h-9 rounded-control border border-border bg-bg px-3 font-mono text-[14px] tracking-widest text-fg outline-none focus:border-accent"
+                onChange={setCurrent}
+                labelledBy="current-pin-label"
+                reveal={revealCurrent}
+                onRevealChange={setRevealCurrent}
+                autoFocus
               />
-            </label>
+            </div>
           )}
           {needsNew && <PinSetup onChange={setNext} autoFocus={!needsCurrent} />}
           <p className="text-[11px] text-fg-subtle">

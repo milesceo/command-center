@@ -7,17 +7,34 @@ import { usePrefs } from '../../stores/prefs';
 import { isPaused, useVisibility } from '../../stores/visibility';
 
 export const LOGO_WORD = 'GEEKED';
-const COLS = 120;
-const ROWS = 16;
+export const LOGO_COLS = 120;
+export const LOGO_ROWS = 16;
+
+interface Props {
+  className?: string;
+  /**
+   * `splash` is the large, centered, spinning logo of the launch screen; `corner` is the small
+   * one in the Home screen's top-left corner.
+   */
+  size?: 'splash' | 'corner';
+  /** Draw one fixed frame and never animate (the Home corner logo). */
+  still?: boolean;
+}
+
+/** `splash` scales with the window (120 columns at 0.6em wide); `corner` is a fixed 8 px. */
+const FONT_SIZE = {
+  splash: 'min(12px, calc((100vw - 48px) / 72))',
+  corner: '8px',
+} as const;
 
 /**
- * "GEEKED" as a spinning 3D solid in ASCII (see `lib/ascii3d.ts`), drawn into a <pre> in the
- * accent color. The frame rate comes from the performance tier; at Lightest, or with animations
- * off, it draws one still frame. It pauses while the window is hidden or minimized, and the
- * work is one small render per frame written straight to the DOM (no React state per frame).
+ * "GEEKED" as a 3D solid in ASCII (see `lib/ascii3d.ts`), drawn into a <pre> in the accent color.
+ * It spins only on the splash screen: the frame rate comes from the performance tier, it is one
+ * still frame at Lightest or with animations off, and it pauses while the window is hidden or
+ * minimized. The still frame is a three-quarter view that reads as GEEKED. Frames are written
+ * straight to the DOM, never through React state.
  */
-export function AsciiLogo({ className }: { className?: string }) {
-  const tier = usePrefs((s) => s.prefs.performance.tier);
+export function AsciiLogo({ className, size = 'splash', still: forceStill = false }: Props) {
   const prefs = usePrefs((s) => s.prefs);
   const os = useOsEnvironment();
   const windowVisible = useVisibility((s) => s.windowVisible);
@@ -26,9 +43,9 @@ export function AsciiLogo({ className }: { className?: string }) {
   );
   const pre = useRef<HTMLPreElement>(null);
 
-  const fps = tierFlags(tier).asciiFps;
+  const fps = tierFlags(prefs.performance.tier).asciiFps;
   const motion = resolveAppearance(prefs, os).motion;
-  const still = fps === 0 || motion === 'off';
+  const still = forceStill || fps === 0 || motion === 'off';
   const paused = isPaused(windowVisible, documentHidden);
 
   useEffect(() => {
@@ -41,7 +58,9 @@ export function AsciiLogo({ className }: { className?: string }) {
     const el = pre.current;
     if (!el) return;
     const draw = (seconds: number) => {
-      el.textContent = renderSpin(LOGO_WORD, angleAt(seconds, still), COLS, ROWS).join('\n');
+      el.textContent = renderSpin(LOGO_WORD, angleAt(seconds, still), LOGO_COLS, LOGO_ROWS).join(
+        '\n',
+      );
     };
     draw(0);
     if (still || paused) return;
@@ -58,10 +77,16 @@ export function AsciiLogo({ className }: { className?: string }) {
       ref={pre}
       aria-hidden="true"
       data-testid="ascii-logo"
+      data-size={size}
       data-fps={still || paused ? 0 : fps}
       // Fixed size plus containment: a new frame repaints this box and nothing around it.
-      style={{ width: `${COLS}ch`, height: `${ROWS * 1.15}em`, contain: 'strict' }}
-      className={`m-0 overflow-hidden font-mono text-[8px] leading-[1.15] font-bold text-accent select-none ${className ?? ''}`}
+      style={{
+        fontSize: FONT_SIZE[size],
+        width: `${LOGO_COLS}ch`,
+        height: `${LOGO_ROWS * 1.15}em`,
+        contain: 'strict',
+      }}
+      className={`m-0 overflow-hidden font-mono leading-[1.15] font-bold text-accent select-none ${className ?? ''}`}
     />
   );
 }

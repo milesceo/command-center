@@ -1,10 +1,10 @@
-import { Eye, EyeOff } from 'lucide-react';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { PIN_MAX, PIN_MIN } from '../../lib/app-lock';
-import { cn } from '../../lib/cn';
 import { useLockStore } from '../../stores/lock';
 import { usePrefs } from '../../stores/prefs';
+import { PinCircles } from '../pin/PinCircles';
 import { WindowControls } from '../shell/WindowControls';
+import { Button } from '../ui/button';
 import { AsciiBackdrop } from './AsciiBackdrop';
 
 const secondsLeft = (until: number) => Math.max(0, Math.ceil((until - Date.now()) / 1000));
@@ -12,7 +12,7 @@ const secondsLeft = (until: number) => Math.max(0, Math.ceil((until - Date.now()
 /**
  * The PIN prompt over the animated ASCII backdrop. The PIN is checked by the backend (Argon2id
  * in the desktop app); wrong attempts are delayed there, not here, so this screen only shows
- * the countdown it is given.
+ * the countdown it is given. The circles are the input (see `PinCircles`).
  */
 export function LockScreen() {
   const unlock = useLockStore((s) => s.unlock);
@@ -21,13 +21,13 @@ export function LockScreen() {
   const name = usePrefs((s) => s.prefs.profile.name);
 
   const [pin, setPin] = useState('');
-  const [shown, setShown] = useState(false);
+  // Per visit: leaving the screen unmounts this state, so the reveal always starts off.
+  const [reveal, setReveal] = useState(false);
   const [message, setMessage] = useState('');
   const [shake, setShake] = useState(0);
   const [busy, setBusy] = useState(false);
   const [wait, setWait] = useState(() => secondsLeft(lockedUntil));
   const [forgetting, setForgetting] = useState(false);
-  const input = useRef<HTMLInputElement>(null);
 
   // Count down a lockout so the prompt re-enables itself.
   useEffect(() => {
@@ -44,41 +44,32 @@ export function LockScreen() {
     };
   }, [lockedUntil]);
 
-  useEffect(() => {
-    if (!forgetting && !busy && wait === 0) input.current?.focus();
-  }, [forgetting, busy, wait]);
-
-  const fail = (text: string) => {
-    setMessage(text);
-    setShake((n) => n + 1);
-    setPin('');
-  };
+  const locked = wait > 0;
+  const typed = [...pin].length;
 
   const submit = async () => {
-    if (busy || wait > 0 || pin.length === 0) return;
+    if (busy || locked || typed < PIN_MIN) return;
     setBusy(true);
     try {
       const result = await unlock(pin);
-      if (result === 'wrong') fail('Wrong PIN.');
-      else if (result === 'invalid') fail(`Use ${PIN_MIN} to ${PIN_MAX} characters.`);
-      else if (result === 'wait') fail('Too many attempts.');
+      if (result === 'ok') return;
+      // Wrong, or now waiting: shake, clear, and let the rate limiter's message show.
+      setMessage(
+        result === 'wrong'
+          ? 'Wrong PIN.'
+          : result === 'invalid'
+            ? `Use ${PIN_MIN} to ${PIN_MAX} characters.`
+            : 'Too many attempts.',
+      );
+      setShake((n) => n + 1);
+      setPin('');
     } finally {
       setBusy(false);
     }
   };
 
-  const locked = wait > 0;
-  const typed = [...pin].length;
-  const slots = Math.max(PIN_MIN, typed);
-
   return (
-    <div
-      className="fixed inset-0 z-[100] overflow-hidden bg-bg text-fg"
-      onPointerDown={(e) => {
-        if (!(e.target instanceof HTMLButtonElement)) input.current?.focus();
-      }}
-      data-testid="lock-screen"
-    >
+    <div className="fixed inset-0 z-[100] overflow-hidden bg-bg text-fg" data-testid="lock-screen">
       <AsciiBackdrop />
       <div
         data-tauri-drag-region
@@ -99,53 +90,19 @@ export function LockScreen() {
           <span className="caret ml-1" aria-hidden="true" />
         </p>
 
-        <div
-          key={shake}
-          className={cn('flex items-center gap-3', shake > 0 && 'pin-shake')}
-          aria-hidden="true"
-        >
-          {Array.from({ length: slots }, (_, i) => (
-            <span
-              key={i}
-              className={cn(
-                'size-3 rounded-full border transition-colors',
-                i < typed ? 'border-accent bg-accent' : 'border-border-strong bg-transparent',
-              )}
-            />
-          ))}
-        </div>
-
-        <div className="flex items-center gap-2">
-          <input
-            ref={input}
-            value={pin}
-            disabled={busy || locked || forgetting}
-            type={shown ? 'text' : 'password'}
-            autoComplete="off"
-            autoFocus
-            spellCheck={false}
-            maxLength={PIN_MAX * 2}
-            aria-labelledby="pin-prompt"
-            aria-describedby="pin-message"
-            onChange={(e) => setPin(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === 'Escape') {
-                setPin('');
-                setMessage('');
-              }
-            }}
-            className="h-9 w-56 rounded-control border border-border bg-surface/80 px-3 text-center font-mono text-[14px] tracking-widest text-fg outline-none backdrop-blur-sm focus:border-accent disabled:opacity-60"
-          />
-          <button
-            type="button"
-            aria-label={shown ? 'Hide PIN' : 'Show PIN'}
-            aria-pressed={shown}
-            onClick={() => setShown((v) => !v)}
-            className="grid size-9 place-items-center rounded-control border border-border bg-surface/80 text-fg-muted hover:text-fg"
-          >
-            {shown ? <EyeOff size={15} /> : <Eye size={15} />}
-          </button>
-        </div>
+        <PinCircles
+          value={pin}
+          onChange={setPin}
+          onSubmit={() => void submit()}
+          labelledBy="pin-prompt"
+          describedBy="pin-message"
+          disabled={busy || locked || forgetting}
+          autoFocus
+          keepFocus={!forgetting}
+          shake={shake}
+          reveal={reveal}
+          onRevealChange={setReveal}
+        />
 
         <p
           id="pin-message"
@@ -155,12 +112,21 @@ export function LockScreen() {
         >
           {locked
             ? `Locked for ${wait}s after ${failures} wrong attempts.`
-            : message || 'Press Enter to unlock.'}
+            : message || `Enter ${PIN_MIN} to ${PIN_MAX} characters, then press Enter.`}
         </p>
+
+        <Button
+          type="submit"
+          variant="primary"
+          disabled={busy || locked || typed < PIN_MIN}
+          className="min-w-28"
+        >
+          Unlock
+        </Button>
 
         <button
           type="button"
-          className="mt-2 font-mono text-[11px] text-fg-subtle underline-offset-2 hover:text-fg-muted hover:underline"
+          className="mt-1 font-mono text-[11px] text-fg-subtle underline-offset-2 hover:text-fg-muted hover:underline"
           onClick={() => setForgetting(true)}
         >
           forgot PIN?

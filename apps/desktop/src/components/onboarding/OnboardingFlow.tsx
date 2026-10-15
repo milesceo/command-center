@@ -306,7 +306,7 @@ export function OnboardingFlow() {
                       </Button>
                     </div>
                   ) : (
-                    <PinSetup onChange={setPin} autoFocus />
+                    <PinSetup onChange={setPin} onSubmit={() => void next()} autoFocus />
                   )}
                   <p className="rounded-control border border-border bg-bg p-3 text-[12px] text-fg-muted">
                     <strong className="font-medium text-fg">

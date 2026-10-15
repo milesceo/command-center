@@ -147,6 +147,7 @@ export async function startHarness({ real = process.env.E2E_REAL === '1' } = {})
     onboarding = false,
     home = false,
     video = undefined,
+    splash = false,
   } = {}) {
     const context = await browser.newContext({
       viewport,
@@ -311,6 +312,17 @@ export async function startHarness({ real = process.env.E2E_REAL === '1' } = {})
     }
     // The first load after a fresh build can be slow (virus scanners inspect new files).
     await page.goto(url, { timeout: 120_000 });
+    if (splash) {
+      // Hand back right away so the caller can look at the launch screen.
+      return {
+        page,
+        killBridge: () => child?.kill('SIGKILL'),
+        close: async () => {
+          child?.kill();
+          await context.close();
+        },
+      };
+    }
     if (onboarding) await page.waitForSelector('[data-testid="onboarding"]');
     else if (lock === 'setup') await page.waitForSelector('[data-testid="lock-screen"]');
     else if (layout === 'ide') await page.waitForSelector('[data-testid="ide-shell"]');

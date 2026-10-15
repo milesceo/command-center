@@ -10,9 +10,8 @@ import { LockGate } from './components/lock/LockGate';
 import { OnboardingFlow } from './components/onboarding/OnboardingFlow';
 import { ClassicTitleBar } from './components/shell/WindowControls';
 import { IdeShell } from './ide/IdeShell';
-import { applyAppearance, resolveAppearance } from './lib/apply-appearance';
 import { system, listenToTray } from './lib/system';
-import { useOsEnvironment } from './lib/use-os-environment';
+import { useAppearance } from './lib/use-appearance';
 import { useBridgeStore } from './stores/bridge';
 import { chatStore } from './stores/chat';
 import { conversationsStore, useConversations } from './stores/conversations';
@@ -32,17 +31,10 @@ export function App() {
   const onboarded = usePrefs((s) => s.prefs.onboarding.completed);
 
   const prefs = usePrefs((s) => s.prefs);
-  const os = useOsEnvironment();
   const codeFontSize = useSettings((s) => s.codeFontSize);
 
   // Theme, palette, accent, animation level, density and glass, resolved against the OS.
-  useEffect(() => {
-    const applied = resolveAppearance(prefs, os);
-    applyAppearance(document.documentElement, prefs, applied);
-    // Components that only need dark or light (preview frames, charts) read the resolved theme.
-    if (useUiStore.getState().theme !== applied.theme)
-      useUiStore.setState({ theme: applied.theme });
-  }, [prefs, os]);
+  useAppearance();
   useEffect(
     () => applyDisplaySettings(prefs.appearance.fontScale, codeFontSize),
     [prefs.appearance.fontScale, codeFontSize],

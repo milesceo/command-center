@@ -27,7 +27,7 @@ async function choose(name: string): Promise<PickedMessage> {
   return pickForLaunch({ name, now: new Date(), stats });
 }
 
-/** Home: the spinning ASCII logo top left, and the Geeked mark with a rotating line at the center. */
+/** Home: a still ASCII logo top left, and the Geeked mark with a rotating line at the center. */
 export function LandingView() {
   const name = usePrefs((s) => s.prefs.profile.name);
   const [message, setMessage] = useState<PickedMessage | null>(launchMessage);
@@ -49,7 +49,8 @@ export function LandingView() {
       className="relative flex min-h-0 flex-1 flex-col overflow-hidden"
       data-testid="landing-view"
     >
-      <AsciiLogo className="absolute top-4 left-5" />
+      {/* Static here on purpose: the spinning logo belongs to the splash screen. */}
+      <AsciiLogo size="corner" still className="absolute top-4 left-5" />
 
       <div className="flex flex-1 flex-col items-center justify-center gap-5 px-6 text-center">
         <GeekedMark size={76} />
