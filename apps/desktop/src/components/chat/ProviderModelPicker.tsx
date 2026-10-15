@@ -2,8 +2,11 @@ import { PROVIDER_IDS, type ProviderId } from '@geeked/protocol';
 import { useMemo } from 'react';
 import { fallbackModels, providerName } from '../../lib/providers';
 import { conversationsStore, useActiveSettings } from '../../stores/conversations';
+import { mergeModels } from '../../lib/status-feed';
 import { usePrefs } from '../../stores/prefs';
 import { useProviders } from '../../stores/providers';
+import { useStatus } from '../../stores/status';
+import { StatusDot } from '../status/StatusDot';
 
 const selectClass =
   'h-6 max-w-[9rem] rounded-control bg-transparent px-1 text-[11px] text-fg-muted outline-none hover:bg-hover focus-visible:bg-hover';
@@ -17,6 +20,7 @@ export function ProviderModelPicker() {
   const settings = useActiveSettings();
   const connections = usePrefs((s) => s.prefs.providers.connections);
   const infos = useProviders((s) => s.infos);
+  const announced = useStatus((s) => s.added);
 
   const providers = useMemo(
     () => PROVIDER_IDS.filter((id) => connections[id].enabled || id === settings.provider),
@@ -24,13 +28,16 @@ export function ProviderModelPicker() {
   );
   const models = useMemo(() => {
     const live = infos[settings.provider]?.models;
-    return live && live.length > 0 ? live : fallbackModels(settings.provider);
-  }, [infos, settings.provider]);
+    const base = live && live.length > 0 ? live : fallbackModels(settings.provider);
+    // Models the status feed announced for this provider are offered too.
+    return mergeModels(base, announced[settings.provider]);
+  }, [infos, announced, settings.provider]);
 
   const update = conversationsStore.getState().updateSettings;
 
   return (
     <span className="flex items-center gap-0.5" data-testid="provider-model-picker">
+      <StatusDot provider={settings.provider} align="right" />
       {providers.length > 1 && (
         <select
           aria-label="Provider"

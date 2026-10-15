@@ -148,6 +148,7 @@ export async function startHarness({ real = process.env.E2E_REAL === '1' } = {})
     home = false,
     video = undefined,
     splash = false,
+    setup = undefined,
   } = {}) {
     const context = await browser.newContext({
       viewport,
@@ -155,6 +156,8 @@ export async function startHarness({ real = process.env.E2E_REAL === '1' } = {})
       // `video` is a directory: the page is recorded there as .webm.
       ...(video ? { recordVideo: { dir: video, size: viewport } } : {}),
     });
+    // Lets a script stub extra network routes (the status feed) before the page loads.
+    if (setup) await setup(context);
     // Stands in for src-tauri/src/preview.rs: same documents, same security headers.
     await context.route('http://preview.localhost/**', (route) => {
       const html = previewDocs.get(new URL(route.request().url()).pathname.slice(1));

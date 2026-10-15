@@ -9,6 +9,7 @@ import { useProviders } from '../../stores/providers';
 import { toast } from '../../stores/toast';
 import { Button } from '../ui/button';
 import { Switch } from '../ui/switch';
+import { StatusDot } from '../status/StatusDot';
 
 const BADGES: Record<ConnectionState, { text: string; className: string }> = {
   connected: { text: 'Connected', className: 'bg-success/15 text-fg' },
@@ -173,6 +174,9 @@ function ProviderCard({ id }: { id: ProviderId }) {
               {badge.text}
             </span>
           </p>
+          <div className="mt-0.5">
+            <StatusDot provider={id} withLabel />
+          </div>
           <p className="mt-0.5 text-[12px] text-fg-muted">{meta.summary}</p>
         </div>
         <Switch

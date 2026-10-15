@@ -28,6 +28,7 @@ import { AppearanceControls } from '../prefs/AppearanceControls';
 import { PerformanceControls } from '../prefs/PerformanceControls';
 import { ProviderCards } from '../prefs/ProviderCards';
 import { SystemControls } from '../prefs/SystemControls';
+import { StatusFeedRow } from '../status/StatusFeedRow';
 import { AppLockSection } from './AppLockSection';
 import { Row, Section } from './parts';
 
@@ -187,6 +188,7 @@ export function SettingsView() {
           hint="Connect the providers you use. Subscription sign-in always goes through the provider's own official CLI; API keys live in the Windows Credential Manager."
         >
           <ProviderCards />
+          <StatusFeedRow />
           <Row
             label="Provider for new chats"
             hint="You can still change it per chat in the header."

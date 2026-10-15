@@ -8,6 +8,11 @@ All notable changes to Geeked (called Programish until 1.1.0) are recorded here.
 
 ### Added
 
+- A launch splash with the spinning 3D ASCII logo, and PIN entry on eight circles with a reveal
+  toggle (the circles are the input; a hidden field takes the typing). Home keeps a still logo.
+- Provider status dots and new-model notices, read from the public
+  [geeked-ai-status](https://github.com/engineerlish/geeked-ai-status) feed (cached, works
+  offline), with a link to the status history in Settings.
 - First-run onboarding: name, PIN, system behavior, performance tier and appearance, and AI
   agent connections. Every choice has a matching section in Settings, and "Re-run onboarding"
   starts the flow again.

@@ -658,3 +658,5 @@ export function parseEvent(line: string): ParseResult<BridgeEvent> {
 export function isTerminalEvent(event: BridgeEvent): boolean {
   return event.type === 'chat.done' || event.type === 'error';
 }
+
+export * from './status-feed';

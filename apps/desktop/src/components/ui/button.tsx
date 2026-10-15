@@ -6,7 +6,7 @@ const buttonVariants = cva(
   'inline-flex items-center justify-center gap-2 rounded-control font-medium transition-colors disabled:pointer-events-none disabled:opacity-50',
   {
     variant: {
-      primary: 'bg-accent text-accent-fg hover:opacity-90',
+      primary: 'bg-accent text-accent-fg hover:brightness-95',
       secondary: 'border border-border bg-elevated text-fg hover:bg-hover',
       ghost: 'text-fg-muted hover:bg-hover hover:text-fg',
     },

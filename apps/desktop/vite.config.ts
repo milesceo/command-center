@@ -9,5 +9,9 @@ export default defineConfig({
   // The highlighter worker code-splits (one chunk per grammar), which needs ES module workers.
   worker: { format: 'es' },
   server: { port: 1420, strictPort: true },
-  test: { environment: 'node', include: ['src/**/*.test.{ts,tsx}'] },
+  test: {
+    environment: 'node',
+    include: ['src/**/*.test.{ts,tsx}'],
+    setupFiles: ['src/test-setup.ts'],
+  },
 });

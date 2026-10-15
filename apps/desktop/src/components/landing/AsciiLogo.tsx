@@ -24,7 +24,8 @@ interface Props {
 /** `splash` scales with the window (120 columns at 0.6em wide); `corner` is a fixed 8 px. */
 const FONT_SIZE = {
   splash: 'min(12px, calc((100vw - 48px) / 72))',
-  corner: '8px',
+  // Scales down inside a narrow pane (the Home view is a size container).
+  corner: 'min(8px, calc((100cqw - 40px) / 72))',
 } as const;
 
 /**

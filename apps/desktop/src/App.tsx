@@ -22,7 +22,9 @@ import { promptsStore } from './stores/prompts';
 import { usageStore } from './stores/usage';
 import { applyDisplaySettings, useSettings } from './stores/settings';
 import { useUiStore } from './stores/ui';
+import { useStatus } from './stores/status';
 import { useVisibility } from './stores/visibility';
+import { ModelNotices } from './components/status/ModelNotices';
 
 export function App() {
   const layout = useUiStore((s) => s.layout);
@@ -72,6 +74,12 @@ export function App() {
     };
   }, []);
 
+  // The AI status feed: cached copy first, then on launch and every 30 minutes.
+  useEffect(() => {
+    useStatus.getState().start();
+    return () => useStatus.getState().stop();
+  }, []);
+
   // Start the sidecar and read the saved conversations (which also runs DB migrations).
   useEffect(() => {
     void connect();
@@ -117,6 +125,7 @@ export function App() {
           <>
             <ShortcutsDialog />
             <CommandPalette />
+            <ModelNotices />
           </>
         )}
       </LockGate>

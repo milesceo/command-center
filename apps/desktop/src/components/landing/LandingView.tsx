@@ -47,6 +47,7 @@ export function LandingView() {
   return (
     <div
       className="relative flex min-h-0 flex-1 flex-col overflow-hidden"
+      style={{ containerType: 'inline-size' }}
       data-testid="landing-view"
     >
       {/* Static here on purpose: the spinning logo belongs to the splash screen. */}
