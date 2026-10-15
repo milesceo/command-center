@@ -1,7 +1,10 @@
 mod bridge;
 mod data;
+mod lock;
 mod migrate;
 mod preview;
+mod secrets;
+mod system;
 
 use tauri::{Manager, WebviewWindowBuilder};
 
@@ -30,6 +33,12 @@ fn migrations() -> Vec<Migration> {
             version: 3,
             description: "usage ledger, prompt library and projects",
             sql: include_str!("../migrations/0003_usage_prompts_projects.sql"),
+            kind: MigrationKind::Up,
+        },
+        Migration {
+            version: 4,
+            description: "per-conversation provider",
+            sql: include_str!("../migrations/0004_providers.sql"),
             kind: MigrationKind::Up,
         },
     ]
@@ -66,23 +75,46 @@ pub fn run() {
                 .add_migrations(DB_URL, migrations())
                 .build(),
         )
+        .plugin(tauri_plugin_autostart::init(
+            tauri_plugin_autostart::MacosLauncher::LaunchAgent,
+            None,
+        ))
         .manage(bridge::BridgeState::default())
+        .manage(lock::LockGuard::default())
+        .manage(system::SystemState::default())
         .manage(preview::PreviewStore::default())
         .register_uri_scheme_protocol("preview", preview::handle)
         .setup(|app| {
             // The window is created here, not from the config (`create: false`), so the data
             // from before the rename is in place before the webview opens its profile.
             migrate_previous_data(app.handle());
+            if let Ok(dir) = app.path().app_config_dir() {
+                app.state::<system::SystemState>().set(system::load(&dir));
+            }
+            system::build_tray(app.handle())?;
             for config in &app.config().app.windows {
                 WebviewWindowBuilder::from_config(app.handle(), config)?.build()?;
             }
             Ok(())
         })
+        .on_window_event(system::on_window_event)
         .invoke_handler(tauri::generate_handler![
             bridge::bridge_start,
             bridge::bridge_send,
             data::data_location,
-            preview::preview_set
+            preview::preview_set,
+            lock::lock_status,
+            lock::lock_set_pin,
+            lock::lock_verify,
+            lock::lock_change,
+            lock::lock_remove,
+            lock::lock_wipe,
+            secrets::secret_set,
+            secrets::secret_exists,
+            secrets::secret_get,
+            secrets::secret_delete,
+            secrets::secret_wipe,
+            system::system_set_close_behavior
         ])
         .run(tauri::generate_context!())
         .expect("error while running Geeked");

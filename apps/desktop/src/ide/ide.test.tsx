@@ -41,6 +41,8 @@ const { conversationsStore } = await import('../stores/conversations');
 const { useUiStore } = await import('../stores/ui');
 const { useIdeStore } = await import('../stores/ide');
 const { useLockStore } = await import('../stores/lock');
+const { usePrefs } = await import('../stores/prefs');
+const { defaultPrefs } = await import('../lib/prefs');
 
 beforeEach(() => {
   conversationsStore.setState({
@@ -66,12 +68,11 @@ beforeEach(() => {
     activeFile: {},
     closedFiles: {},
   });
-  useLockStore.setState({
-    phase: 'unlocked',
-    hasPin: false,
-    failures: 0,
-    lockedUntil: 0,
-    autoLockMinutes: 0,
+  useLockStore.setState({ phase: 'unlocked', hasPin: false, failures: 0, lockedUntil: 0 });
+  // Onboarding is covered in its own test; these tests start from a finished setup.
+  const prefs = defaultPrefs();
+  usePrefs.setState({
+    prefs: { ...prefs, onboarding: { completed: true, step: 0 }, profile: { name: 'Ada' } },
   });
 });
 
@@ -121,51 +122,17 @@ describe('lock screen', () => {
   const type = (value: string) => {
     const input = screen.getByLabelText(/PIN/i, { selector: 'input' });
     fireEvent.change(input, { target: { value } });
-    fireEvent.keyDown(input, { key: 'Enter' });
+    fireEvent.submit(input.closest('form')!);
   };
 
-  it('asks a first-time user to choose a PIN, confirms it, and enters the app', async () => {
-    useLockStore.setState({ phase: 'setup', hasPin: false });
-    render(<App />);
-    expect(screen.getByTestId('lock-screen')).toBeTruthy();
-    expect(screen.getByText(/Choose a PIN/)).toBeTruthy();
-    // The app itself is not in the DOM behind the lock.
-    expect(screen.queryByTestId('ide-shell')).toBeNull();
-
-    type('4821');
-    expect(await screen.findByText(/Confirm your PIN/)).toBeTruthy();
-    type('4821');
-    expect(await screen.findByTestId('ide-shell')).toBeTruthy();
-    expect(useLockStore.getState().hasPin).toBe(true);
-    // Only a hash is stored.
-    expect(localStorage.getItem('geeked-lock')).not.toContain('4821');
-  });
-
-  it('rejects a mismatched confirmation', async () => {
-    useLockStore.setState({ phase: 'setup', hasPin: false });
-    render(<App />);
-    type('1357');
-    await screen.findByText(/Confirm your PIN/);
-    type('1358');
-    expect(await screen.findByText(/did not match/i)).toBeTruthy();
-    expect(screen.getByText(/Choose a PIN/)).toBeTruthy();
-  });
-
-  it('can be skipped, leaving no PIN', () => {
-    useLockStore.setState({ phase: 'setup', hasPin: false });
-    render(<App />);
-    fireEvent.click(screen.getByRole('button', { name: /continue without a PIN/i }));
-    expect(screen.getByTestId('ide-shell')).toBeTruthy();
-    expect(useLockStore.getState().hasPin).toBe(false);
-  });
-
   it('locks on demand, rejects a wrong PIN, and unlocks with the right one', async () => {
-    await act(() => useLockStore.getState().setup('2468'));
+    await act(() => useLockStore.getState().setPin('2468'));
     render(<App />);
     expect(screen.getByTestId('ide-shell')).toBeTruthy();
 
     key('l');
     expect(screen.getByTestId('lock-screen')).toBeTruthy();
+    // The app itself is not in the DOM behind the lock.
     expect(screen.queryByTestId('ide-shell')).toBeNull();
 
     type('1111');
@@ -176,8 +143,18 @@ describe('lock screen', () => {
     expect(await screen.findByTestId('ide-shell')).toBeTruthy();
   });
 
+  it('accepts letters and symbols in a PIN', async () => {
+    await act(() => useLockStore.getState().setPin('p@ss7'));
+    act(() => useLockStore.getState().lock());
+    render(<App />);
+    type('P@SS7');
+    expect(await screen.findByText('Wrong PIN.')).toBeTruthy();
+    type('p@ss7');
+    expect(await screen.findByTestId('ide-shell')).toBeTruthy();
+  });
+
   it('imposes a waiting period after repeated wrong PINs', async () => {
-    await act(() => useLockStore.getState().setup('2468'));
+    await act(() => useLockStore.getState().setPin('2468'));
     act(() => useLockStore.getState().lock());
     render(<App />);
     for (let i = 0; i < 5; i++) {
@@ -188,5 +165,19 @@ describe('lock screen', () => {
     // Even the right PIN is refused while waiting.
     expect(await useLockStore.getState().unlock('2468')).toBe('wait');
     expect(useLockStore.getState().phase).toBe('locked');
+  });
+
+  it('shows Home first, and Forgot PIN explains that nothing can be recovered', async () => {
+    await act(() => useLockStore.getState().setPin('2468'));
+    act(() => useLockStore.getState().lock());
+    useUiStore.setState({ view: 'landing' });
+    render(<App />);
+    fireEvent.click(screen.getByRole('button', { name: /forgot PIN/i }));
+    const dialog = screen.getByRole('alertdialog');
+    expect(within(dialog).getByText(/cannot be recovered/i)).toBeTruthy();
+    expect(within(dialog).getByRole('button', { name: /erase and reset/i })).toHaveProperty(
+      'disabled',
+      true,
+    );
   });
 });

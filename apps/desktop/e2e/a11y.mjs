@@ -60,6 +60,34 @@ for (const theme of ['dark', 'light']) {
   await audit(page, `${theme}: command palette`);
   await page.keyboard.press('Escape');
   await app.close();
+
+  // First run: every onboarding step.
+  const first = await h.launch({ theme, layout: 'ide', onboarding: true });
+  const p = first.page;
+  await audit(p, `${theme}: onboarding name`);
+  await p.getByLabel('Your name').fill('Ada');
+  await p.getByRole('button', { name: /^next/i }).click();
+  await p.getByLabel(/^PIN/).waitFor();
+  await audit(p, `${theme}: onboarding PIN`);
+  await p.getByRole('button', { name: /skip for now/i }).click();
+  await p.getByRole('heading', { name: /how should geeked behave/i }).waitFor();
+  await audit(p, `${theme}: onboarding system`);
+  await p.getByRole('button', { name: /^next/i }).click();
+  await p.getByRole('heading', { name: /performance and appearance/i }).waitFor();
+  await audit(p, `${theme}: onboarding performance and appearance`);
+  await p.getByRole('button', { name: /^next/i }).click();
+  await p.getByRole('heading', { name: /connect your ai agents/i }).waitFor();
+  await p.waitForTimeout(500);
+  await audit(p, `${theme}: onboarding agents`);
+  await first.close();
+
+  // Home and the lock screen.
+  const home = await h.launch({ theme, layout: 'ide', home: true });
+  await home.page.getByTestId('landing-view').waitFor();
+  // The launch message fades in; audit once it has settled.
+  await home.page.waitForTimeout(1200);
+  await audit(home.page, `${theme}: home`);
+  await home.close();
 }
 await h.stop();
 process.exit(failures ? 1 : 0);

@@ -9,6 +9,7 @@ import { useIdeStore } from '../stores/ide';
 import { useProjects } from '../stores/projects';
 import { useUiStore, type View } from '../stores/ui';
 import { FileViewer } from './shared/FileViewer';
+import { LandingView } from '../components/landing/LandingView';
 import { useActiveFiles, useNewestFileKey } from './shared/hooks';
 
 // Secondary views load on first visit, as in the classic layout.
@@ -22,7 +23,7 @@ const SettingsView = lazy(() =>
   import('../components/settings/SettingsView').then((m) => ({ default: m.SettingsView })),
 );
 
-const VIEW_TITLES: Record<Exclude<View, 'chat'>, string> = {
+const VIEW_TITLES: Record<Exclude<View, 'chat' | 'landing'>, string> = {
   usage: 'Usage',
   prompts: 'Prompt library',
   settings: 'Settings',
@@ -36,11 +37,18 @@ const paneClass =
 /** The central editor: file tabs for the open thread, or one of the secondary views. */
 export function EditorArea() {
   const view = useUiStore((s) => s.view);
+  if (view === 'landing') {
+    return (
+      <section className={paneClass} aria-label="Home">
+        <LandingView />
+      </section>
+    );
+  }
   if (view !== 'chat') return <ViewPane view={view} />;
   return <FileEditor />;
 }
 
-function ViewPane({ view }: { view: Exclude<View, 'chat'> }) {
+function ViewPane({ view }: { view: Exclude<View, 'chat' | 'landing'> }) {
   return (
     <section className={paneClass} aria-label={VIEW_TITLES[view]}>
       <div className="flex h-9 shrink-0 items-end border-b border-border">

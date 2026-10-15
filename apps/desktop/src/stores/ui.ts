@@ -1,9 +1,11 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
+import { usePrefs } from './prefs';
 
 export type Theme = 'dark' | 'light';
 export type DiffMode = 'inline' | 'split';
-export type View = 'chat' | 'usage' | 'prompts' | 'settings';
+/** `landing` is Home: the logo and the launch message. It is where every launch starts. */
+export type View = 'landing' | 'chat' | 'usage' | 'prompts' | 'settings';
 /** `ide` is the editor-style shell; `classic` is the original sidebar-and-column chat layout. */
 export type Layout = 'ide' | 'classic';
 
@@ -45,7 +47,7 @@ export const clampPanelWidth = (width: number) =>
 /** Layout and theme preferences; persisted so the window reopens as you left it. */
 export const useUiStore = create<UiState>()(
   persist(
-    (set) => ({
+    (set, get) => ({
       theme: 'dark',
       layout: 'ide',
       sidebarOpen: true,
@@ -55,9 +57,11 @@ export const useUiStore = create<UiState>()(
       diffMode: 'split',
       shortcutsOpen: false,
       paletteOpen: false,
-      view: 'chat',
+      view: 'landing',
 
-      toggleTheme: () => set((s) => ({ theme: s.theme === 'dark' ? 'light' : 'dark' })),
+      // The theme is a preference (stores/prefs.ts, which also offers "system"); this store keeps
+      // the resolved value for components that only need dark or light.
+      toggleTheme: () => usePrefs.getState().setTheme(get().theme === 'dark' ? 'light' : 'dark'),
       setLayout: (layout) => set({ layout }),
       toggleSidebar: () => set((s) => ({ sidebarOpen: !s.sidebarOpen })),
       toggleRightPanel: () => set((s) => ({ rightPanelOpen: !s.rightPanelOpen })),

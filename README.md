@@ -7,7 +7,7 @@ A lightweight desktop app for prompting about code, running on your own Claude C
 ## Install
 
 1. Log in to Claude Code once: install it (`npm i -g @anthropic-ai/claude-code`), run `claude` and sign in. Geeked reads that login; it never asks for or stores credentials.
-2. Download `Geeked_<version>_x64-setup.exe` from the [latest release](https://github.com/engineerlish/programish/releases/latest) and run it. It installs for your user only and needs no admin rights or developer tools: the app carries its own Node runtime, bridge and Claude runtime.
+2. Download `Geeked_<version>_x64-setup.exe` from the [latest release](https://github.com/engineerlish/geeked/releases/latest) and run it. It installs for your user only and needs no admin rights or developer tools: the app carries its own Node runtime, bridge and Claude runtime.
 3. The installer is not code signed yet, so Windows SmartScreen may warn on first run: choose **More info**, then **Run anyway**. Each release lists a SHA-256 checksum (`SHA256SUMS.txt`) if you want to verify the download.
 
 Windows 11 on x64 is the supported target. Building from source on other platforms works but is untested.

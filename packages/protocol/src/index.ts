@@ -11,7 +11,12 @@
  */
 
 /** Bumped on any breaking wire change so a stale sidecar can be detected. */
-export const PROTOCOL_VERSION = 3;
+export const PROTOCOL_VERSION = 4;
+
+/** Providers Geeked can talk to. `claude` is the original and the default. */
+export const PROVIDER_IDS = ['claude', 'openai', 'xai'] as const;
+export type ProviderId = (typeof PROVIDER_IDS)[number];
+export const DEFAULT_PROVIDER: ProviderId = 'claude';
 
 /** Model aliases understood by the Claude Code runtime ('default' = its own choice). */
 export const MODEL_OPTIONS = [
@@ -30,7 +35,13 @@ export type ToolsMode = 'off' | 'readonly';
 
 // ---------------------------------------------------------------- requests
 
-export type BridgeRequest = PingRequest | ChatRequest | CancelRequest | UsageRequest;
+export type BridgeRequest =
+  | PingRequest
+  | ChatRequest
+  | CancelRequest
+  | UsageRequest
+  | ProvidersRequest
+  | ProviderLoginRequest;
 
 export interface PingRequest {
   type: 'ping';
@@ -65,6 +76,13 @@ export interface ChatRequest {
   tools: ToolsMode;
   /** Working directory for tools. Required for `readonly`. */
   cwd?: string;
+  /** Which provider answers. Omitted = `claude` (the original, unchanged path). */
+  provider?: ProviderId;
+  /**
+   * API key for providers that use one, read from the OS keychain by the app for this request
+   * only. The bridge never logs, stores or echoes it.
+   */
+  apiKey?: string;
 }
 
 /** Stops the chat started by the request whose id is `targetId`. */
@@ -80,6 +98,24 @@ export interface UsageRequest {
   id: string;
 }
 
+/** Asks which providers are usable right now. Answered by one `providers.report`. */
+export interface ProvidersRequest {
+  type: 'providers';
+  id: string;
+  /** Providers the app already holds an API key for (the keys themselves stay in the keychain). */
+  hasKey?: ProviderId[];
+}
+
+/**
+ * Opens the provider's own official CLI sign-in (a terminal window the user completes), then
+ * answers with a fresh `providers.report`. Geeked never sees the credentials it creates.
+ */
+export interface ProviderLoginRequest {
+  type: 'provider.login';
+  id: string;
+  provider: ProviderId;
+}
+
 // ------------------------------------------------------------------ events
 
 export type BridgeEvent =
@@ -91,7 +127,43 @@ export type BridgeEvent =
   | ChatRateLimitEvent
   | ChatLimitsEvent
   | ChatDoneEvent
-  | UsageReportEvent;
+  | UsageReportEvent
+  | ProvidersReportEvent;
+
+export type ProviderAuthState =
+  /** Signed in (subscription) or a key is stored. */
+  | 'signed_in'
+  | 'signed_out'
+  /** The provider's official CLI is not installed. */
+  | 'not_installed'
+  /** Could not tell; the provider documents no way to check. */
+  | 'unknown';
+
+export type ProviderAuthMethod = 'subscription' | 'apiKey';
+
+export interface ProviderModel {
+  id: string;
+  label: string;
+}
+
+export interface ProviderInfo {
+  id: ProviderId;
+  name: string;
+  /** Routes this provider officially supports, in preference order. */
+  authMethods: ProviderAuthMethod[];
+  auth: ProviderAuthState;
+  /** Which route `auth` refers to when signed in. */
+  authVia?: ProviderAuthMethod;
+  models: ProviderModel[];
+  /** Plain-language limits for the UI (what works, what does not). */
+  note: string;
+}
+
+export interface ProvidersReportEvent {
+  type: 'providers.report';
+  id: string;
+  providers: ProviderInfo[];
+}
 
 export interface PongEvent {
   type: 'pong';
@@ -271,6 +343,8 @@ function parseObject(line: string): ParseResult<Json> {
 }
 
 const isString = (v: unknown): v is string => typeof v === 'string';
+const isProviderId = (v: unknown): v is ProviderId =>
+  typeof v === 'string' && (PROVIDER_IDS as readonly string[]).includes(v);
 const isNumber = (v: unknown): v is number => typeof v === 'number' && Number.isFinite(v);
 const isObject = (v: unknown): v is Json =>
   typeof v === 'object' && v !== null && !Array.isArray(v);
@@ -325,6 +399,14 @@ function parseChatRequest(id: string, v: Json): ParseResult<ChatRequest> {
     if (!isString(v.cwd)) return fail('invalid_message', '`cwd` must be a string.');
     request.cwd = v.cwd;
   }
+  if (v.provider !== undefined) {
+    if (!isProviderId(v.provider)) return fail('invalid_message', 'Unknown `provider`.');
+    request.provider = v.provider;
+  }
+  if (v.apiKey !== undefined) {
+    if (!isString(v.apiKey)) return fail('invalid_message', '`apiKey` must be a string.');
+    request.apiKey = v.apiKey;
+  }
   if (request.tools === 'readonly' && !request.cwd) {
     return fail('invalid_message', 'Read-only tools need a working directory (`cwd`).');
   }
@@ -348,6 +430,19 @@ export function parseRequest(line: string): ParseResult<BridgeRequest> {
       return parseChatRequest(v.id, v);
     case 'usage':
       return { ok: true, value: { type: 'usage', id: v.id } };
+    case 'providers': {
+      const request: ProvidersRequest = { type: 'providers', id: v.id };
+      if (v.hasKey !== undefined) {
+        if (!Array.isArray(v.hasKey) || !v.hasKey.every(isProviderId)) {
+          return fail('invalid_message', '`hasKey` must be a list of provider ids.');
+        }
+        request.hasKey = v.hasKey;
+      }
+      return { ok: true, value: request };
+    }
+    case 'provider.login':
+      if (!isProviderId(v.provider)) return fail('invalid_message', 'Unknown `provider`.');
+      return { ok: true, value: { type: 'provider.login', id: v.id, provider: v.provider } };
     case 'cancel':
       if (!isString(v.targetId)) return fail('invalid_message', 'Cancel needs a `targetId`.');
       return { ok: true, value: { type: 'cancel', id: v.id, targetId: v.targetId } };
@@ -423,6 +518,39 @@ function parseExtraUsage(raw: unknown): ExtraUsage | null | undefined {
     utilization: nullableNumber(raw.utilization),
     currency: isString(raw.currency) ? raw.currency : null,
   };
+}
+
+const AUTH_STATES: readonly string[] = ['signed_in', 'signed_out', 'not_installed', 'unknown'];
+
+function parseProviders(raw: unknown): ProviderInfo[] | null {
+  if (!Array.isArray(raw)) return null;
+  const out: ProviderInfo[] = [];
+  for (const item of raw) {
+    if (!isObject(item) || !isProviderId(item.id) || !isString(item.name) || !isString(item.note)) {
+      return null;
+    }
+    if (!isString(item.auth) || !AUTH_STATES.includes(item.auth)) return null;
+    if (!Array.isArray(item.authMethods) || !Array.isArray(item.models)) return null;
+    const authMethods = item.authMethods.filter(
+      (m): m is ProviderAuthMethod => m === 'subscription' || m === 'apiKey',
+    );
+    const models: ProviderModel[] = [];
+    for (const m of item.models) {
+      if (!isObject(m) || !isString(m.id) || !isString(m.label)) return null;
+      models.push({ id: m.id, label: m.label });
+    }
+    const info: ProviderInfo = {
+      id: item.id,
+      name: item.name,
+      authMethods,
+      auth: item.auth as ProviderAuthState,
+      models,
+      note: item.note,
+    };
+    if (item.authVia === 'subscription' || item.authVia === 'apiKey') info.authVia = item.authVia;
+    out.push(info);
+  }
+  return out;
 }
 
 /** Validate one line received by the app. Never throws. */
@@ -507,6 +635,10 @@ export function parseEvent(line: string): ParseResult<BridgeEvent> {
           extraUsage,
         },
       };
+    }
+    case 'providers.report': {
+      const providers = parseProviders(v.providers);
+      return providers ? { ok: true, value: { type: 'providers.report', id, providers } } : bad();
     }
     case 'chat.done': {
       if (v.status !== 'completed' && v.status !== 'cancelled') return bad();

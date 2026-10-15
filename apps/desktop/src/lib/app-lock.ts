@@ -1,8 +1,10 @@
 /**
- * PIN storage for the app lock. This is a screen lock for casual access, not encryption: the
- * PIN is stored as a salted PBKDF2 hash so it cannot be read back from the app's storage, but
- * the chat database itself is not encrypted. Pure functions only; the store in `stores/lock.ts`
- * owns the state.
+ * PIN rules and the browser-side fallback implementation of the lock.
+ *
+ * In the desktop app the PIN is hashed with Argon2id in Rust (`src-tauri/src/lock.rs`) and these
+ * PBKDF2 functions only (a) verify records written by earlier versions so they can be upgraded
+ * on first unlock, and (b) back the plain-browser preview and tests, where there is no Rust.
+ * This is a screen lock for casual access, not encryption: the chat database is a plain file.
  */
 
 export const PIN_MIN = 4;
@@ -18,8 +20,44 @@ export interface LockRecord {
   iterations: number;
 }
 
-export const isValidPin = (pin: string): boolean =>
-  new RegExp(`^\\d{${PIN_MIN},${PIN_MAX}}$`).test(pin);
+/** 4 to 8 characters (letters, digits and symbols allowed), counted by Unicode code point. */
+export const isValidPin = (pin: string): boolean => {
+  const length = [...pin].length;
+  // eslint-disable-next-line no-control-regex -- control characters are exactly what is refused
+  return length >= PIN_MIN && length <= PIN_MAX && !/[\u0000-\u001f\u007f]/.test(pin);
+};
+
+export interface PinStrength {
+  /** 0 (weak) to 3 (strong). */
+  score: 0 | 1 | 2 | 3;
+  label: string;
+}
+
+const COMMON = new Set(['1234', '0000', '1111', '4321', '2580', '1212', '12345', '123456']);
+
+/**
+ * A hint, not a gate: any 4 to 8 character PIN is accepted. Short PINs are only as safe as the
+ * attempt delays that protect them, so this nudges toward longer, mixed ones.
+ */
+export function pinStrength(pin: string): PinStrength {
+  const chars = [...pin];
+  if (chars.length === 0) return { score: 0, label: '' };
+  const classes =
+    Number(/[a-z]/.test(pin)) +
+    Number(/[A-Z]/.test(pin)) +
+    Number(/\d/.test(pin)) +
+    Number(/[^A-Za-z0-9]/.test(pin));
+  const unique = new Set(chars).size;
+  const sequential = /^(?:0123|1234|2345|3456|4567|5678|6789|abcd|qwer)/i.test(pin);
+  if (COMMON.has(pin) || unique === 1 || sequential) return { score: 0, label: 'Easy to guess' };
+  let score = 0;
+  if (chars.length >= 6) score += 1;
+  if (classes >= 2) score += 1;
+  if (classes >= 3 || chars.length >= 8) score += 1;
+  const capped = Math.min(3, score) as 0 | 1 | 2 | 3;
+  const label = ['Weak', 'Okay', 'Good', 'Strong'][capped] ?? 'Weak';
+  return { score: capped, label };
+}
 
 const toBase64 = (bytes: Uint8Array): string => {
   let binary = '';

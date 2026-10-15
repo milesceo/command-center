@@ -1,27 +1,27 @@
+import { Eye, EyeOff } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
-import { isValidPin, PIN_MAX, PIN_MIN } from '../../lib/app-lock';
+import { PIN_MAX, PIN_MIN } from '../../lib/app-lock';
 import { cn } from '../../lib/cn';
 import { useLockStore } from '../../stores/lock';
+import { usePrefs } from '../../stores/prefs';
 import { WindowControls } from '../shell/WindowControls';
 import { AsciiBackdrop } from './AsciiBackdrop';
-
-type Mode = 'setup' | 'unlock';
 
 const secondsLeft = (until: number) => Math.max(0, Math.ceil((until - Date.now()) / 1000));
 
 /**
- * The landing page: animated ASCII with a PIN prompt. First launch asks the user to choose a
- * PIN (twice); afterwards it asks for it. Keyboard only: digits, Enter, Backspace, Escape.
+ * The PIN prompt over the animated ASCII backdrop. The PIN is checked by the backend (Argon2id
+ * in the desktop app); wrong attempts are delayed there, not here, so this screen only shows
+ * the countdown it is given.
  */
-export function LockScreen({ mode }: { mode: Mode }) {
-  const setup = useLockStore((s) => s.setup);
+export function LockScreen() {
   const unlock = useLockStore((s) => s.unlock);
-  const skip = useLockStore((s) => s.skip);
   const lockedUntil = useLockStore((s) => s.lockedUntil);
   const failures = useLockStore((s) => s.failures);
+  const name = usePrefs((s) => s.prefs.profile.name);
 
   const [pin, setPin] = useState('');
-  const [first, setFirst] = useState<string | null>(null);
+  const [shown, setShown] = useState(false);
   const [message, setMessage] = useState('');
   const [shake, setShake] = useState(0);
   const [busy, setBusy] = useState(false);
@@ -31,26 +31,22 @@ export function LockScreen({ mode }: { mode: Mode }) {
 
   // Count down a lockout so the prompt re-enables itself.
   useEffect(() => {
-    if (lockedUntil <= Date.now()) return;
+    const first = setTimeout(() => setWait(secondsLeft(lockedUntil)), 0);
+    if (lockedUntil <= Date.now()) return () => clearTimeout(first);
     const timer = setInterval(() => {
       const left = secondsLeft(lockedUntil);
       setWait(left);
       if (left === 0) clearInterval(timer);
     }, 500);
-    return () => clearInterval(timer);
+    return () => {
+      clearTimeout(first);
+      clearInterval(timer);
+    };
   }, [lockedUntil]);
 
   useEffect(() => {
-    if (!forgetting) input.current?.focus();
-  }, [forgetting, first, busy]);
-
-  const confirming = mode === 'setup' && first !== null;
-  const prompt =
-    mode === 'unlock'
-      ? 'Enter your PIN'
-      : confirming
-        ? 'Confirm your PIN'
-        : `Choose a PIN (${PIN_MIN} to ${PIN_MAX} digits)`;
+    if (!forgetting && !busy && wait === 0) input.current?.focus();
+  }, [forgetting, busy, wait]);
 
   const fail = (text: string) => {
     setMessage(text);
@@ -59,69 +55,28 @@ export function LockScreen({ mode }: { mode: Mode }) {
   };
 
   const submit = async () => {
-    if (busy || wait > 0) return;
-    if (!isValidPin(pin)) {
-      fail(`Use ${PIN_MIN} to ${PIN_MAX} digits.`);
-      return;
-    }
+    if (busy || wait > 0 || pin.length === 0) return;
     setBusy(true);
     try {
-      if (mode === 'setup') {
-        if (first === null) {
-          setFirst(pin);
-          setPin('');
-          setMessage('');
-        } else if (first !== pin) {
-          setFirst(null);
-          fail('The PINs did not match. Choose again.');
-        } else {
-          await setup(pin);
-        }
-        return;
-      }
       const result = await unlock(pin);
       if (result === 'wrong') fail('Wrong PIN.');
-      else if (result === 'invalid') fail(`Use ${PIN_MIN} to ${PIN_MAX} digits.`);
-      else if (result === 'wait') {
-        setWait(secondsLeft(useLockStore.getState().lockedUntil));
-        fail('Too many attempts.');
-      }
+      else if (result === 'invalid') fail(`Use ${PIN_MIN} to ${PIN_MAX} characters.`);
+      else if (result === 'wait') fail('Too many attempts.');
     } finally {
       setBusy(false);
     }
   };
 
-  // Fallback for webviews where the hidden input never takes focus: when a key lands anywhere
-  // else, drive the same state from the window. When the input has focus it handles the key.
-  useEffect(() => {
-    if (forgetting) return;
-    const onKey = (e: KeyboardEvent) => {
-      const t = e.target;
-      if (t instanceof HTMLInputElement || t instanceof HTMLTextAreaElement) return;
-      if (e.ctrlKey || e.metaKey || e.altKey) return;
-      if (/^\d$/.test(e.key)) {
-        setPin((p) => (p + e.key).slice(0, PIN_MAX));
-      } else if (e.key === 'Backspace') {
-        setPin((p) => p.slice(0, -1));
-      } else if (e.key === 'Enter') {
-        e.preventDefault();
-        void submit();
-      } else if (e.key === 'Escape') {
-        setPin('');
-        setMessage('');
-      }
-    };
-    window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
-  }, [forgetting, submit]);
-
   const locked = wait > 0;
-  const slots = Math.max(PIN_MIN, pin.length);
+  const typed = [...pin].length;
+  const slots = Math.max(PIN_MIN, typed);
 
   return (
     <div
       className="fixed inset-0 z-[100] overflow-hidden bg-bg text-fg"
-      onPointerDown={() => input.current?.focus()}
+      onPointerDown={(e) => {
+        if (!(e.target instanceof HTMLButtonElement)) input.current?.focus();
+      }}
       data-testid="lock-screen"
     >
       <AsciiBackdrop />
@@ -131,10 +86,16 @@ export function LockScreen({ mode }: { mode: Mode }) {
       >
         <WindowControls />
       </div>
-      <div className="absolute inset-x-0 top-[48%] flex flex-col items-center gap-4 px-6">
+      <form
+        className="absolute inset-x-0 top-[48%] flex flex-col items-center gap-4 px-6"
+        onSubmit={(e) => {
+          e.preventDefault();
+          void submit();
+        }}
+      >
         <p className="font-mono text-[13px] tracking-wide text-fg-muted" id="pin-prompt">
           {'> '}
-          {prompt}
+          {name ? `Enter your PIN, ${name}` : 'Enter your PIN'}
           <span className="caret ml-1" aria-hidden="true" />
         </p>
 
@@ -148,35 +109,43 @@ export function LockScreen({ mode }: { mode: Mode }) {
               key={i}
               className={cn(
                 'size-3 rounded-full border transition-colors',
-                i < pin.length ? 'border-accent bg-accent' : 'border-border-strong bg-transparent',
+                i < typed ? 'border-accent bg-accent' : 'border-border-strong bg-transparent',
               )}
             />
           ))}
         </div>
 
-        <input
-          ref={input}
-          value={pin}
-          disabled={busy || locked || forgetting}
-          inputMode="numeric"
-          autoComplete="off"
-          autoFocus
-          maxLength={PIN_MAX}
-          type="password"
-          aria-labelledby="pin-prompt"
-          aria-describedby="pin-message"
-          className="absolute size-px opacity-0"
-          onChange={(e) => setPin(e.target.value.replace(/\D/g, '').slice(0, PIN_MAX))}
-          onKeyDown={(e) => {
-            if (e.key === 'Enter') {
-              e.preventDefault();
-              void submit();
-            } else if (e.key === 'Escape') {
-              setPin('');
-              setMessage('');
-            }
-          }}
-        />
+        <div className="flex items-center gap-2">
+          <input
+            ref={input}
+            value={pin}
+            disabled={busy || locked || forgetting}
+            type={shown ? 'text' : 'password'}
+            autoComplete="off"
+            autoFocus
+            spellCheck={false}
+            maxLength={PIN_MAX * 2}
+            aria-labelledby="pin-prompt"
+            aria-describedby="pin-message"
+            onChange={(e) => setPin(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Escape') {
+                setPin('');
+                setMessage('');
+              }
+            }}
+            className="h-9 w-56 rounded-control border border-border bg-surface/80 px-3 text-center font-mono text-[14px] tracking-widest text-fg outline-none backdrop-blur-sm focus:border-accent disabled:opacity-60"
+          />
+          <button
+            type="button"
+            aria-label={shown ? 'Hide PIN' : 'Show PIN'}
+            aria-pressed={shown}
+            onClick={() => setShown((v) => !v)}
+            className="grid size-9 place-items-center rounded-control border border-border bg-surface/80 text-fg-muted hover:text-fg"
+          >
+            {shown ? <EyeOff size={15} /> : <Eye size={15} />}
+          </button>
+        </div>
 
         <p
           id="pin-message"
@@ -186,42 +155,29 @@ export function LockScreen({ mode }: { mode: Mode }) {
         >
           {locked
             ? `Locked for ${wait}s after ${failures} wrong attempts.`
-            : message ||
-              (mode === 'unlock' ? 'Press Enter to unlock.' : 'Press Enter to continue.')}
+            : message || 'Press Enter to unlock.'}
         </p>
 
-        <div className="mt-2 flex items-center gap-4 font-mono text-[11px] text-fg-subtle">
-          {mode === 'setup' && (
-            <button
-              type="button"
-              className="underline-offset-2 hover:text-fg-muted hover:underline"
-              onClick={skip}
-            >
-              continue without a PIN
-            </button>
-          )}
-          {mode === 'unlock' && (
-            <button
-              type="button"
-              className="underline-offset-2 hover:text-fg-muted hover:underline"
-              onClick={() => setForgetting(true)}
-            >
-              forgot PIN?
-            </button>
-          )}
-        </div>
-      </div>
+        <button
+          type="button"
+          className="mt-2 font-mono text-[11px] text-fg-subtle underline-offset-2 hover:text-fg-muted hover:underline"
+          onClick={() => setForgetting(true)}
+        >
+          forgot PIN?
+        </button>
+      </form>
 
       {forgetting && <ForgetPanel onCancel={() => setForgetting(false)} />}
     </div>
   );
 }
 
-/** The only way past a forgotten PIN: erase it together with every local chat. */
+/** The only way past a forgotten PIN: erase it together with every local chat and API key. */
 function ForgetPanel({ onCancel }: { onCancel: () => void }) {
   const forget = useLockStore((s) => s.forgetEverything);
   const [text, setText] = useState('');
   const [busy, setBusy] = useState(false);
+  const [error, setError] = useState('');
   const ready = text.trim().toUpperCase() === 'DELETE';
 
   return (
@@ -236,8 +192,10 @@ function ForgetPanel({ onCancel }: { onCancel: () => void }) {
           Forgot your PIN?
         </h2>
         <p className="mt-2 text-fg-muted">
-          A PIN cannot be recovered. To get back in, Geeked erases the PIN and every conversation,
-          prompt and project stored on this computer. Your Claude login is not touched.
+          A PIN cannot be recovered; there is no account to reset it through. To get back in, Geeked
+          erases the PIN and everything stored on this computer: conversations, prompts, projects,
+          usage history, settings and saved API keys. Your Claude login is not touched. Geeked then
+          starts setup again.
         </p>
         <label className="mt-3 block text-fg-subtle" htmlFor="forget-confirm">
           Type DELETE to confirm
@@ -249,6 +207,11 @@ function ForgetPanel({ onCancel }: { onCancel: () => void }) {
           onChange={(e) => setText(e.target.value)}
           className="mt-1 w-full rounded-control border border-border-strong bg-bg px-2 py-1.5 outline-none focus:border-accent"
         />
+        {error && (
+          <p role="alert" className="mt-2 text-danger">
+            {error}
+          </p>
+        )}
         <div className="mt-4 flex justify-end gap-2">
           <button
             type="button"
@@ -263,7 +226,11 @@ function ForgetPanel({ onCancel }: { onCancel: () => void }) {
             className="rounded-control bg-danger px-3 py-1.5 text-bg disabled:opacity-40"
             onClick={() => {
               setBusy(true);
-              void forget();
+              setError('');
+              void forget().catch((err: unknown) => {
+                setBusy(false);
+                setError(err instanceof Error ? err.message : 'Could not erase local data.');
+              });
             }}
           >
             Erase and reset

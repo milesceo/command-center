@@ -7,6 +7,10 @@ import {
   type ChatRequest,
   type PingRequest,
   type PongEvent,
+  type ProviderId,
+  type ProviderInfo,
+  type ProviderLoginRequest,
+  type ProvidersRequest,
   type UsageReportEvent,
   type UsageRequest,
 } from '@geeked/protocol';
@@ -47,6 +51,8 @@ interface Stream {
 
 /** Reading plan usage starts a runtime process, which is slower than a ping. */
 const USAGE_TIMEOUT_MS = 35_000;
+/** Provider checks spawn each provider's CLI to ask about its login. */
+const PROVIDERS_TIMEOUT_MS = 30_000;
 
 const EXIT_MESSAGE = 'The Claude bridge process exited unexpectedly.';
 
@@ -98,6 +104,31 @@ export class BridgeClient {
     const event = await this.request(request.id, encodeMessage(request), USAGE_TIMEOUT_MS);
     if (event.type !== 'usage.report') throw new Error(`Unexpected reply: ${event.type}`);
     return event;
+  }
+
+  /** Which providers are usable now. `hasKey` lists those the app already holds an API key for. */
+  async providers(hasKey: ProviderId[] = []): Promise<ProviderInfo[]> {
+    const request: ProvidersRequest = {
+      type: 'providers',
+      id: crypto.randomUUID(),
+      ...(hasKey.length > 0 ? { hasKey } : {}),
+    };
+    // Checking each CLI's login state can take a few seconds.
+    const event = await this.request(request.id, encodeMessage(request), PROVIDERS_TIMEOUT_MS);
+    if (event.type !== 'providers.report') throw new Error(`Unexpected reply: ${event.type}`);
+    return event.providers;
+  }
+
+  /** Opens the provider's official sign-in in a terminal window; resolves with a fresh report. */
+  async loginProvider(provider: ProviderId): Promise<ProviderInfo[]> {
+    const request: ProviderLoginRequest = {
+      type: 'provider.login',
+      id: crypto.randomUUID(),
+      provider,
+    };
+    const event = await this.request(request.id, encodeMessage(request), PROVIDERS_TIMEOUT_MS);
+    if (event.type !== 'providers.report') throw new Error(`Unexpected reply: ${event.type}`);
+    return event.providers;
   }
 
   /**

@@ -8,22 +8,14 @@ const h = await startHarness({ real: false });
 const size = { width: 1440, height: 860 };
 const PIN = '4821';
 
-let app = await h.launch({ viewport: size, theme: 'dark', layout: 'ide', lock: 'setup' });
+let app = await h.launch({ viewport: size, theme: 'dark', layout: 'ide' });
 let page = app.page;
 const shot = (name) => page.screenshot({ path: join(outDir, `${name}.png`) });
 const typePin = async (pin) => {
-  await page.keyboard.type(pin);
+  await page.fill('input[aria-labelledby="pin-prompt"]', pin);
   await page.keyboard.press('Enter');
 };
 const input = 'textarea[aria-label="Message"]';
-
-// First launch: the landing page asks for a PIN, twice.
-await page.waitForTimeout(1500);
-await shot('lock-setup');
-await typePin(PIN);
-await page.waitForSelector('text=Confirm your PIN');
-await typePin(PIN);
-await page.waitForSelector('[data-testid="ide-shell"]');
 
 let expected = 0;
 const send = async (text) => {
@@ -66,15 +58,23 @@ assign.run('proj-api', 'demo diff');
 assign.run('proj-web', 'demo svg');
 assign.run('proj-web', 'demo long');
 
-// A restart: the PIN is asked for again before anything is shown.
+// Set a PIN in Settings, then restart: the PIN is asked for before anything is shown.
+await page
+  .getByRole('navigation', { name: 'Activity' })
+  .getByRole('button', { name: 'Settings' })
+  .click();
+await page.getByRole('button', { name: 'Set a PIN' }).click();
+await page.getByLabel(/^PIN/).fill(PIN);
+await page.getByLabel('Confirm PIN').fill(PIN);
+await page.getByRole('button', { name: 'Set PIN' }).click();
+await page.waitForSelector('text=Lock now');
 await page.reload();
 await page.waitForSelector('[data-testid="lock-screen"]');
 await page.waitForTimeout(800);
-await page.keyboard.type(PIN.slice(0, 2));
+await page.fill('input[aria-labelledby="pin-prompt"]', PIN.slice(0, 2));
 await page.waitForTimeout(300);
 await shot('lock-unlock');
-await page.keyboard.type(PIN.slice(2));
-await page.keyboard.press('Enter');
+await typePin(PIN);
 await page.waitForSelector('[data-testid="ide-shell"]');
 
 await page.click('aside[aria-label="Explorer"] >> text=demo two');
@@ -99,7 +99,7 @@ await page
   .getByRole('navigation', { name: 'Activity' })
   .getByRole('button', { name: 'Settings' })
   .click();
-await page.waitForSelector('text=App lock');
+await page.waitForSelector('text=Security');
 await page.waitForTimeout(500);
 await shot('ide-settings');
 

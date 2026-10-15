@@ -1,5 +1,6 @@
 // @vitest-environment jsdom
 import { beforeEach, describe, expect, it } from 'vitest';
+import { usePrefs } from './prefs';
 import { applyTheme, useUiStore } from './ui';
 
 describe('ui store', () => {
@@ -7,12 +8,14 @@ describe('ui store', () => {
     useUiStore.setState({ theme: 'dark', sidebarOpen: true, rightPanelOpen: false });
   });
 
-  it('defaults to dark and toggles to light and back', () => {
+  it('defaults to dark, and toggling writes the preference (the app resolves it back here)', () => {
     expect(useUiStore.getState().theme).toBe('dark');
     useUiStore.getState().toggleTheme();
-    expect(useUiStore.getState().theme).toBe('light');
+    expect(usePrefs.getState().prefs.appearance.theme).toBe('light');
+    // App.tsx mirrors the resolved theme into this store; emulate that step.
+    useUiStore.setState({ theme: 'light' });
     useUiStore.getState().toggleTheme();
-    expect(useUiStore.getState().theme).toBe('dark');
+    expect(usePrefs.getState().prefs.appearance.theme).toBe('dark');
   });
 
   it('applies the theme to the document root', () => {

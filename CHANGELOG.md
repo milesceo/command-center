@@ -6,6 +6,31 @@ All notable changes to Geeked (called Programish until 1.1.0) are recorded here.
 
 ## [Unreleased]
 
+### Added
+
+- First-run onboarding: name, PIN, system behavior, performance tier and appearance, and AI
+  agent connections. Every choice has a matching section in Settings, and "Re-run onboarding"
+  starts the flow again.
+- A Home screen with the Geeked logo, a rotating launch message (greetings, quips and stats) and
+  a spinning 3D ASCII logo whose frame rate follows the performance tier.
+- Five performance tiers (Lightest to Accelerated) that map to typed feature flags, plus theme
+  (dark, light, system), six color palettes with an accent picker, animation level, density and
+  font size.
+- PINs of 4 to 8 letters, numbers or symbols, hashed with Argon2id, with attempt delays that
+  survive restarts.
+- Start with Windows, and minimize to a tray icon (Open, New chat, Lock, Quit) on close.
+- A provider abstraction with ChatGPT (through the official Codex CLI) and Grok (xAI API key or
+  the Grok CLI) beside Claude, a provider and model picker per chat, and API keys kept in the
+  Windows Credential Manager. See `docs/providers.md`.
+- An editor-style layout: threads grouped by project in an explorer, the code Claude writes as
+  tabbed files with versions, diffs and live preview, the conversation docked as an assistant
+  panel, an activity panel with per-reply usage, and a status bar with model, context fill and
+  plan headroom. The original layout is still available from the command palette.
+- An animated ASCII landing page that asks for a PIN you choose on first launch, locks on demand
+  (`Ctrl+L`) and after inactivity, and waits longer after repeated wrong PINs. Set, change or remove
+  the PIN and the idle timeout in Settings. It keeps casual access out; it does not encrypt your
+  chats on disk.
+
 ### Changed
 
 - The app is now called **Geeked** (it was Programish): window title, installer, executable
@@ -16,17 +41,6 @@ All notable changes to Geeked (called Programish until 1.1.0) are recorded here.
   from the old location, verifies every file, and only then records the migration. The old
   data is never deleted or modified; remove it yourself once you are satisfied. A new installer
   installs beside the old Programish app, which you can uninstall afterwards.
-
-### Added
-
-- An editor-style layout: threads grouped by project in an explorer, the code Claude writes as
-  tabbed files with versions, diffs and live preview, the conversation docked as an assistant
-  panel, an activity panel with per-reply usage, and a status bar with model, context fill and
-  plan headroom. The original layout is still available from the command palette.
-- An animated ASCII landing page that asks for a PIN you choose on first launch, locks on demand
-  (`Ctrl+L`) and after inactivity, and waits longer after repeated wrong PINs. Set, change or remove
-  the PIN and the idle timeout in Settings. It keeps casual access out; it does not encrypt your
-  chats on disk.
 
 ## [1.0.0] - 2026-10-14
 
@@ -82,5 +96,5 @@ bill.
   of guessing.
 - Windows 11 on x64 is the supported target. Other platforms build from source but are untested.
 
-[Unreleased]: https://github.com/engineerlish/programish/compare/v1.0.0...HEAD
-[1.0.0]: https://github.com/engineerlish/programish/releases/tag/v1.0.0
+[Unreleased]: https://github.com/engineerlish/geeked/compare/v1.0.0...HEAD
+[1.0.0]: https://github.com/engineerlish/geeked/releases/tag/v1.0.0

@@ -10,7 +10,7 @@ function renderAttachments(attachments: Attachment[] | undefined): string {
     .join('\n\n');
 }
 
-function renderMessage(message: ChatMessage): string {
+export function renderMessage(message: ChatMessage): string {
   const attachments = renderAttachments(message.attachments);
   return attachments ? `${attachments}\n\n${message.content}` : message.content;
 }

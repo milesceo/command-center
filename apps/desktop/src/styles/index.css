@@ -385,3 +385,47 @@
     animation: none;
   }
 }
+
+/* ---- Preferences: density, motion, glass, landing ---------------------- */
+:root {
+  --row-h: 1.75rem;
+}
+[data-density='compact'] {
+  --row-h: 1.4rem;
+}
+
+/* "Reduced" keeps short fades and drops looping or large motion; "off" stops everything. */
+[data-motion='reduced'] *,
+[data-motion='reduced'] *::before,
+[data-motion='reduced'] *::after {
+  animation-iteration-count: 1 !important;
+  animation-duration: 0.15s !important;
+  transition-duration: 0.1s !important;
+}
+[data-motion='off'] *,
+[data-motion='off'] *::before,
+[data-motion='off'] *::after {
+  animation: none !important;
+  transition: none !important;
+  scroll-behavior: auto !important;
+}
+
+/* Glass: the frosted panes only blur when the performance tier allows it. */
+html:not([data-glass='true']) .backdrop-blur-xl,
+html:not([data-glass='true']) .backdrop-blur-sm {
+  backdrop-filter: none;
+}
+
+@keyframes landing-in {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+.landing-message {
+  animation: landing-in 0.6s ease-out both;
+}

@@ -162,7 +162,7 @@ export function Explorer() {
                       type="button"
                       aria-expanded={!collapsed}
                       onClick={() => useIdeStore.getState().toggleProject(id)}
-                      className="flex h-7 w-full items-center gap-1.5 rounded-control px-1.5 text-left text-xs font-medium hover:bg-hover"
+                      className="flex h-(--row-h) w-full items-center gap-1.5 rounded-control px-1.5 text-left text-xs font-medium hover:bg-hover"
                     >
                       <ChevronRight
                         size={11}
@@ -187,7 +187,7 @@ export function Explorer() {
                         aria-current={c.id === activeId ? 'true' : undefined}
                         title={c.title}
                         className={cn(
-                          'group flex h-7 w-full items-center gap-2 rounded-control pr-2 text-left text-xs',
+                          'group flex h-(--row-h) w-full items-center gap-2 rounded-control pr-2 text-left text-xs',
                           g.project ? 'pl-6' : 'pl-2',
                           c.id === activeId
                             ? 'bg-accent/15 text-fg'
@@ -233,7 +233,7 @@ export function Explorer() {
                     }}
                     aria-current={selected ? 'true' : undefined}
                     className={cn(
-                      'flex h-7 w-full items-center gap-2 rounded-control px-2 text-left text-xs',
+                      'flex h-(--row-h) w-full items-center gap-2 rounded-control px-2 text-left text-xs',
                       selected
                         ? 'bg-accent/15 text-fg'
                         : 'text-fg-muted hover:bg-hover hover:text-fg',

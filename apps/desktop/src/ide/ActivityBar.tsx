@@ -1,4 +1,4 @@
-import { BarChart3, BookText, Files, Settings, type LucideIcon } from 'lucide-react';
+import { BarChart3, BookText, Files, Home, Settings, type LucideIcon } from 'lucide-react';
 import { cn } from '../lib/cn';
 import { useUiStore, type View } from '../stores/ui';
 
@@ -9,6 +9,7 @@ interface Item {
 }
 
 const TOP: Item[] = [
+  { id: 'landing', label: 'Home', icon: Home },
   { id: 'explorer', label: 'Explorer', icon: Files },
   { id: 'prompts', label: 'Prompt library', icon: BookText },
   { id: 'usage', label: 'Usage', icon: BarChart3 },

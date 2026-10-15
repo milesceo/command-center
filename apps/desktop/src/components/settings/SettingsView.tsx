@@ -1,4 +1,4 @@
-import { MODEL_OPTIONS } from '@geeked/protocol';
+import { MODEL_OPTIONS, PROVIDER_IDS } from '@geeked/protocol';
 import { Download, FolderOpen, Trash2 } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { clearData, countData, exportAll, type ClearScope, type DataCounts } from '../../lib/data';
@@ -14,13 +14,20 @@ import { chatStore } from '../../stores/chat';
 import { conversationsStore } from '../../stores/conversations';
 import { projectsStore } from '../../stores/projects';
 import { promptsStore } from '../../stores/prompts';
-import { CODE_FONT_SIZES, UI_SCALES, useSettings } from '../../stores/settings';
+import { PROVIDER_META } from '../../lib/providers';
+import { checkName, NAME_MAX } from '../../lib/prefs';
+import { usePrefs } from '../../stores/prefs';
+import { CODE_FONT_SIZES, useSettings } from '../../stores/settings';
 import { toast } from '../../stores/toast';
 import { useUiStore } from '../../stores/ui';
 import { usageStore } from '../../stores/usage';
 import { Button } from '../ui/button';
 import { ConfirmDialog } from '../ui/dialog';
 import { Segmented } from '../ui/segmented';
+import { AppearanceControls } from '../prefs/AppearanceControls';
+import { PerformanceControls } from '../prefs/PerformanceControls';
+import { ProviderCards } from '../prefs/ProviderCards';
+import { SystemControls } from '../prefs/SystemControls';
 import { AppLockSection } from './AppLockSection';
 import { Row, Section } from './parts';
 
@@ -44,8 +51,10 @@ const CLEAR_COPY: Record<ClearScope, { button: string; title: string; body: stri
 
 /** Preferences, defaults for new chats, and what the app stores (with export and clear). */
 export function SettingsView() {
-  const theme = useUiStore((s) => s.theme);
   const settings = useSettings((s) => s);
+  const prefs = usePrefs((s) => s.prefs);
+  const [name, setName] = useState(prefs.profile.name);
+  const nameCheck = checkName(name);
   const [location, setLocation] = useState<DataLocation | null>(null);
   const [version, setVersion] = useState('');
   const [counts, setCounts] = useState<DataCounts | null>(null);
@@ -116,26 +125,53 @@ export function SettingsView() {
           </p>
         </header>
 
+        <Section title="Profile" hint="Used for greetings on Home and the lock screen.">
+          <form
+            className="flex flex-wrap items-end gap-2"
+            onSubmit={(e) => {
+              e.preventDefault();
+              if (nameCheck.ok && usePrefs.getState().setName(name)) toast('Name saved');
+            }}
+          >
+            <label className="flex flex-col gap-1 text-[12px] text-fg-muted">
+              Name
+              <input
+                value={name}
+                maxLength={NAME_MAX * 4}
+                onChange={(e) => setName(e.target.value)}
+                className="selectable h-8 w-64 rounded-control border border-border bg-bg px-2 text-[13px] text-fg outline-none focus:border-accent"
+              />
+            </label>
+            <Button
+              type="submit"
+              size="sm"
+              disabled={!nameCheck.ok || name.trim() === prefs.profile.name}
+            >
+              Save
+            </Button>
+            {!nameCheck.ok && (
+              <span role="alert" className="text-[11px] text-danger">
+                {nameCheck.reason}
+              </span>
+            )}
+          </form>
+        </Section>
+
+        <AppLockSection />
+
+        <Section title="System" hint="Windows startup and what the close button does.">
+          <SystemControls />
+        </Section>
+
+        <Section
+          title="Performance"
+          hint="How much Geeked does in the background and how fancy it looks. Lighter tiers use less CPU and battery."
+        >
+          <PerformanceControls />
+        </Section>
+
         <Section title="Appearance">
-          <Row label="Theme">
-            <Segmented
-              label="Theme"
-              value={theme}
-              options={[
-                { value: 'dark', label: 'Dark' },
-                { value: 'light', label: 'Light' },
-              ]}
-              onChange={(t) => t !== theme && useUiStore.getState().toggleTheme()}
-            />
-          </Row>
-          <Row label="Interface size" hint="Scales the whole window.">
-            <Segmented
-              label="Interface size"
-              value={settings.uiScale}
-              options={UI_SCALES.map((v) => ({ value: v, label: `${v}%` }))}
-              onChange={settings.setUiScale}
-            />
-          </Row>
+          <AppearanceControls />
           <Row label="Code font size" hint="Code blocks and diffs, in pixels.">
             <Segmented
               label="Code font size"
@@ -143,6 +179,34 @@ export function SettingsView() {
               options={CODE_FONT_SIZES.map((v) => ({ value: v, label: String(v) }))}
               onChange={settings.setCodeFontSize}
             />
+          </Row>
+        </Section>
+
+        <Section
+          title="AI agents"
+          hint="Connect the providers you use. Subscription sign-in always goes through the provider's own official CLI; API keys live in the Windows Credential Manager."
+        >
+          <ProviderCards />
+          <Row
+            label="Provider for new chats"
+            hint="You can still change it per chat in the header."
+          >
+            <select
+              aria-label="Provider for new chats"
+              value={prefs.providers.default}
+              onChange={(e) =>
+                usePrefs
+                  .getState()
+                  .setDefaultProvider(e.target.value as (typeof PROVIDER_IDS)[number])
+              }
+              className="h-8 rounded-control border border-border bg-bg px-2 text-[13px] outline-none focus:border-border-strong"
+            >
+              {PROVIDER_IDS.map((id) => (
+                <option key={id} value={id}>
+                  {PROVIDER_META[id].name}
+                </option>
+              ))}
+            </select>
           </Row>
         </Section>
 
@@ -184,7 +248,7 @@ export function SettingsView() {
 
         <Section
           title="Data"
-          hint="Everything is stored locally in one SQLite file. Nothing is uploaded except the messages you send to Claude."
+          hint="Everything is stored locally in one SQLite file. Nothing is uploaded except the messages you send to the provider you chose."
         >
           <Row
             label="Location"
@@ -226,16 +290,23 @@ export function SettingsView() {
           </div>
         </Section>
 
-        <AppLockSection />
-
         <Section title="About">
           <p className="text-xs text-fg-muted">
-            Geeked {version && `v${version}`}. Chats run on your Claude subscription through your
-            Claude Code login; no API key is stored or used.
+            Geeked {version && `v${version}`}. Chats run on the providers you connect: Claude and
+            ChatGPT through your subscriptions and their official CLIs, Grok through an API key or
+            its CLI. Keys stay in the Windows Credential Manager.
           </p>
-          <div>
+          <div className="flex flex-wrap gap-2">
             <Button size="sm" onClick={() => settings.reset()}>
-              Reset display and new-chat settings
+              Reset code font and new-chat settings
+            </Button>
+            <Button
+              size="sm"
+              onClick={() => {
+                usePrefs.getState().restartOnboarding();
+              }}
+            >
+              Re-run onboarding
             </Button>
           </div>
         </Section>

@@ -12,6 +12,8 @@ import type { Conversation, Message } from '../lib/types';
 import { useBridgeStore } from './bridge';
 import { conversationsStore, titleFrom } from './conversations';
 import { usageStore } from './usage';
+import { secrets } from '../lib/secrets';
+import { usePrefs } from './prefs';
 
 export interface ToolActivity {
   toolUseId: string;
@@ -236,9 +238,19 @@ export function createChatStore(deps: Partial<ChatDeps> = {}) {
       ]);
       const systemPrompt = resolveSystemPrompt(conversation, project, library).text;
 
+      // The API key (for providers that use one) is read from the OS credential store for this
+      // request only and handed straight to the bridge; it is never kept in state.
+      const connection = usePrefs.getState().prefs.providers.connections[conversation.provider];
+      let apiKey: string | null = null;
+      if (conversation.provider !== 'claude' && connection.method !== 'subscription') {
+        apiKey = await secrets.get(conversation.provider).catch(() => null);
+      }
+
       const request: Omit<ChatRequest, 'type' | 'id'> = {
         messages,
         tools: conversation.toolsMode,
+        ...(conversation.provider !== 'claude' ? { provider: conversation.provider } : {}),
+        ...(apiKey ? { apiKey } : {}),
         ...(conversation.model ? { model: conversation.model } : {}),
         ...(systemPrompt ? { systemPrompt } : {}),
         ...(conversation.toolsMode === 'readonly' && conversation.cwd

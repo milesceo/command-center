@@ -1,5 +1,5 @@
 import { ArrowUp, Paperclip, Square, X } from 'lucide-react';
-import { MODEL_OPTIONS, type Attachment } from '@geeked/protocol';
+import type { Attachment } from '@geeked/protocol';
 import {
   useCallback,
   useEffect,
@@ -16,11 +16,7 @@ import { cn } from '../../lib/cn';
 import { chatStore, useChat } from '../../stores/chat';
 import { useComposerStore } from '../../stores/composer';
 import { usePrompts } from '../../stores/prompts';
-import {
-  conversationsStore,
-  useActiveSettings,
-  useConversations,
-} from '../../stores/conversations';
+import { useConversations } from '../../stores/conversations';
 import { Button } from '../ui/button';
 import { usePromptActions } from '../prompts/usePromptActions';
 import { ChatSettings } from './ChatSettings';
@@ -31,7 +27,6 @@ const MAX_HEIGHT_PX = 220;
 /** Multiline input: Enter sends, Shift+Enter inserts a newline; text files can be pasted, dropped or picked. */
 export function Composer() {
   const activeId = useConversations((s) => s.activeId);
-  const settings = useActiveSettings();
   const streaming = useChat((s) => (activeId ? s.streams[activeId] !== undefined : false));
 
   const [text, setText] = useState('');
@@ -256,22 +251,6 @@ export function Composer() {
             >
               <Paperclip size={14} />
             </Button>
-            <select
-              aria-label="Model"
-              value={settings.model ?? 'default'}
-              onChange={(e) =>
-                void conversationsStore
-                  .getState()
-                  .updateSettings({ model: e.target.value === 'default' ? null : e.target.value })
-              }
-              className="h-7 rounded-control bg-transparent px-1.5 text-xs text-fg-muted outline-none hover:bg-hover"
-            >
-              {MODEL_OPTIONS.map((m) => (
-                <option key={m.id} value={m.id} className="bg-elevated">
-                  {m.label}
-                </option>
-              ))}
-            </select>
             <ChatSettings key={activeId ?? 'draft'} />
           </div>
 

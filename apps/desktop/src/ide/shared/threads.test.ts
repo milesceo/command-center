@@ -8,6 +8,7 @@ const conv = (id: string, projectId: string | null, updatedAt: number): Conversa
   pinned: false,
   createdAt: 0,
   updatedAt,
+  provider: 'claude',
   model: null,
   systemPrompt: null,
   systemPromptId: null,

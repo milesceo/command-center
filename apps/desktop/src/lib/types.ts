@@ -1,7 +1,9 @@
-import type { Attachment, BridgeError, ToolsMode } from '@geeked/protocol';
+import type { Attachment, BridgeError, ProviderId, ToolsMode } from '@geeked/protocol';
 
 /** Per-conversation knobs; also used for the not-yet-created "new chat" draft. */
 export interface ConversationSettings {
+  /** Which provider answers this chat. */
+  provider: ProviderId;
   /** Model alias; null lets the runtime choose. */
   model: string | null;
   /** A custom system prompt written for this conversation. Wins over the library prompt and the project default. */
@@ -72,6 +74,7 @@ export interface Project {
 export const DEFAULT_TITLE = 'New chat';
 
 export const DEFAULT_SETTINGS: ConversationSettings = {
+  provider: 'claude',
   model: null,
   systemPrompt: null,
   systemPromptId: null,

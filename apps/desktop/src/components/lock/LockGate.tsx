@@ -1,12 +1,13 @@
 import { useEffect, type ReactNode } from 'react';
 import { useLockStore } from '../../stores/lock';
+import { usePrefs } from '../../stores/prefs';
 import { LockScreen } from './LockScreen';
 
-/** Locks after this much inactivity, checked at this interval. */
+/** How often idleness is checked. */
 const IDLE_CHECK_MS = 15_000;
 
 function IdleLock() {
-  const minutes = useLockStore((s) => s.autoLockMinutes);
+  const minutes = usePrefs((s) => s.prefs.security.autoLockMinutes);
   const hasPin = useLockStore((s) => s.hasPin);
 
   useEffect(() => {
@@ -30,18 +31,18 @@ function IdleLock() {
 }
 
 /**
- * Shows the app only while unlocked. Locked or first-run states render the lock screen
- * and nothing else, so no conversation content is in the DOM behind it.
+ * Shows the app only while unlocked. While locked (or while the PIN state is still being read)
+ * nothing but the lock screen, or a blank frame, is rendered, so no conversation content is in
+ * the DOM behind it.
  */
 export function LockGate({ children }: { children: ReactNode }) {
   const phase = useLockStore((s) => s.phase);
-  if (phase === 'unlocked') {
-    return (
-      <>
-        {children}
-        <IdleLock />
-      </>
-    );
-  }
-  return <LockScreen mode={phase === 'setup' ? 'setup' : 'unlock'} />;
+  if (phase === 'checking') return null;
+  if (phase === 'locked') return <LockScreen />;
+  return (
+    <>
+      {children}
+      <IdleLock />
+    </>
+  );
 }

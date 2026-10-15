@@ -10,6 +10,8 @@ export interface ConversationsState {
   search: string;
   /** Null means the "new chat" draft: no row exists until the first message is sent. */
   activeId: string | null;
+  /** Bumped every time the user picks or starts a chat, even when the id does not change. */
+  selectionSeq: number;
   /** Settings applied to the draft, then copied into the conversation on creation. */
   draft: ConversationSettings;
   loaded: boolean;
@@ -39,6 +41,7 @@ const MAX_TITLE = 60;
 /** The settings part of a stored conversation. */
 export function settingsOf(c: Conversation): ConversationSettings {
   return {
+    provider: c.provider,
     model: c.model,
     systemPrompt: c.systemPrompt,
     systemPromptId: c.systemPromptId,
@@ -84,6 +87,7 @@ export function createConversationsStore(database: () => Promise<Db> = getDb) {
       conversations: [],
       search: '',
       activeId: null,
+      selectionSeq: 0,
       draft: freshDraft(),
       loaded: false,
       error: null,
@@ -95,9 +99,10 @@ export function createConversationsStore(database: () => Promise<Db> = getDb) {
         await guarded(refresh);
       },
 
-      newChat: () => set({ activeId: null, draft: freshDraft() }),
+      newChat: () =>
+        set((s) => ({ activeId: null, draft: freshDraft(), selectionSeq: s.selectionSeq + 1 })),
 
-      select: (id) => set({ activeId: id }),
+      select: (id) => set((s) => ({ activeId: id, selectionSeq: s.selectionSeq + 1 })),
 
       ensureActive: async () => {
         const { activeId, draft } = get();

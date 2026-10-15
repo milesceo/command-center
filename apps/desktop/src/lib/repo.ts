@@ -1,4 +1,10 @@
-import type { Attachment, BridgeError } from '@geeked/protocol';
+import {
+  DEFAULT_PROVIDER,
+  PROVIDER_IDS,
+  type Attachment,
+  type BridgeError,
+  type ProviderId,
+} from '@geeked/protocol';
 import type { Db } from './db';
 import {
   DEFAULT_TITLE,
@@ -19,6 +25,7 @@ interface ConversationRow {
   title: string;
   pinned: number;
   model: string | null;
+  provider: string | null;
   system_prompt: string | null;
   tools_mode: 'off' | 'readonly';
   cwd: string | null;
@@ -52,6 +59,7 @@ function toConversation(row: ConversationRow): Conversation {
     id: row.id,
     title: row.title,
     pinned: row.pinned === 1,
+    provider: toProvider(row.provider),
     model: row.model,
     systemPrompt: row.system_prompt,
     systemPromptId: row.system_prompt_id,
@@ -64,6 +72,13 @@ function toConversation(row: ConversationRow): Conversation {
   };
   if (row.title_match !== undefined) conversation.titleMatch = row.title_match === 1;
   return conversation;
+}
+
+/** Rows written before providers existed (or by a newer build) fall back to the default. */
+function toProvider(value: string | null): ProviderId {
+  return (PROVIDER_IDS as readonly string[]).includes(value ?? '')
+    ? (value as ProviderId)
+    : DEFAULT_PROVIDER;
 }
 
 /** Variable values are stored as JSON; an empty set is stored as NULL. */
@@ -142,13 +157,14 @@ export async function createConversation(
   const id = crypto.randomUUID();
   await db.execute(
     `INSERT INTO conversations
-       (id, title, created_at, updated_at, model, system_prompt, system_prompt_id, system_prompt_vars, tools_mode, cwd, project_id)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+       (id, title, created_at, updated_at, provider, model, system_prompt, system_prompt_id, system_prompt_vars, tools_mode, cwd, project_id)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     [
       id,
       DEFAULT_TITLE,
       now,
       now,
+      settings.provider,
       settings.model,
       settings.systemPrompt,
       settings.systemPromptId,
@@ -183,10 +199,11 @@ export async function updateSettings(
 ): Promise<void> {
   await db.execute(
     `UPDATE conversations
-        SET model = ?, system_prompt = ?, system_prompt_id = ?, system_prompt_vars = ?,
+        SET provider = ?, model = ?, system_prompt = ?, system_prompt_id = ?, system_prompt_vars = ?,
             tools_mode = ?, cwd = ?, project_id = ?
       WHERE id = ?`,
     [
+      settings.provider,
       settings.model,
       settings.systemPrompt,
       settings.systemPromptId,

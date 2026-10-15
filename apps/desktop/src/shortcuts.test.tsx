@@ -24,11 +24,18 @@ const { previewStore } = await import('./stores/preview');
 const { useUiStore } = await import('./stores/ui');
 const { useToastStore } = await import('./stores/toast');
 const { useLockStore } = await import('./stores/lock');
+const { usePrefs } = await import('./stores/prefs');
+const { defaultPrefs } = await import('./lib/prefs');
 
 beforeEach(() => {
   chatStore.setState({ messages: [], streams: {}, loadedFor: null, errors: {} });
   previewStore.setState({ tabs: [], activeId: null, compare: null });
   useLockStore.setState({ phase: 'unlocked', hasPin: false });
+  // Setup is covered by its own tests; these start from a finished onboarding and the chat view.
+  usePrefs.setState({
+    prefs: { ...defaultPrefs(), onboarding: { completed: true, step: 0 } },
+  });
+  useUiStore.setState({ view: 'chat' });
   useUiStore.setState({
     layout: 'classic',
     rightPanelOpen: false,

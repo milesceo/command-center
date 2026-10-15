@@ -4,28 +4,50 @@ import {
   type BridgeEvent,
   type BridgeRequest,
   type ChatRequest,
+  type ProviderId,
 } from '@geeked/protocol';
-import { runChat } from './chat';
-import { runUsage } from './usage-report';
 import { fromThrown } from './errors';
+import { defaultSpawn, type SpawnFn } from './providers/process';
+import { createRegistry, describeProviders, providerFor } from './providers/registry';
+import type { ChatHandle, Provider, ProviderContext } from './providers/types';
 import type { QueryFn } from './sdk';
 
-export const BRIDGE_VERSION = '0.3.0';
+export const BRIDGE_VERSION = '0.4.0';
 
 export interface BridgeDeps {
-  /** Resolves the SDK `query`; called per chat so load failures are reportable. */
+  /** Resolves the SDK `query`; called per Claude chat so load failures are reportable. */
   getQuery: () => Promise<QueryFn>;
   emit: (event: BridgeEvent) => void;
+  /** Test seams; the defaults are the real process, network and environment. */
+  spawn?: SpawnFn;
+  fetch?: typeof fetch;
+  env?: NodeJS.ProcessEnv;
+  platform?: NodeJS.Platform;
+  /** Extra provider adapters (tests, future providers). */
+  providers?: readonly Provider[];
 }
 
 /**
  * Request dispatcher. Owns the set of in-flight chats so `cancel` can find
- * them. Holds no other state: conversation history lives in the app.
+ * them. Holds no other state: conversation history lives in the app, and every
+ * provider is reached through the `Provider` interface.
  */
 export class Bridge {
-  private readonly active = new Map<string, AbortController>();
+  private readonly active = new Map<string, ChatHandle>();
+  private readonly registry: ReadonlyMap<ProviderId, Provider>;
+  private readonly ctx: ProviderContext;
 
-  constructor(private readonly deps: BridgeDeps) {}
+  constructor(private readonly deps: BridgeDeps) {
+    this.registry = createRegistry(deps.providers);
+    this.ctx = {
+      emit: deps.emit,
+      getQuery: deps.getQuery,
+      spawn: deps.spawn ?? defaultSpawn,
+      fetch: deps.fetch ?? fetch,
+      env: deps.env ?? process.env,
+      platform: deps.platform ?? process.platform,
+    };
+  }
 
   /** Handle one raw stdin line. Never throws: bad input becomes an `error` event. */
   handleLine(line: string): void {
@@ -43,7 +65,7 @@ export class Bridge {
   }
 
   abortAll(): void {
-    for (const controller of this.active.values()) controller.abort();
+    for (const handle of this.active.values()) handle.cancel();
   }
 
   private async dispatch(request: BridgeRequest): Promise<void> {
@@ -59,7 +81,7 @@ export class Bridge {
         return;
       case 'cancel':
         // Unknown ids are normal: the chat may have finished a moment earlier.
-        this.active.get(request.targetId)?.abort();
+        this.active.get(request.targetId)?.cancel();
         return;
       case 'chat':
         await this.startChat(request);
@@ -67,20 +89,54 @@ export class Bridge {
       case 'usage':
         await this.readUsage(request.id);
         return;
+      case 'providers':
+        await this.report(request.id, request.hasKey);
+        return;
+      case 'provider.login':
+        await this.login(request.id, request.provider);
+        return;
     }
   }
 
   private async readUsage(id: string): Promise<void> {
+    const provider = providerFor(this.registry, 'claude');
+    if (!provider.usage) {
+      this.deps.emit({
+        type: 'error',
+        id,
+        error: { code: 'internal', message: 'Usage reporting is not available.' },
+      });
+      return;
+    }
+    await provider.usage(id, this.ctx);
+  }
+
+  private async report(id: string, hasKey?: readonly ProviderId[]): Promise<void> {
+    const providers = await describeProviders(this.registry, this.ctx, hasKey);
+    this.deps.emit({ type: 'providers.report', id, providers });
+  }
+
+  private async login(id: string, providerId: ProviderId): Promise<void> {
+    const provider = providerFor(this.registry, providerId);
+    if (!provider.login) {
+      this.deps.emit({
+        type: 'error',
+        id,
+        error: { code: 'invalid_request', message: `${provider.displayName} has no sign-in step.` },
+      });
+      return;
+    }
     try {
-      const query = await this.deps.getQuery();
-      await runUsage({ query, emit: this.deps.emit }, id);
+      await provider.login(this.ctx);
     } catch (err) {
       this.deps.emit({
         type: 'error',
         id,
         error: { ...fromThrown(err), code: 'sdk_unavailable' },
       });
+      return;
     }
+    await this.report(id);
   }
 
   private async startChat(request: ChatRequest): Promise<void> {
@@ -92,21 +148,21 @@ export class Bridge {
       });
       return;
     }
-    const controller = new AbortController();
-    this.active.set(request.id, controller);
+    const provider = providerFor(this.registry, request.provider);
+    // Reserve the id before any await so a duplicate request is refused immediately.
+    let handle: ChatHandle | undefined;
+    let cancelled = false;
+    this.active.set(request.id, {
+      done: Promise.resolve(),
+      cancel: () => {
+        cancelled = true;
+        handle?.cancel();
+      },
+    });
     try {
-      let query: QueryFn;
-      try {
-        query = await this.deps.getQuery();
-      } catch (err) {
-        this.deps.emit({
-          type: 'error',
-          id: request.id,
-          error: { ...fromThrown(err), code: 'sdk_unavailable' },
-        });
-        return;
-      }
-      await runChat({ query, emit: this.deps.emit }, request, controller);
+      handle = provider.chat(request, this.ctx);
+      if (cancelled) handle.cancel();
+      await handle.done;
     } finally {
       this.active.delete(request.id);
     }

@@ -1,8 +1,12 @@
 import { useEffect, useRef } from 'react';
 import { bannerFrame, bannerRows, bannerWidth, fieldFrame } from '../../lib/ascii-field';
+import { resolveAppearance } from '../../lib/apply-appearance';
+import { tierFlags } from '../../lib/performance';
+import { useOsEnvironment } from '../../lib/use-os-environment';
+import { usePrefs } from '../../stores/prefs';
+import { isPaused, useVisibility } from '../../stores/visibility';
 
 const WORD = 'GEEKED';
-const FPS = 24;
 /** Below this many columns the wordmark is drawn at one column per pixel; above, doubled. */
 const WIDE = 130;
 
@@ -12,6 +16,13 @@ const WIDE = 130;
  * With reduced motion it paints one still frame.
  */
 export function AsciiBackdrop() {
+  const prefs = usePrefs((s) => s.prefs);
+  const os = useOsEnvironment();
+  const windowVisible = useVisibility((s) => s.windowVisible);
+  // The tier sets the frame rate; 0 (Lightest) or animations off draws one still frame.
+  const fps = tierFlags(prefs.performance.tier).asciiFps;
+  const still = fps === 0 || resolveAppearance(prefs, os).motion === 'off';
+  const hidden = isPaused(windowVisible, typeof document !== 'undefined' && document.hidden);
   const box = useRef<HTMLDivElement>(null);
   const field = useRef<HTMLPreElement>(null);
   const banner = useRef<HTMLPreElement>(null);
@@ -24,7 +35,6 @@ export function AsciiBackdrop() {
     const probeEl = probe.current;
     if (!el || !fieldEl || !bannerEl || !probeEl) return;
 
-    const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
     let cols = 80;
     let rows = 24;
     let bannerLines = bannerRows(WORD, 1);
@@ -48,7 +58,7 @@ export function AsciiBackdrop() {
 
     const tick = (now: number) => {
       raf = requestAnimationFrame(tick);
-      if (now - last < 1000 / FPS) return;
+      if (now - last < 1000 / Math.max(1, fps)) return;
       last = now;
       draw(now / 1000);
     };
@@ -60,13 +70,13 @@ export function AsciiBackdrop() {
       draw(last / 1000 || 2);
     });
     observer.observe(el);
-    if (!reduced) raf = requestAnimationFrame(tick);
+    if (!still && !hidden) raf = requestAnimationFrame(tick);
 
     return () => {
       cancelAnimationFrame(raf);
       observer.disconnect();
     };
-  }, []);
+  }, [fps, still, hidden]);
 
   return (
     <div ref={box} aria-hidden="true" className="absolute inset-0 overflow-hidden">

@@ -1,4 +1,5 @@
 import { Plus, Sparkles } from 'lucide-react';
+import { ProviderModelPicker } from '../components/chat/ProviderModelPicker';
 import { ConversationUsage } from '../components/usage/ConversationUsage';
 import { conversationsStore, useConversations } from '../stores/conversations';
 import { useUiStore } from '../stores/ui';
@@ -21,6 +22,7 @@ export function AssistantPanel({ width }: { width: number }) {
         <Sparkles size={13} className="shrink-0 text-accent" />
         <h2 className="min-w-0 truncate text-xs font-medium">{title}</h2>
         <span className="ml-auto flex items-center gap-1">
+          <ProviderModelPicker />
           {activeId && <ConversationUsage conversationId={activeId} />}
           <button
             type="button"

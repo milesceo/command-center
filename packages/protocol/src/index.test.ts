@@ -223,3 +223,53 @@ describe('events', () => {
     );
   });
 });
+
+describe('providers (protocol v4)', () => {
+  it('parses a chat request with a provider and key, and rejects unknown providers', () => {
+    const base = {
+      type: 'chat',
+      id: 'c1',
+      messages: [{ role: 'user', content: 'hi' }],
+      tools: 'off',
+    };
+    const ok = parseRequest(JSON.stringify({ ...base, provider: 'xai', apiKey: 'xai-secret' }));
+    expect(ok).toMatchObject({ ok: true, value: { provider: 'xai', apiKey: 'xai-secret' } });
+    expect(parseRequest(JSON.stringify({ ...base, provider: 'skynet' })).ok).toBe(false);
+    expect(parseRequest(JSON.stringify({ ...base, apiKey: 7 })).ok).toBe(false);
+  });
+
+  it('parses providers and provider.login requests', () => {
+    expect(parseRequest('{"type":"providers","id":"p1","hasKey":["xai"]}')).toEqual({
+      ok: true,
+      value: { type: 'providers', id: 'p1', hasKey: ['xai'] },
+    });
+    expect(parseRequest('{"type":"providers","id":"p1","hasKey":["nope"]}').ok).toBe(false);
+    expect(parseRequest('{"type":"provider.login","id":"l1","provider":"openai"}')).toEqual({
+      ok: true,
+      value: { type: 'provider.login', id: 'l1', provider: 'openai' },
+    });
+    expect(parseRequest('{"type":"provider.login","id":"l1","provider":"x"}').ok).toBe(false);
+  });
+
+  it('round-trips a providers.report event', () => {
+    const event = {
+      type: 'providers.report' as const,
+      id: 'p1',
+      providers: [
+        {
+          id: 'claude' as const,
+          name: 'Claude',
+          authMethods: ['subscription' as const],
+          auth: 'signed_in' as const,
+          authVia: 'subscription' as const,
+          models: [{ id: 'default', label: 'Default' }],
+          note: 'ok',
+        },
+      ],
+    };
+    expect(parseEvent(JSON.stringify(event))).toEqual({ ok: true, value: event });
+    expect(parseEvent('{"type":"providers.report","id":"p1","providers":[{"id":"zzz"}]}').ok).toBe(
+      false,
+    );
+  });
+});

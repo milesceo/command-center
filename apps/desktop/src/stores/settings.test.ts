@@ -47,11 +47,9 @@ describe('settings', () => {
   });
 
   it('reset restores the defaults', () => {
-    useSettings.getState().setUiScale(125);
     useSettings.getState().setCodeFontSize(15);
     useSettings.getState().reset();
     expect(useSettings.getState()).toMatchObject({
-      uiScale: 100,
       codeFontSize: 12.5,
       defaultModel: null,
     });

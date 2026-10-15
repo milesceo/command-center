@@ -6,16 +6,38 @@ import {
   isValidPin,
   lockoutSeconds,
   parseRecord,
+  pinStrength,
 } from './app-lock';
 
 describe('isValidPin', () => {
-  it('accepts 4 to 8 digits only', () => {
+  it('accepts 4 to 8 characters including letters and symbols', () => {
     expect(isValidPin('1234')).toBe(true);
     expect(isValidPin('12345678')).toBe(true);
+    expect(isValidPin('12a4')).toBe(true);
+    expect(isValidPin('p@ss!')).toBe(true);
+    expect(isValidPin('ünï€')).toBe(true);
     expect(isValidPin('123')).toBe(false);
     expect(isValidPin('123456789')).toBe(false);
-    expect(isValidPin('12a4')).toBe(false);
     expect(isValidPin('')).toBe(false);
+  });
+
+  it('refuses control characters and counts emoji as one character', () => {
+    expect(isValidPin('ab\tcd')).toBe(false);
+    expect(isValidPin('ab\ncd')).toBe(false);
+    expect(isValidPin('😀😀😀😀')).toBe(true);
+    expect(isValidPin('😀'.repeat(9))).toBe(false);
+  });
+});
+
+describe('pinStrength', () => {
+  it('flags guessable PINs as weak and rewards length and variety', () => {
+    expect(pinStrength('').label).toBe('');
+    expect(pinStrength('1234').score).toBe(0);
+    expect(pinStrength('0000').score).toBe(0);
+    expect(pinStrength('aaaaaa').score).toBe(0);
+    expect(pinStrength('4829').score).toBeLessThanOrEqual(1);
+    expect(pinStrength('k3#Zp9').score).toBeGreaterThanOrEqual(2);
+    expect(pinStrength('k3#Zp9!x').score).toBe(3);
   });
 });
 

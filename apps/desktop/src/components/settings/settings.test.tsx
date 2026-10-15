@@ -20,7 +20,7 @@ import * as repo from '../../lib/repo';
 import * as prompts from '../../lib/repo-prompts';
 import { DEFAULT_SETTINGS } from '../../lib/types';
 import { useSettings } from '../../stores/settings';
-import { useUiStore } from '../../stores/ui';
+import { usePrefs } from '../../stores/prefs';
 import { SettingsView } from './SettingsView';
 
 beforeEach(async () => {
@@ -44,18 +44,17 @@ describe('SettingsView', () => {
   });
 
   it('changes theme, sizes and new-chat defaults', async () => {
-    useUiStore.setState({ theme: 'dark' });
     render(<SettingsView />);
     fireEvent.click(
       within(screen.getByRole('group', { name: 'Theme' })).getByRole('button', { name: 'Light' }),
     );
-    expect(useUiStore.getState().theme).toBe('light');
+    expect(usePrefs.getState().prefs.appearance.theme).toBe('light');
     fireEvent.click(
-      within(screen.getByRole('group', { name: 'Interface size' })).getByRole('button', {
-        name: '110%',
+      within(screen.getByRole('group', { name: 'Font size' })).getByRole('button', {
+        name: 'Large',
       }),
     );
-    expect(useSettings.getState().uiScale).toBe(110);
+    expect(usePrefs.getState().prefs.appearance.fontScale).toBe(110);
     fireEvent.click(
       within(screen.getByRole('group', { name: 'Code font size' })).getByRole('button', {
         name: '14',

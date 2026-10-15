@@ -853,8 +853,8 @@ if (!real) {
     await openView('Settings');
     await page.getByTestId('settings-view').waitFor();
     await page
-      .getByRole('group', { name: 'Interface size' })
-      .getByRole('button', { name: '110%' })
+      .getByRole('group', { name: 'Font size' })
+      .getByRole('button', { name: 'Large' })
       .click();
     await page.waitForFunction(() => document.documentElement.style.zoom === '1.1');
     await page
@@ -944,7 +944,7 @@ assert.deepEqual(
   // and `boom` lines come from the previewed test pages themselves (probing isolation, throwing on purpose).
   h.consoleErrors.filter(
     (e) =>
-      !/Failed to load resource|favicon|ResizeObserver loop|sandboxed and lacks|Refused to connect|Fetch API cannot load|Error: boom/.test(
+      !/Failed to load resource|favicon|ResizeObserver loop|sandboxed and lacks|Refused to connect|Fetch API cannot load|violates the following Content Security Policy|Error: boom/.test(
         e,
       ),
   ),

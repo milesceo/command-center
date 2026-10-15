@@ -1,5 +1,6 @@
 // @vitest-environment jsdom
 import type { BridgeEvent } from '@geeked/protocol';
+import type * as LockBackendModule from './lib/lock-backend';
 import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { Db } from './lib/db';
@@ -14,6 +15,20 @@ const hoisted = vi.hoisted(() => ({
 
 vi.mock('./lib/db', () => ({ getDb: () => Promise.resolve(hoisted.db) }));
 vi.mock('./lib/tauri', () => ({ isTauri: () => true, createTauriTransport: () => ({}) }));
+// No real window or tray under test.
+vi.mock('./lib/system', () => ({
+  system: {
+    available: () => false,
+    setCloseBehavior: () => Promise.resolve(),
+    setAutostart: () => Promise.resolve(false),
+    isAutostartEnabled: () => Promise.resolve(false),
+  },
+  listenToTray: () => Promise.resolve(() => undefined),
+}));
+vi.mock('./lib/lock-backend', async (importOriginal) => {
+  const actual = await importOriginal<typeof LockBackendModule>();
+  return { ...actual, lockBackend: () => actual.webLockBackend };
+});
 vi.mock('./lib/bridge-client', () => ({
   getBridgeClient: () => ({
     connect: () => Promise.resolve(),
@@ -88,6 +103,8 @@ const { chatStore } = await import('./stores/chat');
 const { conversationsStore } = await import('./stores/conversations');
 const { useUiStore } = await import('./stores/ui');
 const { useLockStore } = await import('./stores/lock');
+const { usePrefs } = await import('./stores/prefs');
+const { defaultPrefs } = await import('./lib/prefs');
 
 function resetStores() {
   conversationsStore.setState({
@@ -106,6 +123,11 @@ function resetStores() {
     rightPanelOpen: false,
   });
   useLockStore.setState({ phase: 'unlocked', hasPin: false });
+  // Setup is covered by its own tests; these start from a finished onboarding and the chat view.
+  usePrefs.setState({
+    prefs: { ...defaultPrefs(), onboarding: { completed: true, step: 0 } },
+  });
+  useUiStore.setState({ view: 'chat' });
 }
 beforeEach(resetStores);
 

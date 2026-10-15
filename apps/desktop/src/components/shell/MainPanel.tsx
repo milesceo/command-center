@@ -6,7 +6,9 @@ import { useUiStore } from '../../stores/ui';
 import { Composer } from '../chat/Composer';
 import { ConversationUsage } from '../usage/ConversationUsage';
 import { ViewSkeleton } from '../ui/skeleton';
+import { LandingView } from '../landing/LandingView';
 import { MessageList } from '../chat/MessageList';
+import { ProviderModelPicker } from '../chat/ProviderModelPicker';
 import { Button } from '../ui/button';
 
 // Secondary views load on first visit, which keeps them out of the startup bundle.
@@ -18,7 +20,12 @@ const SettingsView = lazy(() =>
   import('../settings/SettingsView').then((m) => ({ default: m.SettingsView })),
 );
 
-const VIEW_TITLES = { usage: 'Usage', prompts: 'Prompt library', settings: 'Settings' } as const;
+const VIEW_TITLES = {
+  landing: 'Home',
+  usage: 'Usage',
+  prompts: 'Prompt library',
+  settings: 'Settings',
+} as const;
 
 export function MainPanel() {
   const { toggleSidebar, toggleRightPanel, rightPanelOpen, view } = useUiStore();
@@ -39,6 +46,7 @@ export function MainPanel() {
           <h1 className="truncate text-xs text-fg-muted">
             {view === 'chat' ? title : VIEW_TITLES[view]}
           </h1>
+          {view === 'chat' && <ProviderModelPicker />}
           {view === 'chat' && activeId && <ConversationUsage conversationId={activeId} />}
         </div>
         <Button
@@ -52,7 +60,9 @@ export function MainPanel() {
         </Button>
       </header>
 
-      {view === 'usage' ? (
+      {view === 'landing' ? (
+        <LandingView />
+      ) : view === 'usage' ? (
         <Suspense fallback={<ViewSkeleton label="usage" />}>
           <UsageView />
         </Suspense>

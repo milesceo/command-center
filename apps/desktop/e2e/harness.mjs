@@ -129,6 +129,10 @@ export async function startHarness({ real = process.env.E2E_REAL === '1' } = {})
   )?.[1];
   if (!previewCsp) throw new Error('Could not read PREVIEW_CSP from preview.rs');
   const previewDocs = new Map();
+  // Stand-ins for the Rust-side lock, credential store and autostart registration.
+  const lockState = { pin: null, failures: 0 };
+  const secretStore = new Map();
+  const autostart = { enabled: false };
 
   /** Opens the app like a fresh launch: new page, new sidecar process, same database. */
   /**
@@ -140,10 +144,15 @@ export async function startHarness({ real = process.env.E2E_REAL === '1' } = {})
     theme,
     layout = 'classic',
     lock = 'skip',
+    onboarding = false,
+    home = false,
+    video = undefined,
   } = {}) {
     const context = await browser.newContext({
       viewport,
       permissions: ['clipboard-read', 'clipboard-write'],
+      // `video` is a directory: the page is recorded there as .webm.
+      ...(video ? { recordVideo: { dir: video, size: viewport } } : {}),
     });
     // Stands in for src-tauri/src/preview.rs: same documents, same security headers.
     await context.route('http://preview.localhost/**', (route) => {
@@ -197,6 +206,53 @@ export async function startHarness({ real = process.env.E2E_REAL === '1' } = {})
           child.on('exit', () => void emit('bridge://exit', null));
           return null;
         }
+        case 'lock_status':
+          return { hasPin: lockState.pin !== null, failures: lockState.failures, lockedUntilMs: 0 };
+        case 'lock_set_pin':
+          lockState.pin = args.pin;
+          lockState.failures = 0;
+          return null;
+        case 'lock_verify':
+        case 'lock_change':
+        case 'lock_remove': {
+          const given = args.pin ?? args.current;
+          if (lockState.pin === null) return { outcome: 'no_pin', failures: 0, lockedUntilMs: 0 };
+          if (given !== lockState.pin) {
+            lockState.failures += 1;
+            return { outcome: 'wrong', failures: lockState.failures, lockedUntilMs: 0 };
+          }
+          lockState.failures = 0;
+          if (cmd === 'lock_change') lockState.pin = args.next;
+          if (cmd === 'lock_remove') lockState.pin = null;
+          return { outcome: 'ok', failures: 0, lockedUntilMs: 0 };
+        }
+        case 'lock_wipe':
+          lockState.pin = null;
+          lockState.failures = 0;
+          return null;
+        case 'secret_set':
+          secretStore.set(args.provider, args.key);
+          return null;
+        case 'secret_exists':
+          return secretStore.has(args.provider);
+        case 'secret_get':
+          return secretStore.get(args.provider) ?? null;
+        case 'secret_delete':
+          secretStore.delete(args.provider);
+          return null;
+        case 'secret_wipe':
+          secretStore.clear();
+          return null;
+        case 'system_set_close_behavior':
+          return null;
+        case 'plugin:autostart|is_enabled':
+          return autostart.enabled;
+        case 'plugin:autostart|enable':
+          autostart.enabled = true;
+          return null;
+        case 'plugin:autostart|disable':
+          autostart.enabled = false;
+          return null;
         case 'data_location': {
           // Stands in for the Rust command: a representative Windows path, never touched.
           const dir = 'C:\\Users\\you\\AppData\\Roaming\\com.engineerlish.geeked';
@@ -238,18 +294,37 @@ export async function startHarness({ real = process.env.E2E_REAL === '1' } = {})
       },
       [theme ?? 'dark', layout],
     );
-    if (lock === 'skip') {
-      await page.addInitScript(() =>
+    if (!onboarding) {
+      await page.addInitScript(() => {
+        // Only on the first load of a profile: reloads keep whatever the app saved since.
+        if (localStorage.getItem('geeked-prefs') !== null) return;
         localStorage.setItem(
-          'geeked-lock-prefs',
-          JSON.stringify({ skipped: true, autoLockMinutes: 0, failures: 0, lockedUntil: 0 }),
-        ),
-      );
+          'geeked-prefs',
+          JSON.stringify({
+            version: 1,
+            profile: { name: 'Ada' },
+            onboarding: { completed: true, step: 0 },
+            security: { autoLockMinutes: 0 },
+          }),
+        );
+      });
     }
-    await page.goto(url);
-    if (lock === 'setup') await page.waitForSelector('[data-testid="lock-screen"]');
+    // The first load after a fresh build can be slow (virus scanners inspect new files).
+    await page.goto(url, { timeout: 120_000 });
+    if (onboarding) await page.waitForSelector('[data-testid="onboarding"]');
+    else if (lock === 'setup') await page.waitForSelector('[data-testid="lock-screen"]');
     else if (layout === 'ide') await page.waitForSelector('[data-testid="ide-shell"]');
     else await page.waitForSelector('aside >> text=/Bridge ready|pong \\d+ms/');
+    // The app starts on Home; most scripts drive the chat, so open it unless Home was asked for.
+    if (!onboarding && lock !== 'setup' && !home) {
+      if (layout === 'ide') await page.keyboard.press('Control+t');
+      else
+        await page
+          .getByRole('button', { name: /new chat/i })
+          .first()
+          .click();
+      await page.waitForTimeout(100);
+    }
     return {
       page,
       killBridge: () => child?.kill('SIGKILL'),
@@ -264,6 +339,12 @@ export async function startHarness({ real = process.env.E2E_REAL === '1' } = {})
     db,
     saved,
     launch,
+    /** Forget the emulated PIN and keys (a clean machine for the next launch). */
+    resetSecurity: () => {
+      lockState.pin = null;
+      lockState.failures = 0;
+      secretStore.clear();
+    },
     consoleErrors,
     stop: async () => {
       await browser.close();

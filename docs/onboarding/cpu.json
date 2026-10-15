@@ -1,0 +1,32 @@
+[
+  {
+    "tier": "lightest",
+    "fps": 0,
+    "medianPercentOfOneCore": 0.77,
+    "minPercentOfOneCore": 0.33
+  },
+  {
+    "tier": "light",
+    "fps": 6,
+    "medianPercentOfOneCore": 1.68,
+    "minPercentOfOneCore": 1.52
+  },
+  {
+    "tier": "balanced",
+    "fps": 12,
+    "medianPercentOfOneCore": 4.13,
+    "minPercentOfOneCore": 3.5
+  },
+  {
+    "tier": "enhanced",
+    "fps": 20,
+    "medianPercentOfOneCore": 5.58,
+    "minPercentOfOneCore": 5.19
+  },
+  {
+    "tier": "accelerated",
+    "fps": 30,
+    "medianPercentOfOneCore": 8.22,
+    "minPercentOfOneCore": 8.2
+  }
+]

@@ -1,203 +1,120 @@
 import { create } from 'zustand';
-import {
-  checkPin,
-  createRecord,
-  isValidPin,
-  lockoutSeconds,
-  parseRecord,
-  type LockRecord,
-} from '../lib/app-lock';
+import { isValidPin } from '../lib/app-lock';
+import { lockBackend, type VerifyResult } from '../lib/lock-backend';
 
-const RECORD_KEY = 'geeked-lock';
-const PREFS_KEY = 'geeked-lock-prefs';
+export { AUTO_LOCK_CHOICES, type AutoLockMinutes } from '../lib/prefs';
 
-/** Minutes of inactivity before locking; 0 turns it off. */
-export const AUTO_LOCK_CHOICES = [0, 5, 15, 30, 60] as const;
-export type AutoLockMinutes = (typeof AUTO_LOCK_CHOICES)[number];
-
-interface Prefs {
-  /** The user chose to continue without a PIN. */
-  skipped: boolean;
-  autoLockMinutes: AutoLockMinutes;
-  /** Consecutive wrong PINs, persisted so a restart does not reset the delay. */
-  failures: number;
-  /** Epoch ms until which attempts are refused. */
-  lockedUntil: number;
-}
-
-const DEFAULT_PREFS: Prefs = { skipped: false, autoLockMinutes: 15, failures: 0, lockedUntil: 0 };
-
-function storage(): Storage | null {
-  try {
-    return window.localStorage;
-  } catch {
-    return null;
-  }
-}
-
-function readRecord(): LockRecord | null {
-  return parseRecord(storage()?.getItem(RECORD_KEY) ?? null);
-}
-
-function readPrefs(): Prefs {
-  try {
-    const raw = storage()?.getItem(PREFS_KEY);
-    if (!raw) return DEFAULT_PREFS;
-    const v = JSON.parse(raw) as Partial<Prefs>;
-    return {
-      skipped: v.skipped === true,
-      autoLockMinutes: AUTO_LOCK_CHOICES.includes(v.autoLockMinutes as AutoLockMinutes)
-        ? (v.autoLockMinutes as AutoLockMinutes)
-        : DEFAULT_PREFS.autoLockMinutes,
-      failures: Number.isInteger(v.failures) ? Math.max(0, v.failures as number) : 0,
-      lockedUntil: typeof v.lockedUntil === 'number' ? v.lockedUntil : 0,
-    };
-  } catch {
-    return DEFAULT_PREFS;
-  }
-}
-
-const writePrefs = (prefs: Prefs) => {
-  try {
-    storage()?.setItem(PREFS_KEY, JSON.stringify(prefs));
-  } catch {
-    // Without storage the lock still works for this session.
-  }
-};
-
-export type LockPhase = 'setup' | 'locked' | 'unlocked';
+/**
+ * - `checking`: asking the backend whether a PIN exists (nothing is rendered yet).
+ * - `locked`: a PIN exists and has not been entered this session / since the last lock.
+ * - `unlocked`: no PIN, or it was entered.
+ */
+export type LockPhase = 'checking' | 'locked' | 'unlocked';
 export type UnlockResult = 'ok' | 'wrong' | 'wait' | 'invalid';
 
 interface LockState {
   phase: LockPhase;
   /** A PIN exists (whether or not the app is currently locked). */
   hasPin: boolean;
-  autoLockMinutes: AutoLockMinutes;
+  /** Consecutive wrong PINs, as the backend counted them. */
   failures: number;
+  /** Epoch ms until which attempts are refused; 0 when not waiting. */
   lockedUntil: number;
 
-  /** Creates the first PIN and enters the app. */
-  setup: (pin: string) => Promise<void>;
-  /** Continue without a PIN; it can be added later in Settings. */
-  skip: () => void;
+  /** Reads the PIN state from the backend. Called once at startup. */
+  init: () => Promise<void>;
   unlock: (pin: string) => Promise<UnlockResult>;
+  /** Locks the app now (no-op without a PIN). */
   lock: () => void;
-  changePin: (current: string, next: string) => Promise<boolean>;
-  removePin: (current: string) => Promise<boolean>;
-  addPin: (pin: string) => Promise<void>;
-  setAutoLock: (minutes: AutoLockMinutes) => void;
-  /** Forgets the PIN and every local chat. The only way back in without the PIN. */
+  /** Sets or replaces the PIN without asking for the old one (onboarding, first PIN). */
+  setPin: (pin: string) => Promise<void>;
+  changePin: (current: string, next: string) => Promise<UnlockResult>;
+  removePin: (current: string) => Promise<UnlockResult>;
+  /** Forgets the PIN, every API key and every local chat. The only way back in without the PIN. */
   forgetEverything: () => Promise<void>;
 }
 
-function initial(): Pick<
-  LockState,
-  'phase' | 'hasPin' | 'autoLockMinutes' | 'failures' | 'lockedUntil'
-> {
-  const record = readRecord();
-  const prefs = readPrefs();
-  return {
-    phase: record ? 'locked' : prefs.skipped ? 'unlocked' : 'setup',
-    hasPin: record !== null,
-    autoLockMinutes: prefs.autoLockMinutes,
-    failures: prefs.failures,
-    lockedUntil: prefs.lockedUntil,
-  };
-}
+const toResult = (r: VerifyResult): UnlockResult =>
+  r.outcome === 'ok' || r.outcome === 'no_pin' ? 'ok' : r.outcome;
 
 export const useLockStore = create<LockState>()((set, get) => {
-  const saveRecord = (record: LockRecord | null) => {
-    try {
-      if (record) storage()?.setItem(RECORD_KEY, JSON.stringify(record));
-      else storage()?.removeItem(RECORD_KEY);
-    } catch {
-      // See writePrefs.
-    }
-  };
-  const persist = (patch: Partial<Prefs>) => {
-    const { autoLockMinutes, failures, lockedUntil } = get();
-    const current = readPrefs();
-    writePrefs({ skipped: current.skipped, autoLockMinutes, failures, lockedUntil, ...patch });
-  };
+  const apply = (r: Pick<VerifyResult, 'failures' | 'lockedUntilMs'>) =>
+    set({ failures: r.failures, lockedUntil: r.lockedUntilMs });
 
   return {
-    ...initial(),
+    phase: 'checking',
+    hasPin: false,
+    failures: 0,
+    lockedUntil: 0,
 
-    setup: async (pin) => {
-      if (!isValidPin(pin)) return;
-      saveRecord(await createRecord(pin));
-      persist({ skipped: false, failures: 0, lockedUntil: 0 });
-      set({ phase: 'unlocked', hasPin: true, failures: 0, lockedUntil: 0 });
-    },
-
-    skip: () => {
-      persist({ skipped: true });
-      set({ phase: 'unlocked', hasPin: false });
+    init: async () => {
+      try {
+        const status = await lockBackend().status();
+        set({
+          hasPin: status.hasPin,
+          failures: status.failures,
+          lockedUntil: status.lockedUntilMs,
+          // A PIN always starts the session locked.
+          phase: status.hasPin ? 'locked' : 'unlocked',
+        });
+      } catch {
+        // If the lock state cannot be read, fail closed only when a PIN might exist; with no
+        // way to tell, the app opens (there is nothing else to protect it with).
+        set({ phase: 'unlocked' });
+      }
     },
 
     unlock: async (pin) => {
-      const now = Date.now();
-      if (get().lockedUntil > now) return 'wait';
-      const record = readRecord();
-      if (!record) {
-        set({ phase: 'unlocked', hasPin: false });
-        return 'ok';
-      }
+      if (get().lockedUntil > Date.now()) return 'wait';
       if (!isValidPin(pin)) return 'invalid';
-      if (await checkPin(record, pin)) {
-        persist({ failures: 0, lockedUntil: 0 });
-        set({ phase: 'unlocked', failures: 0, lockedUntil: 0 });
-        return 'ok';
+      const result = await lockBackend().verify(pin);
+      apply(result);
+      if (result.outcome === 'ok' || result.outcome === 'no_pin') {
+        set({ phase: 'unlocked', hasPin: result.outcome === 'ok' ? get().hasPin : false });
       }
-      const failures = get().failures + 1;
-      const wait = lockoutSeconds(failures);
-      const lockedUntil = wait > 0 ? Date.now() + wait * 1000 : 0;
-      persist({ failures, lockedUntil });
-      set({ failures, lockedUntil });
-      return wait > 0 ? 'wait' : 'wrong';
+      return toResult(result);
     },
 
     lock: () => {
       if (get().hasPin) set({ phase: 'locked' });
     },
 
+    setPin: async (pin) => {
+      if (!isValidPin(pin)) throw new Error('Invalid PIN.');
+      await lockBackend().setPin(pin);
+      set({ hasPin: true, failures: 0, lockedUntil: 0 });
+    },
+
     changePin: async (current, next) => {
-      const record = readRecord();
-      if (!record || !isValidPin(next) || !(await checkPin(record, current))) return false;
-      saveRecord(await createRecord(next));
-      return true;
+      if (!isValidPin(next)) return 'invalid';
+      const result = await lockBackend().change(current, next);
+      apply(result);
+      return toResult(result);
     },
 
     removePin: async (current) => {
-      const record = readRecord();
-      if (!record || !(await checkPin(record, current))) return false;
-      saveRecord(null);
-      persist({ skipped: true, failures: 0, lockedUntil: 0 });
-      set({ hasPin: false, failures: 0, lockedUntil: 0 });
-      return true;
-    },
-
-    addPin: async (pin) => {
-      if (!isValidPin(pin)) return;
-      saveRecord(await createRecord(pin));
-      persist({ skipped: false });
-      set({ hasPin: true });
-    },
-
-    setAutoLock: (autoLockMinutes) => {
-      persist({ autoLockMinutes });
-      set({ autoLockMinutes });
+      const result = await lockBackend().remove(current);
+      apply(result);
+      if (result.outcome === 'ok') set({ hasPin: false, failures: 0, lockedUntil: 0 });
+      return toResult(result);
     },
 
     forgetEverything: async () => {
-      const [{ getDb }, { clearData }] = await Promise.all([
+      const [{ getDb }, { clearData }, { secrets }, { prefsStore }] = await Promise.all([
         import('../lib/db'),
         import('../lib/data'),
+        import('../lib/secrets'),
+        import('./prefs'),
       ]);
       await clearData(await getDb(), 'everything');
-      saveRecord(null);
-      writePrefs({ ...DEFAULT_PREFS, skipped: false });
+      await secrets.wipe();
+      await lockBackend().wipe();
+      prefsStore.getState().reset();
+      set({ hasPin: false, failures: 0, lockedUntil: 0, phase: 'unlocked' });
+      // A clean slate: the reload starts first-run onboarding again.
       window.location.reload();
     },
   };
 });
+
+void useLockStore.getState().init();
