@@ -29,3 +29,20 @@ argon2 = { version = "0.5", features = ["std"] }
 password-hash = { version = "0.5", features = ["getrandom"] }
 keyring = { version = "3", features = ["windows-native", "apple-native", "linux-native"] }
 tauri-plugin-autostart = "2"
+
+# Smaller, leaner release binary (measured in the Phase B PR): link-time optimisation across all
+# crates, one codegen unit, no symbols, optimised for size. The app shell does little CPU work
+# (the bridge and the webview do), so size optimisation costs nothing noticeable. Panics still
+# unwind, as before.
+[profile.release]
+lto = true
+codegen-units = 1
+strip = true
+opt-level = "s"
+
+# The PIN hash is the one CPU-heavy thing the shell does: keep it at full speed.
+[profile.release.package.argon2]
+opt-level = 3
+
+[profile.release.package.blake2]
+opt-level = 3
