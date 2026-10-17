@@ -7,6 +7,9 @@
 //! usual install folders. The bridge does the same for the CLIs it looks up
 //! (`packages/bridge/src/providers/process.ts`); this is the Rust side of it.
 
+// Reading the login shell is Unix-only; on Windows the helpers it uses are compiled but unused.
+#![cfg_attr(not(unix), allow(dead_code, unused_imports))]
+
 use std::ffi::OsString;
 use std::io::Read;
 use std::path::{Path, PathBuf};
@@ -73,11 +76,15 @@ pub fn login_shell_path(shell: &Path, timeout: Duration) -> Option<String> {
         .recv_timeout(deadline.saturating_duration_since(Instant::now()))
         .ok()
         .flatten();
-    // Whatever happened, nothing of the shell may outlive this call.
+    // Whatever happened, nothing of the shell may outlive this call. `kill -s KILL -- -<pgid>` is
+    // the spelling both BSD (macOS) and procps (Linux) read as "the whole process group"; the
+    // shell itself is killed directly too, so the `wait` below can never block on it.
     let _ = Command::new("/bin/kill")
-        .args(["-KILL", &format!("-{}", child.id())])
+        .args(["-s", "KILL", "--", &format!("-{}", child.id())])
+        .stdout(Stdio::null())
         .stderr(Stdio::null())
         .status();
+    let _ = child.kill();
     let _ = child.wait();
     result
 }
