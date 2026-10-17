@@ -1,10 +1,36 @@
 # Changelog
 
-All notable changes to Geeked (called Programish until 1.1.0) are recorded here. The format follows
+All notable changes to Command Center (called Geeked until 1.1.0, and Programish before that) are
+recorded here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and the project uses
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+
+### Changed
+
+- **Renamed to Command Center** (from Geeked). The window, menus, tray, installer and docs use the
+  new name; the bundle identifier is now `com.milesceo.commandcenter`, the database
+  `command-center.db`, the credential-store service `command-center`, packages `@command-center/*`
+  and environment variables `COMMAND_CENTER_*`. The repository moved to `milesceo/command-center`.
+- **Your data moves automatically** on the first launch after updating, from a Geeked install or
+  straight from a Programish one: chats and everything else in the database, preferences and the
+  PIN lock (including its lockout state), the close-to-tray choice and stored API keys are copied
+  to the new locations and verified. Nothing under the old name is modified or deleted, and an
+  existing file under the new name is never overwritten.
+- Prompt libraries exported as Geeked or Programish files still import.
+- Command Center installs **beside** Geeked rather than over it. Once your data is here, turn off
+  Geeked's "start at login", quit it from the tray and uninstall it. If Geeked is still running
+  when Command Center first starts, nothing is copied and Command Center asks you to quit Geeked
+  and start again (or to start without the old data).
+- Erasing data in Command Center ("Forgot PIN", or clearing data in Settings) erases only Command
+  Center's own copy. The previous install's folder and its stored API keys stay until you
+  uninstall the previous version.
+
+### Deprecated
+
+- The `GEEKED_*` environment variables (`GEEKED_BRIDGE_ENTRY`, `GEEKED_CLAUDE_EXECUTABLE`,
+  `GEEKED_QUERY_MODULE`) still work for one release and print a warning; use `COMMAND_CENTER_*`.
 
 ### Added
 
@@ -108,5 +134,5 @@ bill.
   of guessing.
 - Windows 11 on x64 is the supported target. Other platforms build from source but are untested.
 
-[Unreleased]: https://github.com/engineerlish/geeked/compare/v1.0.0...HEAD
+[Unreleased]: https://github.com/milesceo/command-center/commits/main
 [1.0.0]: https://github.com/engineerlish/geeked/releases/tag/v1.0.0

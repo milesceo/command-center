@@ -16,7 +16,7 @@ item has a one-click setup, Pass / Fail / Skip, and a button that opens a prefil
 4. A fix references the issue. Items whose question changed get a new `rev`, which clears the old
    answer. **Copy results** puts a Markdown report on the clipboard.
 
-Checklist version 1, 28 items.
+Checklist version 1, 33 items.
 
 ## Splash and Home
 
@@ -24,11 +24,11 @@ Checklist version 1, 28 items.
 
 Needs the Windows desktop app. Panel setup: `reload-app`.
 
-1. Quit Geeked completely (tray: Quit, or close the window).
+1. Quit Command Center completely (tray: Quit, or close the window).
 2. Start it again from the shortcut.
 3. Watch the first second.
 
-**Expected:** The spinning GEEKED logo is on screen almost immediately (no blank white or black flash), stays about a second, then fades into the PIN lock (or Home with no PIN) with no layout jump.
+**Expected:** The spinning COMMAND logo, with "command center" set under it, is on screen almost immediately (no blank white or black flash), stays about a second, then fades into the PIN lock (or Home with no PIN) with no layout jump.
 
 ### SPLASH-02: Logo frame rate follows the performance tier
 
@@ -45,7 +45,7 @@ Needs the Windows desktop app. Panel setup: `tier-lightest`.
 Needs the Windows desktop app. Panel setup: `go-home`.
 
 1. Open Home (the house icon).
-2. Note the top-left logo and the line under the Geeked mark.
+2. Note the top-left logo and the line under the Command Center mark.
 3. Restart the app twice and note the line each time.
 
 **Expected:** The top-left logo never moves; the center mark stays; the line is different on each launch and uses your name or real stats when it can.
@@ -88,7 +88,7 @@ Needs the Windows desktop app.
 Needs the Windows desktop app.
 
 1. Only if you set a PIN before the Argon2id change and have not unlocked since.
-2. Start Geeked and enter the old PIN.
+2. Start Command Center and enter the old PIN.
 3. Lock and unlock again.
 
 **Expected:** The old PIN unlocks the first time and keeps working afterwards (it was upgraded in place); nothing asks you to set a new one.
@@ -157,7 +157,7 @@ Needs the Windows desktop app.
 Needs the Windows desktop app. Panel setup: `open-settings-system`.
 
 1. Open Settings > System and set "When I close the window" to Minimize to tray.
-2. Find the Geeked icon in the system tray.
+2. Find the Command Center icon in the system tray.
 3. Right-click it and try Open, New chat, Lock, then Quit.
 
 **Expected:** The icon is there; Open shows the window; New chat opens a new thread; Lock shows the PIN screen; Quit exits completely.
@@ -167,7 +167,7 @@ Needs the Windows desktop app. Panel setup: `open-settings-system`.
 Needs the Windows desktop app.
 
 1. With a PIN set and Minimize to tray on, click the window close button.
-2. Open Geeked again from the tray icon.
+2. Open Command Center again from the tray icon.
 
 **Expected:** The window hides (the app keeps running in the tray) and, when shown again, asks for the PIN.
 
@@ -175,12 +175,12 @@ Needs the Windows desktop app.
 
 Needs the Windows desktop app. Panel setup: `open-settings-system`.
 
-1. Turn on "Launch Geeked when Windows starts".
-2. Open Task Manager > Startup apps and look for Geeked.
+1. Turn on "Launch Command Center when Windows starts".
+2. Open Task Manager > Startup apps and look for Command Center.
 3. Sign out and back in (or restart).
 4. Turn the setting off again and check Task Manager.
 
-**Expected:** Geeked appears in Startup apps when on and starts after signing in; it is gone from the list when off.
+**Expected:** Command Center appears in Startup apps when on and starts after signing in; it is gone from the list when off.
 
 ## Appearance and performance
 
@@ -191,7 +191,7 @@ Needs the Windows desktop app. Panel setup: `open-settings-appearance`.
 1. Set Theme to System in Settings > Appearance.
 2. Switch Windows between light and dark mode (Settings > Personalization > Colors).
 
-**Expected:** Geeked switches theme without a restart.
+**Expected:** Command Center switches theme without a restart.
 
 ### APPEAR-02: Palette and accent read well everywhere
 
@@ -227,11 +227,11 @@ Needs a real login or API key. Panel setup: `open-settings-agents`.
 Needs a real login or API key. Panel setup: `open-settings-agents`.
 
 1. In Settings > AI agents paste an xAI API key on the Grok card and save.
-2. Open Windows Credential Manager > Windows Credentials and look for a "geeked" entry.
+2. Open Windows Credential Manager > Windows Credentials and look for a "command-center" entry.
 3. Start a chat with Grok.
-4. Remove the key in Geeked and check Credential Manager again.
+4. Remove the key in Command Center and check Credential Manager again.
 
-**Expected:** An entry named api-key:xai under the geeked service appears and is gone after Remove; the chat answers; the key never shows in any file or in the database.
+**Expected:** An entry named api-key:xai under the command-center service appears and is gone after Remove; the chat answers; the key never shows in any file or in the database.
 
 ### PROV-03: ChatGPT sign-in through the Codex CLI
 
@@ -279,7 +279,7 @@ Needs a network connection. Panel setup: `open-settings-agents`.
 Needs the Windows desktop app.
 
 1. Let the app load the feed once, then quit it.
-2. Turn off your network (airplane mode) and start Geeked.
+2. Turn off your network (airplane mode) and start Command Center.
 3. Click a status dot.
 
 **Expected:** Dots still show the last known state and the popover says "Offline: showing the copy from ...".
@@ -302,3 +302,58 @@ Needs anywhere. Panel setup: `simulate-claude-degraded`.
 2. Look at the picker dot and click it.
 
 **Expected:** The dot is amber and the popover lists the simulated incident.
+
+## Rename and data migration
+
+### MIGRATE-01: An install from before the rename opens with everything intact
+
+Needs the Windows desktop app.
+
+1. On a machine that has the previous version installed and used (a few chats, a project, a library prompt, a PIN, a non-default theme and tier, close-to-tray on), note what you see, then quit it.
+2. Install and start Command Center.
+3. Unlock with the old PIN.
+4. Check the chats, projects and prompt library, Settings > Appearance, Settings > System, and the Usage view.
+5. Open the data folder (Settings > About) and look for migrated-from-previous-name.json.
+
+**Expected:** The old PIN unlocks (and a lockout that was running continues); every chat, project, prompt and usage row is there; theme, tier, layout and the close choice are as before; the marker file lists the copied files; the previous version, started again, still has all of its own data.
+
+### MIGRATE-02: Stored API keys carry over to the new credential service
+
+Needs a real login or API key. Panel setup: `open-settings-agents`.
+
+1. Before updating, store a Grok (xAI) API key in the previous version.
+2. Start Command Center once and open Settings > AI agents.
+3. Open the OS credential store (Windows Credential Manager, or Keychain Access on macOS) and search for api-key:xai.
+4. Send one Grok chat.
+
+**Expected:** The Grok card shows the key as stored; the credential store has an api-key:xai entry under the command-center service and the old entry is still there; the chat answers. On macOS, any Keychain prompt names Command Center.
+
+### MIGRATE-03: A conflicting file under the new name is never overwritten
+
+Needs the Windows desktop app. **Erases local data.**
+
+1. With the previous version installed, start Command Center once (so it has its own database), add a chat, quit.
+2. Delete only migrated-from-previous-name.json from the Command Center data folder.
+3. Start Command Center again.
+
+**Expected:** Command Center opens on its own data (the new chat is there), nothing from the previous version overwrote it, the marker is not rewritten, and the log says the migration did not complete.
+
+### MIGRATE-04: A PIN removed in the previous version stays removed
+
+Needs the Windows desktop app. **Erases local data.**
+
+1. In the previous version, remove the PIN (Settings > Security), then quit it.
+2. Start Command Center, then quit and start it again.
+3. In Command Center, set a PIN, remove it again, quit and restart; then repeat with Forgot PIN.
+
+**Expected:** Command Center never asks for a PIN that was removed, on the first start or later ones; after Forgot PIN the app starts at onboarding and no old PIN comes back.
+
+### MIGRATE-05: With the previous version still running, nothing is copied half-way
+
+Needs the Windows desktop app.
+
+1. Leave the previous version running (hidden in the tray).
+2. Start Command Center for the first time.
+3. In the message box, choose Quit. Quit the previous version from its tray icon and start Command Center again.
+
+**Expected:** A message box explains the previous version is still running before any window opens; after Quit no Command Center data folder content exists yet; the second start copies everything (MIGRATE-01 holds).

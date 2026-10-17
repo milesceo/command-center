@@ -1,6 +1,6 @@
 # Prompts
 
-This folder holds the prompts used to build Geeked, one file per prompt, saved verbatim.
+This folder holds the prompts used to build Command Center, one file per prompt, saved verbatim.
 
 ## Naming
 
