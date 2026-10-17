@@ -257,6 +257,8 @@ mod tests {
         assert_eq!(find_in(&std::env::join_paths([dir]).unwrap(), "node"), None);
     }
 
+    // PATH separators are `:` here; this merging is only used on macOS and Linux.
+    #[cfg(unix)]
     #[test]
     fn merge_keeps_order_and_drops_duplicates() {
         let merged = merge(
