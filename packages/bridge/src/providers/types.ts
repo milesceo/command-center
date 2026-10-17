@@ -7,7 +7,7 @@ import type {
   ProviderModel,
 } from '@command-center/protocol';
 import type { QueryFn } from '../sdk';
-import type { SpawnFn } from './process';
+import type { GuiPathDeps, SpawnFn } from './process';
 
 /** What a provider adapter may use; everything is injectable so adapters test without a network. */
 export interface ProviderContext {
@@ -19,6 +19,8 @@ export interface ProviderContext {
   fetch: typeof fetch;
   env: NodeJS.ProcessEnv;
   platform: NodeJS.Platform;
+  /** macOS PATH discovery (`ensureGuiPath`); tests pass a stub so no real shell or folder is read. */
+  gui?: GuiPathDeps;
 }
 
 /** A running chat. `done` resolves after the terminal event was emitted; it never rejects. */

@@ -25,7 +25,7 @@ export const MAX_CLI_PROMPT_CHARS = 24_000;
 const CLI_TIMEOUT_MS = 10 * 60_000;
 
 export function findGrok(ctx: ProviderContext): ResolvedCommand | null {
-  return resolveCommand('grok', ctx.env, ctx.platform);
+  return resolveCommand('grok', ctx.env, ctx.platform, undefined, ctx.gui);
 }
 
 // ------------------------------------------------------------------- SSE
@@ -350,6 +350,6 @@ export const grokProvider: Provider = {
   async login(ctx) {
     const command = findGrok(ctx);
     if (!command) throw new Error('The Grok CLI is not installed; use an API key instead.');
-    openTerminal(ctx, command, ['login']);
+    await openTerminal(ctx, command, ['login']);
   },
 };

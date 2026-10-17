@@ -17,7 +17,9 @@ const fakeSdk = fileURLToPath(new URL('../test/fake-sdk.mjs', import.meta.url));
 function startBridge() {
   const child = spawn(process.execPath, [entry], {
     stdio: ['pipe', 'pipe', 'ignore'],
-    env: { ...process.env, COMMAND_CENTER_QUERY_MODULE: fakeSdk },
+    // SHELL=/usr/bin/false: on macOS the bridge asks the login shell for its PATH at start;
+    // this makes that answer "nothing" at once instead of running the user's rc files.
+    env: { ...process.env, SHELL: '/usr/bin/false', COMMAND_CENTER_QUERY_MODULE: fakeSdk },
   });
   const events: BridgeEvent[] = [];
   let buf = '';
