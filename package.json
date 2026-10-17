@@ -17,7 +17,7 @@
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "typecheck": "pnpm -r typecheck",
-    "test": "pnpm -r test && node --test scripts/prepare-sidecar.test.mjs scripts/release-tools.test.mjs",
+    "test": "pnpm -r test && node --test scripts/prepare-sidecar.test.mjs scripts/release-tools.test.mjs scripts/agent-guard.test.mjs",
     "rust:fmt": "cargo fmt --manifest-path apps/desktop/src-tauri/Cargo.toml --all",
     "rust:fmt:check": "cargo fmt --manifest-path apps/desktop/src-tauri/Cargo.toml --all -- --check",
     "rust:lint": "cargo clippy --manifest-path apps/desktop/src-tauri/Cargo.toml --all-targets -- -D warnings",

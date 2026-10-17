@@ -112,6 +112,8 @@ packages/protocol/       Shared message types and NDJSON helpers (source-only)
 packages/bridge/         Node sidecar (bundled to dist/main.mjs with esbuild)
 scripts/                 Sidecar assembly, release tooling and the installed-app smoke test
 docs/screenshots/        README images
+docs/prompts/            The prompts used to build Geeked, one per session
+.claude/agents/          Claude Code subagents used while developing Geeked (not part of the app)
 ```
 
 ## Your data

@@ -35,7 +35,13 @@ export default tseslint.config(
     languageOptions: { globals: { ...globals.node, ...globals.browser } },
   },
   {
-    files: ['packages/bridge/**/*.{ts,mjs}', 'scripts/**/*.mjs', '*.js', '*.config.*'],
+    files: [
+      'packages/bridge/**/*.{ts,mjs}',
+      'scripts/**/*.mjs',
+      '.claude/**/*.mjs',
+      '*.js',
+      '*.config.*',
+    ],
     languageOptions: { globals: globals.node },
   },
 );

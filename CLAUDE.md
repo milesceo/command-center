@@ -100,6 +100,35 @@ This repo is the owner's professional portfolio; all work is attributed to them 
 - **GitHub is the tracker**: labels `qa-failure`, `ui-feedback`, `needs-triage`, `severity:*`, `area:*`; issue forms in `.github/ISSUE_TEMPLATE`; PR template in `.github/pull_request_template.md`.
 - **Design tools** (`docs/design-tools.md`): Storybook (`pnpm storybook`, stories beside components, toolbar sets theme/palette/density/motion/tier, MCP at `http://localhost:6006/mcp` via `.mcp.json`) and Figma (official MCP plugin; `pnpm design:tokens` exports `docs/design/tokens.json`, checked in `pnpm check`). Add a story for any new reusable component or screen.
 
+## Subagents
+
+Four project subagents live in `.claude/agents/` (Claude Code's documented format: Markdown with YAML frontmatter; the description drives delegation). They are development helpers for building Geeked, not an app feature. Call them by name ("use the reviewer subagent") or `@"reviewer (agent)"`.
+
+| Agent         | Use it                                      | Can do                                                                                                               |
+| ------------- | ------------------------------------------- | -------------------------------------------------------------------------------------------------------------------- |
+| **reviewer**  | After each meaningful change, before commit | Read-only. Bugs, edge cases, security, performance, patterns, snippet-style output. must-fix / should-fix / nitpick. |
+| **ui-polish** | After any UI change, with the reviewer      | Read-only. Tokens, themes, a11y, keyboard, focus, empty/loading/error states, motion setting, performance tiers.     |
+| **tester**    | Before a feature is marked done             | Edits **test files only**; runs Vitest, cargo test and the e2e scripts; reports app bugs as a failing test + cause.  |
+| **regulator** | Before every commit and every push          | Edits **Markdown docs only**; verdict `PASS` or `BLOCKED` with numbered violations citing rule and source.           |
+
+Workflow for every session:
+
+1. **Before writing code:** save the session prompt, verbatim, to `docs/prompts/YYYY-MM-DD-topic.md` as the **first commit of the branch** (`docs/prompts/README.md`).
+2. **After each meaningful change:** run the **reviewer**, plus **ui-polish** for any UI change.
+3. **Before marking a feature done:** run the **tester**.
+4. **Before every commit and every push:** run the **regulator**. Nothing is pushed until it returns PASS.
+5. **Fix every must-fix finding before moving on.** Should-fix items you defer go in the PR description.
+6. **Read-only subagents stay read-only.** The main agent applies all fixes (the tester writes tests, the regulator fixes docs; everything else is the main agent's), so there are never conflicting edits. Run subagents one at a time on the same files.
+
+Rule hierarchy the regulator enforces, highest first: (1) the current session's prompt, (2) this file, (3) prompts in `docs/prompts/` (newer overrides older), (4) other `docs/*.md` and established conventions in the code.
+
+Design decisions:
+
+- **Permissions are enforced by tool lists and a hook, not only by instructions.** Subagent frontmatter can only allow or deny a whole tool (`Bash(git diff *)` in `tools` does not narrow Bash), so each agent's `PreToolUse` hook runs `.claude/hooks/agent-guard.mjs <profile>`: read-only agents get Bash limited to inspection commands (`git diff|log|show|status`, `gh pr view|diff`, `ls`, `cat`, `grep`, ...); the tester adds the project's test commands and may edit only test files; the regulator adds the generated-doc guards and may edit only Markdown (never the generated `docs/TESTING.md`). No profile can commit, push, install or redirect output, and none can edit `.claude/` (its own definitions). The hook fails closed (any error blocks) and is covered by `scripts/agent-guard.test.mjs`, which runs in `pnpm test`. Accepted limit: the tester can write and run test scripts, so the guard catches drift, not a determined agent. When a command or path a role legitimately needs is blocked, change the guard and say so in the PR; do not work around it.
+- **Rust unit tests are inline** (`#[cfg(test)]` in `src-tauri/src`), which the tester may not edit; it writes `src-tauri/tests/` integration tests where it can and reports the rest as a coverage gap.
+- Agents cite this file and `docs/` rather than restating it, so when a convention changes here, the agents pick it up. If an agent's instructions mention a script, folder or command, keep them in sync when you rename it.
+- The agent files are picked up within seconds when `.claude/agents/` already exists; a session started before the folder existed needs a restart.
+
 ## Folder structure
 
 ```
@@ -115,6 +144,8 @@ packages/protocol/src                    message types, parse/encode, tests
 packages/bridge/src                      main.ts (stdio loop), handler.ts (dispatcher), chat.ts (runner), translate.ts (SDK -> events),
                                          errors.ts, options.ts, prompt.ts, sdk.ts (lazy SDK load)
 packages/bridge/test/fake-sdk.mjs        scripted stand-in for the SDK (GEEKED_QUERY_MODULE) used by process tests and e2e
+docs/prompts                             the prompts used to build Geeked, one file per session (binding; see its README)
+.claude/agents, .claude/hooks            project subagents (reviewer, tester, ui-polish, regulator) and their permission guard
 ```
 
 ## Conventions

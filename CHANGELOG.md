@@ -8,6 +8,9 @@ All notable changes to Geeked (called Programish until 1.1.0) are recorded here.
 
 ### Added
 
+- Four Claude Code project subagents (reviewer, tester, ui-polish, regulator) with a permission
+  guard hook, a "Subagents" workflow in `CLAUDE.md`, and `docs/prompts/` for the prompts used to
+  build Geeked.
 - A QA checklist panel (Ctrl+Shift+Q) with one-click setup, Pass/Fail/Skip and prefilled GitHub
   issue reports, a generated `docs/TESTING.md`, issue forms and a PR template.
 - Storybook with stories for the UI, a toolbar for theme, palette, density, motion and tier, and
