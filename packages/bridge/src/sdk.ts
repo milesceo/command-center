@@ -5,6 +5,7 @@ import type {
   SDKControlGetUsageResponse,
   SDKMessage,
 } from '@anthropic-ai/claude-agent-sdk';
+import { appEnv } from './env';
 
 /** The slice of the SDK's `query` we depend on; tests and the e2e harness substitute their own. */
 export type QueryFn = (params: {
@@ -21,7 +22,7 @@ export type QueryFn = (params: {
  * Loads the SDK lazily so `ping` stays instant and a missing/broken install
  * becomes a reportable `sdk_unavailable` error instead of a crash at startup.
  *
- * `GEEKED_QUERY_MODULE` points at a module exporting `query`; it exists so
+ * `COMMAND_CENTER_QUERY_MODULE` points at a module exporting `query`; it exists so
  * the end-to-end harness can run the real bridge process without a Claude login.
  */
 /**
@@ -35,7 +36,7 @@ export function moduleSpecifier(specifier: string): string {
 }
 
 export async function loadQuery(): Promise<QueryFn> {
-  const override = process.env.GEEKED_QUERY_MODULE;
+  const override = appEnv('QUERY_MODULE');
   // A literal specifier (not a variable) so the release build can bundle the SDK into main.mjs.
   const mod = (await (override
     ? import(moduleSpecifier(override))
@@ -55,6 +56,6 @@ export async function loadQuery(): Promise<QueryFn> {
  * finds its own copy in node_modules.
  */
 export function claudeExecutable(base: NodeJS.ProcessEnv = process.env): string | undefined {
-  const path = base.GEEKED_CLAUDE_EXECUTABLE?.trim();
+  const path = appEnv('CLAUDE_EXECUTABLE', base)?.trim();
   return path ? path : undefined;
 }
