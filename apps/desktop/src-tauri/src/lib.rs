@@ -1,6 +1,7 @@
 mod bridge;
 mod data;
 mod env;
+mod gui_path;
 mod legacy_keys;
 mod lock;
 mod migrate;
@@ -175,6 +176,7 @@ pub fn run() {
         .invoke_handler(tauri::generate_handler![
             bridge::bridge_start,
             bridge::bridge_send,
+            bridge::bridge_stop,
             data::data_location,
             preview::preview_set,
             lock::lock_status,
@@ -188,7 +190,8 @@ pub fn run() {
             secrets::secret_get,
             secrets::secret_delete,
             secrets::secret_wipe,
-            system::system_set_close_behavior
+            system::system_set_close_behavior,
+            system::system_power_state
         ])
         .build(tauri::generate_context!())
         .expect("error while building Command Center")

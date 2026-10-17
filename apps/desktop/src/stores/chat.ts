@@ -9,7 +9,7 @@ import * as promptsRepo from '../lib/repo-prompts';
 import * as usageRepo from '../lib/repo-usage';
 import { resolveSystemPrompt } from '../lib/system-prompt';
 import type { Conversation, Message } from '../lib/types';
-import { useBridgeStore } from './bridge';
+import { ensureBridge } from './bridge';
 import { conversationsStore, titleFrom } from './conversations';
 import { usageStore } from './usage';
 import { secrets } from '../lib/secrets';
@@ -89,9 +89,7 @@ const defaultSchedule: ChatDeps['schedule'] = (flush, streamedChars) => {
 };
 
 const defaultEnsureConnected = async () => {
-  await useBridgeStore.getState().connect();
-  const { status, error } = useBridgeStore.getState();
-  if (status !== 'ready') throw new Error(error ?? 'The Claude bridge is not available.');
+  await ensureBridge();
 };
 
 const errorOf = (err: unknown): BridgeError => ({

@@ -12,7 +12,6 @@ import { ClassicTitleBar } from './components/shell/WindowControls';
 import { IdeShell } from './ide/IdeShell';
 import { system, listenToTray } from './lib/system';
 import { useAppearance } from './lib/use-appearance';
-import { useBridgeStore } from './stores/bridge';
 import { chatStore } from './stores/chat';
 import { conversationsStore, useConversations } from './stores/conversations';
 import { useLockStore } from './stores/lock';
@@ -30,7 +29,6 @@ import { QaPanel } from './qa/QaPanel';
 export function App() {
   const layout = useUiStore((s) => s.layout);
   const activeId = useConversations((s) => s.activeId);
-  const connect = useBridgeStore((s) => s.connect);
   const onboarded = usePrefs((s) => s.prefs.onboarding.completed);
 
   const prefs = usePrefs((s) => s.prefs);
@@ -82,13 +80,13 @@ export function App() {
     return () => useStatus.getState().stop();
   }, []);
 
-  // Start the sidecar and read the saved conversations (which also runs DB migrations).
+  // Read the saved conversations (which also runs DB migrations). The sidecar is not started
+  // here: the first chat, provider check or usage request starts it (`useBridgeStore.connect`).
   useEffect(() => {
-    void connect();
     void conversationsStore.getState().load();
     void promptsStore.getState().load();
     void projectsStore.getState().load();
-  }, [connect]);
+  }, []);
 
   // Show the selected conversation's history.
   useEffect(() => {

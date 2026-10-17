@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { system } from '../../lib/system';
-import type { CloseBehavior } from '../../lib/prefs';
+import { BRIDGE_IDLE_CHOICES, type BridgeIdleMinutes, type CloseBehavior } from '../../lib/prefs';
 import { usePrefs } from '../../stores/prefs';
 import { toast } from '../../stores/toast';
 import { Row } from '../settings/parts';
@@ -14,6 +14,8 @@ export function SystemControls() {
   const closeBehavior = usePrefs((s) => s.prefs.system.closeBehavior);
   const setAutostart = usePrefs((s) => s.setAutostart);
   const setCloseBehavior = usePrefs((s) => s.setCloseBehavior);
+  const bridgeIdle = usePrefs((s) => s.prefs.system.bridgeIdleMinutes);
+  const setBridgeIdle = usePrefs((s) => s.setBridgeIdle);
   const [busy, setBusy] = useState(false);
   const desktop = system.available();
 
@@ -78,6 +80,25 @@ export function SystemControls() {
             { value: 'quit', label: 'Quit' },
           ]}
           onChange={changeClose}
+        />
+      </Row>
+
+      <Row
+        label="Stop the AI helper when idle"
+        hint={
+          bridgeIdle === 0
+            ? 'The background helper that talks to the AI providers (shown as "Bridge" in the status bar) keeps running while the app is open.'
+            : `The background helper that talks to the AI providers (shown as "Bridge" in the status bar) stops after ${bridgeIdle} minutes without a request, to save memory. The next chat starts it again and takes a moment longer.`
+        }
+      >
+        <Segmented<string>
+          label="Stop the AI helper when idle"
+          value={String(bridgeIdle)}
+          options={BRIDGE_IDLE_CHOICES.map((m) => ({
+            value: String(m),
+            label: m === 0 ? 'Never' : `${m} min`,
+          }))}
+          onChange={(v) => setBridgeIdle(Number(v) as BridgeIdleMinutes)}
         />
       </Row>
     </div>

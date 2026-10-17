@@ -18,7 +18,7 @@ export function createTauriTransport(): BridgeTransport {
     async start() {
       requireTauri();
       const { invoke } = await import('@tauri-apps/api/core');
-      await invoke('bridge_start');
+      return invoke<number>('bridge_start');
     },
     async send(line) {
       requireTauri();
@@ -31,7 +31,12 @@ export function createTauriTransport(): BridgeTransport {
     },
     async onExit(handler) {
       const { listen } = await import('@tauri-apps/api/event');
-      return listen('bridge://exit', () => handler());
+      return listen<number>('bridge://exit', (e) => handler(e.payload));
+    },
+    async stop() {
+      requireTauri();
+      const { invoke } = await import('@tauri-apps/api/core');
+      await invoke('bridge_stop');
     },
   };
 }

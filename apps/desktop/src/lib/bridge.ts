@@ -17,12 +17,15 @@ import {
 
 /** The raw line channel to the sidecar. Tauri implements it; tests fake it. */
 export interface BridgeTransport {
-  start(): Promise<void>;
+  /** Starts the sidecar; the desktop transport returns its generation (see `onExit`). */
+  start(): Promise<number | void>;
   send(line: string): Promise<void>;
   /** Subscribe to stdout lines. Returns an unsubscribe function. */
   onLine(handler: (line: string) => void): Promise<() => void>;
-  /** Subscribe to the sidecar process ending. */
-  onExit(handler: () => void): Promise<() => void>;
+  /** Subscribe to the sidecar process ending; `generation` says which start it was. */
+  onExit(handler: (generation?: number) => void): Promise<() => void>;
+  /** Stops the sidecar on purpose (idle shutdown). Absent where the process cannot be stopped. */
+  stop?(): Promise<void>;
 }
 
 export interface PingResult {
@@ -65,6 +68,11 @@ export class BridgeClient {
   private pending = new Map<string, Pending>();
   private streams = new Map<string, Stream>();
   private exitListeners = new Set<() => void>();
+  private settledListeners = new Set<() => void>();
+  /** The running sidecar's generation; an exit for any other one is stale and ignored. */
+  private generation: number | undefined;
+  /** The newest generation stopped on purpose; its exit (or an older one's) can arrive late. */
+  private stoppedGeneration: number | undefined;
   private unlisten: (() => void)[] = [];
 
   constructor(
@@ -76,13 +84,36 @@ export class BridgeClient {
     // Subscribe before starting so the sidecar's first output can't be missed.
     this.disconnect();
     this.unlisten.push(await this.transport.onLine((line) => this.handleLine(line)));
-    this.unlisten.push(await this.transport.onExit(() => this.handleExit()));
-    await this.transport.start();
+    this.unlisten.push(await this.transport.onExit((g) => this.handleExit(g)));
+    const generation = await this.transport.start();
+    this.generation = typeof generation === 'number' ? generation : undefined;
   }
 
   disconnect(): void {
     this.unlisten.forEach((off) => off());
     this.unlisten = [];
+  }
+
+  /** True while a request is waiting for its answer or a chat is streaming. */
+  isBusy(): boolean {
+    return this.pending.size > 0 || this.streams.size > 0;
+  }
+
+  /** Called whenever a request or chat finishes (the idle timer restarts from there). */
+  onSettled(listener: () => void): () => void {
+    this.settledListeners.add(listener);
+    return () => this.settledListeners.delete(listener);
+  }
+
+  /** Stops the sidecar on purpose; the next `connect` starts a fresh one. */
+  async stop(): Promise<void> {
+    this.stoppedGeneration = this.generation;
+    this.disconnect();
+    await this.transport.stop?.();
+  }
+
+  private settled(): void {
+    for (const listener of this.settledListeners) listener();
   }
 
   /** Called when the sidecar dies; in-flight work has already been failed by then. */
@@ -165,12 +196,14 @@ export class BridgeClient {
       const timer = setTimeout(() => {
         this.pending.delete(id);
         reject(new Error('Bridge did not respond in time.'));
+        this.settled();
       }, timeoutMs);
       this.pending.set(id, { resolve, reject, timer });
       this.transport.send(line).catch((err: unknown) => {
         clearTimeout(timer);
         this.pending.delete(id);
         reject(err instanceof Error ? err : new Error(String(err)));
+        this.settled();
       });
     });
   }
@@ -194,7 +227,10 @@ export class BridgeClient {
     if (stream) {
       if (isTerminalEvent(event)) this.streams.delete(event.id);
       stream.onEvent(event);
-      if (isTerminalEvent(event)) stream.finish();
+      if (isTerminalEvent(event)) {
+        stream.finish();
+        this.settled();
+      }
       return;
     }
 
@@ -204,6 +240,7 @@ export class BridgeClient {
       this.pending.delete(event.id);
       if (event.type === 'error') pending.reject(new Error(event.error.message));
       else pending.resolve(event);
+      this.settled();
     }
   }
 
@@ -213,9 +250,16 @@ export class BridgeClient {
     this.streams.delete(id);
     stream.onEvent({ type: 'error', id, error: { code: 'internal', message } });
     stream.finish();
+    this.settled();
   }
 
-  private handleExit(): void {
+  private handleExit(generation?: number): void {
+    // A bridge stopped on purpose can report its exit late: after a fresh one started, or even
+    // while it is still starting (before its own generation is known).
+    if (generation !== undefined) {
+      if (this.stoppedGeneration !== undefined && generation <= this.stoppedGeneration) return;
+      if (this.generation !== undefined && generation !== this.generation) return;
+    }
     for (const [id, p] of this.pending) {
       clearTimeout(p.timer);
       p.reject(new Error(EXIT_MESSAGE));

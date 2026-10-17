@@ -27,9 +27,9 @@ const lastReply = (page) => page.locator('[data-role="assistant"]').last();
 
 let app = await h.launch({ theme: 'dark' });
 
-await step('empty state renders and bridge pings', async () => {
+await step('empty state renders with the bridge on standby until first use', async () => {
   await app.page.waitForSelector('text=What are we building?');
-  assert.match(await app.page.locator('aside').innerText(), /Bridge ready|pong/);
+  assert.match(await app.page.locator('aside').innerText(), /Bridge on standby/);
   await shot(app, '01-empty-dark');
 });
 

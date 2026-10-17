@@ -42,7 +42,7 @@ export const ONBOARDING_STEPS: readonly StepDef[] = [
     id: 'system',
     label: 'System',
     title: 'How should Command Center behave?',
-    subtitle: 'Startup and what the close button does.',
+    subtitle: 'Start at login, what the close button does, and when the AI helper stops.',
     settings: 'Settings → System',
   },
   {

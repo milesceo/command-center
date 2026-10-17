@@ -4,6 +4,7 @@ import { getBridgeClient } from '../lib/bridge-client';
 import { secrets } from '../lib/secrets';
 import { isTauri } from '../lib/tauri';
 import { usePrefs } from './prefs';
+import { ensureBridge } from './bridge';
 
 type KeyMap = Record<ProviderId, boolean>;
 
@@ -48,6 +49,7 @@ export const useProviders = create<ProvidersState>()((set, get) => ({
         set({ loading: false, error: null });
         return;
       }
+      await ensureBridge();
       const list = await getBridgeClient().providers(PROVIDER_IDS.filter((id) => hasKey[id]));
       set({
         infos: Object.fromEntries(list.map((p) => [p.id, p])) as Partial<
@@ -63,6 +65,7 @@ export const useProviders = create<ProvidersState>()((set, get) => ({
 
   login: async (id) => {
     try {
+      await ensureBridge();
       const list = await getBridgeClient().loginProvider(id);
       set({
         infos: Object.fromEntries(list.map((p) => [p.id, p])) as Partial<

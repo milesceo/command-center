@@ -24,12 +24,20 @@ import {
 } from './appearance';
 import { DEFAULT_TIER, isTierId, type MotionSetting, type TierId } from './performance';
 
-export const PREFS_VERSION = 1;
+export const PREFS_VERSION = 2;
 
 /** Minutes of inactivity before locking; 0 turns the idle lock off. */
 export const AUTO_LOCK_CHOICES = [0, 1, 5, 15, 30, 60] as const;
 export type AutoLockMinutes = (typeof AUTO_LOCK_CHOICES)[number];
 export const DEFAULT_AUTO_LOCK: AutoLockMinutes = 15;
+
+/**
+ * Minutes without any request before the background bridge process is stopped (it starts again
+ * on the next chat or provider check); 0 keeps it running.
+ */
+export const BRIDGE_IDLE_CHOICES = [0, 5, 10, 30, 60] as const;
+export type BridgeIdleMinutes = (typeof BRIDGE_IDLE_CHOICES)[number];
+export const DEFAULT_BRIDGE_IDLE: BridgeIdleMinutes = 10;
 
 export const NAME_MIN = 1;
 export const NAME_MAX = 32;
@@ -53,8 +61,13 @@ export interface Prefs {
     step: number;
   };
   security: { autoLockMinutes: AutoLockMinutes };
-  system: { autostart: boolean; closeBehavior: CloseBehavior };
-  performance: { tier: TierId };
+  system: {
+    autostart: boolean;
+    closeBehavior: CloseBehavior;
+    bridgeIdleMinutes: BridgeIdleMinutes;
+  };
+  /** `followPower`: use a lighter tier on battery or in Low Power Mode (macOS). */
+  performance: { tier: TierId; followPower: boolean };
   appearance: {
     theme: ThemeChoice;
     palette: PaletteId;
@@ -83,8 +96,8 @@ export function defaultPrefs(): Prefs {
     profile: { name: '' },
     onboarding: { completed: false, step: 0 },
     security: { autoLockMinutes: DEFAULT_AUTO_LOCK },
-    system: { autostart: false, closeBehavior: 'quit' },
-    performance: { tier: DEFAULT_TIER },
+    system: { autostart: false, closeBehavior: 'quit', bridgeIdleMinutes: DEFAULT_BRIDGE_IDLE },
+    performance: { tier: DEFAULT_TIER, followPower: true },
     appearance: {
       theme: 'dark',
       palette: DEFAULT_PALETTE,
@@ -170,8 +183,12 @@ export function normalizePrefs(raw: unknown): Prefs {
     system: {
       autostart: bool(system.autostart, false),
       closeBehavior: oneOf<CloseBehavior>(system.closeBehavior, ['tray', 'quit'], 'quit'),
+      bridgeIdleMinutes: oneOf(system.bridgeIdleMinutes, BRIDGE_IDLE_CHOICES, DEFAULT_BRIDGE_IDLE),
     },
-    performance: { tier: isTierId(performance.tier) ? performance.tier : DEFAULT_TIER },
+    performance: {
+      tier: isTierId(performance.tier) ? performance.tier : DEFAULT_TIER,
+      followPower: bool(performance.followPower, true),
+    },
     appearance: {
       theme: oneOf(appearance.theme, THEME_CHOICES, d.appearance.theme),
       palette: isPaletteId(appearance.palette) ? appearance.palette : DEFAULT_PALETTE,
@@ -211,6 +228,17 @@ export const MIGRATIONS: readonly Migration[] = [
   // 0 -> 1: the first schema. A document without a version holds nothing (or legacy values
   // injected by `migratePrefs`), which `normalizePrefs` then validates.
   (prefs) => prefs,
+  // 1 -> 2: the bridge stops after idle minutes, and the tier follows battery and Low Power Mode
+  // (Phase B); existing users get both defaults.
+  (prefs) => {
+    const system = isObject(prefs.system) ? prefs.system : {};
+    const performance = isObject(prefs.performance) ? prefs.performance : {};
+    return {
+      ...prefs,
+      system: { ...system, bridgeIdleMinutes: DEFAULT_BRIDGE_IDLE },
+      performance: { ...performance, followPower: true },
+    };
+  },
 ];
 
 /** Applies every migration from the document's version up to `target`. Exported for tests. */

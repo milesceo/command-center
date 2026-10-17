@@ -165,7 +165,10 @@ export function SettingsView() {
 
         <AppLockSection />
 
-        <Section title="System" hint="Start at login and what the close button does.">
+        <Section
+          title="System"
+          hint="Start at login, what the close button does, and when the AI helper stops."
+        >
           <SystemControls />
         </Section>
 

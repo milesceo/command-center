@@ -40,7 +40,7 @@ for (let i = 0; i < runs; i++) {
   const t0 = Date.now();
   const app = await h.launch();
   const { page } = app;
-  samples.ready.push(Date.now() - t0); // page loaded and the bridge answered a ping
+  samples.ready.push(Date.now() - t0); // page loaded (the bridge now starts on first use)
   const timing = await page.evaluate(() => {
     const nav = performance.getEntriesByType('navigation')[0];
     const paints = Object.fromEntries(

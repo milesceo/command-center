@@ -119,7 +119,9 @@ describe('SettingsView platform wording', () => {
     setPlatform('Win32');
     const { container } = render(<SettingsView />);
     const text = container.textContent ?? '';
-    expect(text).toContain('Start at login and what the close button does.');
+    expect(text).toContain(
+      'Start at login, what the close button does, and when the AI helper stops.',
+    );
     expect(text).toContain('API keys live in the Windows Credential Manager.');
     expect(text).toContain('Keys stay in the Windows Credential Manager.');
     expect(text).toContain('GitHub issue reports. Ctrl+Shift+Q.');

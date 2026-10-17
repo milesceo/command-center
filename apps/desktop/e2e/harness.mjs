@@ -329,7 +329,8 @@ export async function startHarness({ real = process.env.E2E_REAL === '1' } = {})
     if (onboarding) await page.waitForSelector('[data-testid="onboarding"]');
     else if (lock === 'setup') await page.waitForSelector('[data-testid="lock-screen"]');
     else if (layout === 'ide') await page.waitForSelector('[data-testid="ide-shell"]');
-    else await page.waitForSelector('aside >> text=/Bridge ready|pong \\d+ms/');
+    // The bridge starts on first use, so a fresh app shows it on standby.
+    else await page.waitForSelector('aside >> text=/Bridge (ready|on standby)|pong \\d+ms/');
     // The app starts on Home; most scripts drive the chat, so open it unless Home was asked for.
     if (!onboarding && lock !== 'setup' && !home) {
       if (layout === 'ide') await page.keyboard.press('Control+t');
