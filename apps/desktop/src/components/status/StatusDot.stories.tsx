@@ -1,4 +1,4 @@
-import type { FeedProvider, OverallStatus, StatusFeed } from '@geeked/protocol';
+import type { FeedProvider, OverallStatus, StatusFeed } from '@command-center/protocol';
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import { useEffect } from 'react';
 import { useStatus } from '../../stores/status';

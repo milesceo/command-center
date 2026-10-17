@@ -50,11 +50,11 @@ export function SystemControls() {
   return (
     <div className="flex flex-col gap-4" data-testid="system-controls">
       <Row
-        label="Launch Geeked when Windows starts"
+        label="Launch Command Center when Windows starts"
         hint={desktop ? 'Off by default.' : 'Available in the desktop app.'}
       >
         <Switch
-          label="Launch Geeked when Windows starts"
+          label="Launch Command Center when Windows starts"
           checked={autostart}
           disabled={!desktop || busy}
           onChange={(v) => void changeAutostart(v)}
@@ -65,8 +65,8 @@ export function SystemControls() {
         label="When I close the window"
         hint={
           closeBehavior === 'tray'
-            ? 'Geeked keeps running in the tray (Open, New chat, Lock, Quit). The app locks when it hides.'
-            : 'Geeked quits.'
+            ? 'Command Center keeps running in the tray (Open, New chat, Lock, Quit). The app locks when it hides.'
+            : 'Command Center quits.'
         }
       >
         <Segmented<CloseBehavior>

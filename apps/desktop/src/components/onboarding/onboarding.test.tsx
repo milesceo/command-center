@@ -38,7 +38,9 @@ describe('onboarding flow', () => {
   it('has the five steps and starts on the name step', () => {
     render(<OnboardingFlow />);
     expect(ONBOARDING_STEPS.map((s) => s.id)).toEqual(['name', 'pin', 'system', 'look', 'agents']);
-    expect(screen.getByRole('heading', { name: /what should geeked call you/i })).toBeTruthy();
+    expect(
+      screen.getByRole('heading', { name: /what should command center call you/i }),
+    ).toBeTruthy();
     expect(screen.getByText(/change this any time in Settings/i)).toBeTruthy();
     expect(screen.getAllByRole('tab')).toHaveLength(5);
   });
@@ -56,14 +58,14 @@ describe('onboarding flow', () => {
     expect(nextButton.disabled).toBe(false);
     next();
     expect(usePrefs.getState().prefs.profile.name).toBe('Ada');
-    expect(screen.getByRole('heading', { name: /lock geeked with a pin/i })).toBeTruthy();
+    expect(screen.getByRole('heading', { name: /lock command center with a pin/i })).toBeTruthy();
   });
 
   it('continues with Enter from the name field', () => {
     render(<OnboardingFlow />);
     typeName('Ada');
     fireEvent.keyDown(screen.getByLabelText('Your name'), { key: 'Enter' });
-    expect(screen.getByRole('heading', { name: /lock geeked with a pin/i })).toBeTruthy();
+    expect(screen.getByRole('heading', { name: /lock command center with a pin/i })).toBeTruthy();
   });
 
   it('sets a PIN after both fields match, hashes it, and explains there is no recovery', async () => {
@@ -86,7 +88,9 @@ describe('onboarding flow', () => {
     next();
 
     await waitFor(() => expect(useLockStore.getState().hasPin).toBe(true));
-    expect(await screen.findByRole('heading', { name: /how should geeked behave/i })).toBeTruthy();
+    expect(
+      await screen.findByRole('heading', { name: /how should command center behave/i }),
+    ).toBeTruthy();
     // Nothing readable is stored.
     const stored = Object.values(localStorage).join('\n');
     expect(stored).not.toContain('k3#Zp9');
@@ -109,7 +113,7 @@ describe('onboarding flow', () => {
     typeName('Ada');
     next();
     fireEvent.click(screen.getByRole('button', { name: /skip for now/i }));
-    expect(screen.getByRole('heading', { name: /how should geeked behave/i })).toBeTruthy();
+    expect(screen.getByRole('heading', { name: /how should command center behave/i })).toBeTruthy();
     expect(useLockStore.getState().hasPin).toBe(false);
   });
 
@@ -120,7 +124,9 @@ describe('onboarding flow', () => {
     fireEvent.click(screen.getByRole('button', { name: /skip for now/i }));
     expect(usePrefs.getState().prefs.onboarding.step).toBe(2);
     fireEvent.click(screen.getByRole('tab', { name: /name/i }));
-    expect(screen.getByRole('heading', { name: /what should geeked call you/i })).toBeTruthy();
+    expect(
+      screen.getByRole('heading', { name: /what should command center call you/i }),
+    ).toBeTruthy();
     expect((screen.getByLabelText('Your name') as HTMLInputElement).value).toBe('Ada');
   });
 

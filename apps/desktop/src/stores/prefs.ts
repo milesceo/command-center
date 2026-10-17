@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import type { ProviderId } from '@geeked/protocol';
+import type { ProviderId } from '@command-center/protocol';
 import type { Density, PaletteId, ThemeChoice } from '../lib/appearance';
 import type { TierId, MotionSetting } from '../lib/performance';
 import {
@@ -13,7 +13,7 @@ import {
   type Prefs,
 } from '../lib/prefs';
 
-const KEY = 'geeked-prefs';
+const KEY = 'command-center-prefs';
 
 function storage(): Storage | null {
   try {
@@ -34,9 +34,9 @@ function readJson(key: string): unknown {
 
 /** Values from the stores that existed before the prefs schema (read once, never written). */
 function readLegacy(): LegacySettings {
-  const ui = readJson('geeked-ui') as { state?: { theme?: unknown } } | null;
-  const settings = readJson('geeked-settings') as { state?: { uiScale?: unknown } } | null;
-  const lock = readJson('geeked-lock-prefs') as { autoLockMinutes?: unknown } | null;
+  const ui = readJson('command-center-ui') as { state?: { theme?: unknown } } | null;
+  const settings = readJson('command-center-settings') as { state?: { uiScale?: unknown } } | null;
+  const lock = readJson('command-center-lock-prefs') as { autoLockMinutes?: unknown } | null;
   const legacy: LegacySettings = {};
   const theme = ui?.state?.theme;
   if (theme === 'dark' || theme === 'light') legacy.theme = theme;

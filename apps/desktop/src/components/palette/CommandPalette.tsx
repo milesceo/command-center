@@ -1,4 +1,4 @@
-import { MODEL_OPTIONS } from '@geeked/protocol';
+import { MODEL_OPTIONS } from '@command-center/protocol';
 import { Search } from 'lucide-react';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { filterCommands, type Command } from '../../lib/commands';
@@ -64,7 +64,7 @@ function useCommands(conversations: Conversation[]): {
       { id: 'open-chat', title: 'Back to chat', group: 'Actions', run: goto('chat') },
       {
         id: 'lock',
-        title: 'Lock Geeked',
+        title: 'Lock Command Center',
         group: 'Actions',
         shortcut: 'Mod+L',
         keywords: 'pin screen lock',

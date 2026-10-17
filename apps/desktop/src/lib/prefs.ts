@@ -9,7 +9,7 @@
  * Secrets never live here: API keys go to the OS keychain and the PIN hash to the Rust side.
  */
 
-import { DEFAULT_PROVIDER, PROVIDER_IDS, type ProviderId } from '@geeked/protocol';
+import { DEFAULT_PROVIDER, PROVIDER_IDS, type ProviderId } from '@command-center/protocol';
 import {
   DEFAULT_FONT_SCALE,
   DEFAULT_PALETTE,

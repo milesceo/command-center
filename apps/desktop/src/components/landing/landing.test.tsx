@@ -39,7 +39,7 @@ describe('landing view', () => {
   it('shows the mark, a still ASCII logo and a launch message', async () => {
     vi.useFakeTimers();
     render(<LandingView />);
-    expect(screen.getByTestId('geeked-mark')).toBeTruthy();
+    expect(screen.getByTestId('command-center-mark')).toBeTruthy();
     // The corner logo does not spin on Home, even on the fastest tier.
     const logo = screen.getByTestId('ascii-logo');
     expect(logo.getAttribute('data-size')).toBe('corner');
@@ -69,13 +69,13 @@ describe('landing view', () => {
     cleanup();
 
     // A new launch picks something different from the one stored.
-    const lastId = localStorage.getItem('geeked-last-message');
+    const lastId = localStorage.getItem('command-center-last-message');
     expect(MESSAGES.some((m) => m.id === lastId)).toBe(true);
     for (let i = 0; i < 8; i++) {
       resetLaunchMessage();
       render(<LandingView />);
       await waitFor(() => expect(screen.getByTestId('launch-message').textContent).toBeTruthy());
-      const stored = localStorage.getItem('geeked-last-message');
+      const stored = localStorage.getItem('command-center-last-message');
       expect(stored).not.toBe(lastId === stored ? '' : null);
       cleanup();
     }

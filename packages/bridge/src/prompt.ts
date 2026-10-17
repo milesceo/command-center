@@ -1,4 +1,4 @@
-import type { Attachment, ChatMessage } from '@geeked/protocol';
+import type { Attachment, ChatMessage } from '@command-center/protocol';
 
 /** Above this many characters the oldest turns are dropped to stay inside the context window. */
 export const MAX_PROMPT_CHARS = 400_000;

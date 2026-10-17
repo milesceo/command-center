@@ -91,7 +91,7 @@ describe('status store', () => {
     const state = useStatus.getState();
     expect(state.source).toBe('network');
     expect(state.feed?.providers.anthropic?.status.overall).toBe('degraded');
-    expect(localStorage.getItem('geeked-status-feed')).toContain('"schema_version":1');
+    expect(localStorage.getItem('command-center-status-feed')).toContain('"schema_version":1');
     expect(fetch).toHaveBeenCalledWith(
       'https://raw.githubusercontent.com/engineerlish/geeked-ai-status/main/latest.json',
       expect.objectContaining({ cache: 'no-store' }),
@@ -186,7 +186,7 @@ describe('StatusDot', () => {
   });
 
   it('tells the user when it is showing a cached copy while offline', async () => {
-    const parsed = (await import('@geeked/protocol')).parseStatusFeed(body());
+    const parsed = (await import('@command-center/protocol')).parseStatusFeed(body());
     if (!parsed.ok) throw new Error('fixture invalid');
     saveCachedFeed({ fetchedAt: Date.now() - 2 * 3_600_000, feed: parsed.value });
     vi.stubGlobal('fetch', () => Promise.reject(new TypeError('offline')));

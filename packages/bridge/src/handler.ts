@@ -5,7 +5,7 @@ import {
   type BridgeRequest,
   type ChatRequest,
   type ProviderId,
-} from '@geeked/protocol';
+} from '@command-center/protocol';
 import { fromThrown } from './errors';
 import { defaultSpawn, type SpawnFn } from './providers/process';
 import { createRegistry, describeProviders, providerFor } from './providers/registry';

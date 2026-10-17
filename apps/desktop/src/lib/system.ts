@@ -47,9 +47,9 @@ export async function listenToTray(handlers: TrayHandlers): Promise<() => void> 
   if (!isTauri()) return () => undefined;
   const { listen } = await import('@tauri-apps/api/event');
   const unlisteners = await Promise.all([
-    listen('geeked://new-chat', () => handlers.onNewChat()),
-    listen('geeked://lock', () => handlers.onLock()),
-    listen<boolean>('geeked://window-visible', (e) => handlers.onVisibility(e.payload)),
+    listen('command-center://new-chat', () => handlers.onNewChat()),
+    listen('command-center://lock', () => handlers.onLock()),
+    listen<boolean>('command-center://window-visible', (e) => handlers.onVisibility(e.payload)),
   ]);
   return () => {
     for (const off of unlisteners) off();

@@ -4,7 +4,7 @@ import {
   parseRequest,
   type BridgeEvent,
   type BridgeRequest,
-} from '@geeked/protocol';
+} from '@command-center/protocol';
 import { BridgeClient, type BridgeTransport } from './bridge';
 
 /** In-memory transport; `script` decides how the fake sidecar reacts to each request. */

@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { PROVIDER_IDS, type ProviderId, type ProviderInfo } from '@geeked/protocol';
+import { PROVIDER_IDS, type ProviderId, type ProviderInfo } from '@command-center/protocol';
 import { getBridgeClient } from '../lib/bridge-client';
 import { secrets } from '../lib/secrets';
 import { isTauri } from '../lib/tauri';

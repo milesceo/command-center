@@ -575,6 +575,25 @@ dependencies = [
 ]
 
 [[package]]
+name = "command-center"
+version = "1.0.0"
+dependencies = [
+ "argon2",
+ "keyring",
+ "password-hash",
+ "rfd",
+ "serde",
+ "serde_json",
+ "tauri",
+ "tauri-build",
+ "tauri-plugin-autostart",
+ "tauri-plugin-dialog",
+ "tauri-plugin-fs",
+ "tauri-plugin-opener",
+ "tauri-plugin-sql",
+]
+
+[[package]]
 name = "concurrent-queue"
 version = "2.5.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1421,24 +1440,6 @@ dependencies = [
  "libc",
  "system-deps",
  "x11",
-]
-
-[[package]]
-name = "geeked"
-version = "1.0.0"
-dependencies = [
- "argon2",
- "keyring",
- "password-hash",
- "serde",
- "serde_json",
- "tauri",
- "tauri-build",
- "tauri-plugin-autostart",
- "tauri-plugin-dialog",
- "tauri-plugin-fs",
- "tauri-plugin-opener",
- "tauri-plugin-sql",
 ]
 
 [[package]]

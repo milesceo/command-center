@@ -1,5 +1,5 @@
 /**
- * Wire protocol between the Geeked desktop app and the bridge sidecar.
+ * Wire protocol between the Command Center desktop app and the bridge sidecar.
  *
  * Transport: newline-delimited JSON (one JSON object per line) over the
  * sidecar's stdin/stdout. stderr is reserved for human-readable logs and is
@@ -13,7 +13,7 @@
 /** Bumped on any breaking wire change so a stale sidecar can be detected. */
 export const PROTOCOL_VERSION = 4;
 
-/** Providers Geeked can talk to. `claude` is the original and the default. */
+/** Providers Command Center can talk to. `claude` is the original and the default. */
 export const PROVIDER_IDS = ['claude', 'openai', 'xai'] as const;
 export type ProviderId = (typeof PROVIDER_IDS)[number];
 export const DEFAULT_PROVIDER: ProviderId = 'claude';
@@ -108,7 +108,7 @@ export interface ProvidersRequest {
 
 /**
  * Opens the provider's own official CLI sign-in (a terminal window the user completes), then
- * answers with a fresh `providers.report`. Geeked never sees the credentials it creates.
+ * answers with a fresh `providers.report`. Command Center never sees the credentials it creates.
  */
 export interface ProviderLoginRequest {
   type: 'provider.login';

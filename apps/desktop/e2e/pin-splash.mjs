@@ -1,5 +1,5 @@
 // Screenshots of the circle PIN input (reveal off and on), the lock screen, and the splash.
-//   pnpm --filter @geeked/bridge build
+//   pnpm --filter @command-center/bridge build
 //   E2E_CHROMIUM=<chrome> E2E_OUT=../../docs/pin-splash node e2e/pin-splash.mjs
 import assert from 'node:assert/strict';
 import { join } from 'node:path';
@@ -20,7 +20,7 @@ const shot = (name) => page.screenshot({ path: join(outDir, `${name}.png`) });
 
 await page.getByLabel('Your name').fill('Ada');
 await page.getByRole('button', { name: /^next/i }).click();
-await page.getByRole('heading', { name: /lock geeked with a pin/i }).waitFor();
+await page.getByRole('heading', { name: /lock command center with a pin/i }).waitFor();
 
 // No visible text field: the only inputs are visually hidden.
 const visibleInputs = await page.evaluate(
@@ -41,7 +41,7 @@ await page.getByRole('button', { name: 'Show PIN' }).click();
 await page.waitForTimeout(150);
 await shot('02-onboarding-pin-revealed');
 await page.keyboard.press('Enter'); // confirm row: Enter continues
-await page.getByRole('heading', { name: /how should geeked behave/i }).waitFor();
+await page.getByRole('heading', { name: /how should command center behave/i }).waitFor();
 await app.close();
 
 // ---- lock screen ------------------------------------------------------------------------

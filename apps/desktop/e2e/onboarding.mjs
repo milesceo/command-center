@@ -2,7 +2,7 @@
 //   - a screenshot of every onboarding step, Home, the lock screen and the new Settings sections
 //   - the CPU cost of the Home screen's spinning ASCII logo at every performance tier
 //
-//   pnpm --filter @geeked/bridge build
+//   pnpm --filter @command-center/bridge build
 //   E2E_CHROMIUM=<chrome> E2E_OUT=../../docs/onboarding node e2e/onboarding.mjs
 import { writeFileSync } from 'node:fs';
 import { join } from 'node:path';
@@ -36,7 +36,7 @@ await shot('02-pin-filled');
 await next();
 
 // 3. System behavior
-await page.getByRole('heading', { name: /how should geeked behave/i }).waitFor();
+await page.getByRole('heading', { name: /how should command center behave/i }).waitFor();
 await page.getByRole('button', { name: 'Minimize to tray' }).click();
 await shot('03-system');
 await next();
@@ -80,9 +80,9 @@ for (const tier of TIERS) {
   });
   const p = run.page;
   await p.evaluate((t) => {
-    const prefs = JSON.parse(localStorage.getItem('geeked-prefs'));
+    const prefs = JSON.parse(localStorage.getItem('command-center-prefs'));
     prefs.performance = { tier: t };
-    localStorage.setItem('geeked-prefs', JSON.stringify(prefs));
+    localStorage.setItem('command-center-prefs', JSON.stringify(prefs));
   }, tier);
   await p.reload();
   await p.waitForSelector('[data-testid="landing-view"]');

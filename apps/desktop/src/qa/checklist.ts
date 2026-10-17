@@ -14,6 +14,7 @@ export const QA_AREAS = [
   'appearance',
   'providers',
   'status',
+  'migration',
 ] as const;
 export type QaArea = (typeof QA_AREAS)[number];
 
@@ -25,6 +26,7 @@ export const AREA_LABELS: Record<QaArea, string> = {
   appearance: 'Appearance and performance',
   providers: 'Providers and keys',
   status: 'Status feed',
+  migration: 'Rename and data migration',
 };
 
 /** What a scenario button in the panel can do for you (see `scenarios.ts`). */
@@ -74,15 +76,15 @@ export const QA_ITEMS: readonly QaItem[] = [
     area: 'splash-home',
     title: 'Splash appears at once and hands off cleanly',
     steps: [
-      'Quit Geeked completely (tray: Quit, or close the window).',
+      'Quit Command Center completely (tray: Quit, or close the window).',
       'Start it again from the shortcut.',
       'Watch the first second.',
     ],
     expected:
-      'The spinning GEEKED logo is on screen almost immediately (no blank white or black flash), stays about a second, then fades into the PIN lock (or Home with no PIN) with no layout jump.',
+      'The spinning COMMAND logo, with "command center" set under it, is on screen almost immediately (no blank white or black flash), stays about a second, then fades into the PIN lock (or Home with no PIN) with no layout jump.',
     needs: 'windows-desktop',
     setup: 'reload-app',
-    rev: 1,
+    rev: 2,
   },
   {
     id: 'SPLASH-02',
@@ -105,7 +107,7 @@ export const QA_ITEMS: readonly QaItem[] = [
     title: 'Home has a still logo and a different line each launch',
     steps: [
       'Open Home (the house icon).',
-      'Note the top-left logo and the line under the Geeked mark.',
+      'Note the top-left logo and the line under the Command Center mark.',
       'Restart the app twice and note the line each time.',
     ],
     expected:
@@ -166,7 +168,7 @@ export const QA_ITEMS: readonly QaItem[] = [
     title: 'A PIN from an earlier version still unlocks (once)',
     steps: [
       'Only if you set a PIN before the Argon2id change and have not unlocked since.',
-      'Start Geeked and enter the old PIN.',
+      'Start Command Center and enter the old PIN.',
       'Lock and unlock again.',
     ],
     expected:
@@ -264,7 +266,7 @@ export const QA_ITEMS: readonly QaItem[] = [
     title: 'Tray icon and menu',
     steps: [
       'Open Settings > System and set "When I close the window" to Minimize to tray.',
-      'Find the Geeked icon in the system tray.',
+      'Find the Command Center icon in the system tray.',
       'Right-click it and try Open, New chat, Lock, then Quit.',
     ],
     expected:
@@ -279,7 +281,7 @@ export const QA_ITEMS: readonly QaItem[] = [
     title: 'Close to tray hides and locks',
     steps: [
       'With a PIN set and Minimize to tray on, click the window close button.',
-      'Open Geeked again from the tray icon.',
+      'Open Command Center again from the tray icon.',
     ],
     expected:
       'The window hides (the app keeps running in the tray) and, when shown again, asks for the PIN.',
@@ -291,13 +293,13 @@ export const QA_ITEMS: readonly QaItem[] = [
     area: 'shell',
     title: 'Start with Windows',
     steps: [
-      'Turn on "Launch Geeked when Windows starts".',
-      'Open Task Manager > Startup apps and look for Geeked.',
+      'Turn on "Launch Command Center when Windows starts".',
+      'Open Task Manager > Startup apps and look for Command Center.',
       'Sign out and back in (or restart).',
       'Turn the setting off again and check Task Manager.',
     ],
     expected:
-      'Geeked appears in Startup apps when on and starts after signing in; it is gone from the list when off.',
+      'Command Center appears in Startup apps when on and starts after signing in; it is gone from the list when off.',
     needs: 'windows-desktop',
     setup: 'open-settings-system',
     rev: 1,
@@ -312,7 +314,7 @@ export const QA_ITEMS: readonly QaItem[] = [
       'Set Theme to System in Settings > Appearance.',
       'Switch Windows between light and dark mode (Settings > Personalization > Colors).',
     ],
-    expected: 'Geeked switches theme without a restart.',
+    expected: 'Command Center switches theme without a restart.',
     needs: 'windows-desktop',
     setup: 'open-settings-appearance',
     rev: 1,
@@ -361,15 +363,15 @@ export const QA_ITEMS: readonly QaItem[] = [
     title: 'A Grok API key lands in Credential Manager and works',
     steps: [
       'In Settings > AI agents paste an xAI API key on the Grok card and save.',
-      'Open Windows Credential Manager > Windows Credentials and look for a "geeked" entry.',
+      'Open Windows Credential Manager > Windows Credentials and look for a "command-center" entry.',
       'Start a chat with Grok.',
-      'Remove the key in Geeked and check Credential Manager again.',
+      'Remove the key in Command Center and check Credential Manager again.',
     ],
     expected:
-      'An entry named api-key:xai under the geeked service appears and is gone after Remove; the chat answers; the key never shows in any file or in the database.',
+      'An entry named api-key:xai under the command-center service appears and is gone after Remove; the chat answers; the key never shows in any file or in the database.',
     needs: 'real-login',
     setup: 'open-settings-agents',
-    rev: 1,
+    rev: 2,
   },
   {
     id: 'PROV-03',
@@ -435,7 +437,7 @@ export const QA_ITEMS: readonly QaItem[] = [
     title: 'Offline falls back to the cached copy',
     steps: [
       'Let the app load the feed once, then quit it.',
-      'Turn off your network (airplane mode) and start Geeked.',
+      'Turn off your network (airplane mode) and start Command Center.',
       'Click a status dot.',
     ],
     expected:
@@ -468,6 +470,83 @@ export const QA_ITEMS: readonly QaItem[] = [
     expected: 'The dot is amber and the popover lists the simulated incident.',
     needs: 'any',
     setup: 'simulate-claude-degraded',
+    rev: 1,
+  },
+  // ---------------------------------------------------------------- rename and data migration
+  {
+    id: 'MIGRATE-01',
+    area: 'migration',
+    title: 'An install from before the rename opens with everything intact',
+    steps: [
+      'On a machine that has the previous version installed and used (a few chats, a project, a library prompt, a PIN, a non-default theme and tier, close-to-tray on), note what you see, then quit it.',
+      'Install and start Command Center.',
+      'Unlock with the old PIN.',
+      'Check the chats, projects and prompt library, Settings > Appearance, Settings > System, and the Usage view.',
+      'Open the data folder (Settings > About) and look for migrated-from-previous-name.json.',
+    ],
+    expected:
+      'The old PIN unlocks (and a lockout that was running continues); every chat, project, prompt and usage row is there; theme, tier, layout and the close choice are as before; the marker file lists the copied files; the previous version, started again, still has all of its own data.',
+    needs: 'windows-desktop',
+    rev: 1,
+  },
+  {
+    id: 'MIGRATE-02',
+    area: 'migration',
+    title: 'Stored API keys carry over to the new credential service',
+    steps: [
+      'Before updating, store a Grok (xAI) API key in the previous version.',
+      'Start Command Center once and open Settings > AI agents.',
+      'Open the OS credential store (Windows Credential Manager, or Keychain Access on macOS) and search for api-key:xai.',
+      'Send one Grok chat.',
+    ],
+    expected:
+      'The Grok card shows the key as stored; the credential store has an api-key:xai entry under the command-center service and the old entry is still there; the chat answers. On macOS, any Keychain prompt names Command Center.',
+    needs: 'real-login',
+    setup: 'open-settings-agents',
+    rev: 1,
+  },
+  {
+    id: 'MIGRATE-03',
+    area: 'migration',
+    title: 'A conflicting file under the new name is never overwritten',
+    steps: [
+      'With the previous version installed, start Command Center once (so it has its own database), add a chat, quit.',
+      'Delete only migrated-from-previous-name.json from the Command Center data folder.',
+      'Start Command Center again.',
+    ],
+    expected:
+      'Command Center opens on its own data (the new chat is there), nothing from the previous version overwrote it, the marker is not rewritten, and the log says the migration did not complete.',
+    needs: 'windows-desktop',
+    destructive: true,
+    rev: 1,
+  },
+  {
+    id: 'MIGRATE-04',
+    area: 'migration',
+    title: 'A PIN removed in the previous version stays removed',
+    steps: [
+      'In the previous version, remove the PIN (Settings > Security), then quit it.',
+      'Start Command Center, then quit and start it again.',
+      'In Command Center, set a PIN, remove it again, quit and restart; then repeat with Forgot PIN.',
+    ],
+    expected:
+      'Command Center never asks for a PIN that was removed, on the first start or later ones; after Forgot PIN the app starts at onboarding and no old PIN comes back.',
+    needs: 'windows-desktop',
+    destructive: true,
+    rev: 1,
+  },
+  {
+    id: 'MIGRATE-05',
+    area: 'migration',
+    title: 'With the previous version still running, nothing is copied half-way',
+    steps: [
+      'Leave the previous version running (hidden in the tray).',
+      'Start Command Center for the first time.',
+      'In the message box, choose Quit. Quit the previous version from its tray icon and start Command Center again.',
+    ],
+    expected:
+      'A message box explains the previous version is still running before any window opens; after Quit no Command Center data folder content exists yet; the second start copies everything (MIGRATE-01 holds).',
+    needs: 'windows-desktop',
     rev: 1,
   },
 ];

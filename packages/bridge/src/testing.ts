@@ -1,5 +1,5 @@
 import type { SDKMessage } from '@anthropic-ai/claude-agent-sdk';
-import type { BridgeEvent } from '@geeked/protocol';
+import type { BridgeEvent } from '@command-center/protocol';
 import type { QueryFn } from './sdk';
 
 /** Builders for SDK messages. Only the fields the bridge reads are filled in. */

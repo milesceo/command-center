@@ -1,5 +1,5 @@
 import { tmpdir } from 'node:os';
-import type { BridgeEvent } from '@geeked/protocol';
+import type { BridgeEvent } from '@command-center/protocol';
 import { fromThrown } from './errors';
 import { DEFAULT_SYSTEM_PROMPT, runtimeEnv } from './options';
 import { claudeExecutable, type QueryFn } from './sdk';

@@ -1,7 +1,7 @@
 import { EventEmitter } from 'node:events';
 import { PassThrough } from 'node:stream';
 import { describe, expect, it } from 'vitest';
-import type { BridgeEvent, ChatRequest } from '@geeked/protocol';
+import type { BridgeEvent, ChatRequest } from '@command-center/protocol';
 import { Bridge } from '../handler';
 import { codexProvider, parseCodexLine } from './codex';
 import { grokProvider, MAX_CLI_PROMPT_CHARS, SseParser, XAI_CHAT_URL } from './grok';
@@ -495,7 +495,7 @@ import { join } from 'node:path';
 
 /** A temp directory holding an empty executable named `name`, for PATH lookups. */
 async function makeFakeCli(name: string): Promise<string> {
-  const dir = await mkdtemp(join(tmpdir(), 'geeked-cli-'));
+  const dir = await mkdtemp(join(tmpdir(), 'command-center-cli-'));
   // Adapters look for `name` (Linux, macOS) or `name.exe` (Windows) on PATH.
   const file = join(dir, process.platform === 'win32' ? `${name}.exe` : name);
   await writeFile(file, '');

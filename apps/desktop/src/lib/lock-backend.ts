@@ -44,8 +44,8 @@ export interface LockBackend {
 }
 
 /** Keys the previous (PBKDF2, localStorage) lock used. Read only to upgrade; cleared afterwards. */
-const LEGACY_RECORD_KEY = 'geeked-lock';
-const LEGACY_PREFS_KEY = 'geeked-lock-prefs';
+const LEGACY_RECORD_KEY = 'command-center-lock';
+const LEGACY_PREFS_KEY = 'command-center-lock-prefs';
 
 function storage(): Storage | null {
   try {
@@ -89,7 +89,11 @@ async function invoke<T>(command: string, args?: Record<string, unknown>): Promi
 export const tauriLockBackend: LockBackend = {
   async status() {
     const status = await invoke<RustStatus>('lock_status');
-    if (status.hasPin) return status;
+    if (status.hasPin) {
+      // The Argon2id record in Rust wins; an older localStorage record must never resurface.
+      clearLegacy();
+      return status;
+    }
     // A PIN written by an earlier version still counts until it is upgraded on first unlock.
     return readLegacyRecord() ? { ...status, hasPin: true } : status;
   },
@@ -117,7 +121,11 @@ export const tauriLockBackend: LockBackend = {
   },
 
   change: (current, next) => invoke<RustVerify>('lock_change', { current, next }),
-  remove: (current) => invoke<RustVerify>('lock_remove', { current }),
+  async remove(current) {
+    const result = await invoke<RustVerify>('lock_remove', { current });
+    if (result.outcome === 'ok') clearLegacy();
+    return result;
+  },
 
   async wipe() {
     await invoke('lock_wipe');
@@ -127,7 +135,7 @@ export const tauriLockBackend: LockBackend = {
 
 // ----------------------------------------------------------------- browser
 
-const WEB_STATE_KEY = 'geeked-lock-web';
+const WEB_STATE_KEY = 'command-center-lock-web';
 
 interface WebState {
   failures: number;

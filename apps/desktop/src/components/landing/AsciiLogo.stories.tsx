@@ -1,6 +1,6 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import { AsciiLogo } from './AsciiLogo';
-import { GeekedMark } from './GeekedMark';
+import { CommandCenterMark } from './CommandCenterMark';
 
 const meta = {
   title: 'Brand/Logo',
@@ -27,7 +27,7 @@ export const Mark: Story = {
   render: () => (
     <div className="flex items-end gap-6">
       {[40, 72, 120].map((size) => (
-        <GeekedMark key={size} size={size} />
+        <CommandCenterMark key={size} size={size} />
       ))}
     </div>
   ),

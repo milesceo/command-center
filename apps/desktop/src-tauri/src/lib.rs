@@ -1,5 +1,7 @@
 mod bridge;
 mod data;
+mod env;
+mod legacy_keys;
 mod lock;
 mod migrate;
 mod preview;
@@ -11,7 +13,7 @@ use tauri::{Manager, WebviewWindowBuilder};
 use tauri_plugin_sql::{Migration, MigrationKind};
 
 /// Connection string the frontend passes to `Database.load` (see src/lib/db.ts).
-const DB_URL: &str = "sqlite:geeked.db";
+const DB_URL: &str = "sqlite:command-center.db";
 
 /// Schema migrations, applied in order by the SQL plugin on first `load`.
 /// Add new files under `migrations/` and append them here; never edit shipped ones.
@@ -44,24 +46,65 @@ fn migrations() -> Vec<Migration> {
     ]
 }
 
-/// Copies data from the app's former name, once. A failure is logged and retried on the next
-/// start; the app still opens, on whatever data the new location has.
+/// Copies data from the app's former names, once, before any window exists.
+///
+/// The migration is all or nothing, so a failure leaves the new location empty. It must stay
+/// empty for a retry to work: opening the app now would create a new database and webview
+/// profile that the next attempt could not overwrite. So the user is asked, with a native
+/// message box (the event loop is not running yet, so the dialog plugin cannot be used), to
+/// either quit and retry after closing the previous version, or start without the old data,
+/// which is recorded so the migration is not attempted again.
 fn migrate_previous_data(app: &tauri::AppHandle) {
     let path = app.path();
     let (Ok(config), Ok(local)) = (path.app_config_dir(), path.app_local_data_dir()) else {
         return;
     };
-    let Some(loc) = migrate::Locations::from_new(config, local) else {
+    // WKWebView keeps website data (localStorage) outside the app folders, keyed by identifier.
+    let website_data = if cfg!(target_os = "macos") {
+        path.home_dir().ok().map(|home| {
+            home.join("Library")
+                .join("WebKit")
+                .join(&app.config().identifier)
+                .join("WebsiteData")
+        })
+    } else {
+        None
+    };
+    let Some(loc) = migrate::Locations::from_new(config, local, website_data) else {
         return;
     };
     match migrate::run(&loc) {
         Ok(Some(marker)) => eprintln!(
-            "[geeked] migrated {} file(s) from {}",
+            "[command-center] migrated {} file(s) from {}",
             marker.files.len(),
             marker.from
         ),
         Ok(None) => {}
-        Err(e) => eprintln!("[geeked] data migration did not complete: {e}"),
+        Err(e) => {
+            eprintln!("[command-center] data migration did not complete: {e}");
+            let start_anyway = rfd::MessageDialog::new()
+                .set_level(rfd::MessageLevel::Warning)
+                .set_title("Command Center could not move your data")
+                .set_description(format!(
+                    "Your chats, settings and PIN from the previous version were not copied:\n\n{e}\n\n\
+                     If the previous version is still running, quit it (check the system tray) and \
+                     start Command Center again. Nothing has been changed yet.\n\n\
+                     Start without the old data instead? It stays where it is, but Command Center \
+                     will not try to copy it again."
+                ))
+                .set_buttons(rfd::MessageButtons::OkCancelCustom(
+                    "Quit".into(),
+                    "Start without old data".into(),
+                ))
+                .show();
+            if start_anyway == rfd::MessageDialogResult::Custom("Start without old data".into()) {
+                if let Err(e) = migrate::skip(&loc, &e) {
+                    eprintln!("[command-center] could not record the skipped migration: {e}");
+                }
+            } else {
+                std::process::exit(0);
+            }
+        }
     }
 }
 
@@ -89,6 +132,15 @@ pub fn run() {
             // from before the rename is in place before the webview opens its profile.
             migrate_previous_data(app.handle());
             if let Ok(dir) = app.path().app_config_dir() {
+                // API keys stored under the old credential-store service; values are never logged.
+                match legacy_keys::migrate_legacy_keys_once(&dir, &legacy_keys::OsStore) {
+                    Ok(Some(copied)) if !copied.is_empty() => eprintln!(
+                        "[command-center] copied {} API key(s) from the previous name",
+                        copied.len()
+                    ),
+                    Ok(_) => {}
+                    Err(e) => eprintln!("[command-center] API key migration did not complete: {e}"),
+                }
                 app.state::<system::SystemState>().set(system::load(&dir));
             }
             system::build_tray(app.handle())?;
@@ -117,7 +169,7 @@ pub fn run() {
             system::system_set_close_behavior
         ])
         .run(tauri::generate_context!())
-        .expect("error while running Geeked");
+        .expect("error while running Command Center");
 }
 
 #[cfg(test)]

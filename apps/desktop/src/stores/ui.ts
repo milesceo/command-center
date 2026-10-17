@@ -75,7 +75,7 @@ export const useUiStore = create<UiState>()(
       setView: (view) => set({ view }),
     }),
     {
-      name: 'geeked-ui',
+      name: 'command-center-ui',
       // The shortcuts dialog should never reopen on its own after a restart.
       partialize: ({ shortcutsOpen: _a, view: _b, paletteOpen: _c, ...persisted }) => persisted,
     },

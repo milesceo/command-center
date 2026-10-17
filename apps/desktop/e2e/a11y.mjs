@@ -70,7 +70,7 @@ for (const theme of ['dark', 'light']) {
   await p.getByLabel(/^PIN/).waitFor();
   await audit(p, `${theme}: onboarding PIN`);
   await p.getByRole('button', { name: /skip for now/i }).click();
-  await p.getByRole('heading', { name: /how should geeked behave/i }).waitFor();
+  await p.getByRole('heading', { name: /how should command center behave/i }).waitFor();
   await audit(p, `${theme}: onboarding system`);
   await p.getByRole('button', { name: /^next/i }).click();
   await p.getByRole('heading', { name: /performance and appearance/i }).waitFor();

@@ -1,4 +1,4 @@
-import { MODEL_OPTIONS, type ProviderId, type ProviderInfo } from '@geeked/protocol';
+import { MODEL_OPTIONS, type ProviderId, type ProviderInfo } from '@command-center/protocol';
 
 /**
  * What the UI knows about each provider before (or without) asking the bridge: the display

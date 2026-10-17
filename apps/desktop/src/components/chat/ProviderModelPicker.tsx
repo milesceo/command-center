@@ -1,4 +1,4 @@
-import { PROVIDER_IDS, type ProviderId } from '@geeked/protocol';
+import { PROVIDER_IDS, type ProviderId } from '@command-center/protocol';
 import { useMemo } from 'react';
 import { fallbackModels, providerName } from '../../lib/providers';
 import { conversationsStore, useActiveSettings } from '../../stores/conversations';

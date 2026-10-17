@@ -1,7 +1,7 @@
 // Screenshots of the AI status dots (picker and Settings), the incident popover, and a
 // new-model notice, with the feed stubbed at its raw.githubusercontent.com URL. Also checks
 // that the app keeps working from its cache when the feed is unreachable.
-//   pnpm --filter @geeked/bridge build
+//   pnpm --filter @command-center/bridge build
 //   E2E_CHROMIUM=<chrome> E2E_OUT=../../docs/ai-status node e2e/status-feed.mjs
 import assert from 'node:assert/strict';
 import { join } from 'node:path';
@@ -15,11 +15,11 @@ const model = (id, name) => ({
   created_at: '2026-10-15T00:00:00Z',
   first_seen: '2026-10-15',
 });
-const provider = (id, name, geeked, models, overall, summary, incidents = [], components = []) => ({
+const provider = (id, name, appId, models, overall, summary, incidents = [], components = []) => ({
   id,
   name,
   vendor: name,
-  geeked_provider: geeked,
+  geeked_provider: appId,
   models: { state: 'ok', source: '', error: null, items: models },
   status: {
     state: 'ok',

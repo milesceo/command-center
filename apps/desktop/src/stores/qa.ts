@@ -2,7 +2,7 @@ import { create } from 'zustand';
 import type { QaItem } from '../qa/checklist';
 import type { QaResult, QaResults, QaStatus } from '../qa/report';
 
-const KEY = 'geeked-qa';
+const KEY = 'command-center-qa';
 
 interface Persisted {
   enabled: boolean;

@@ -1,5 +1,5 @@
 import { tmpdir } from 'node:os';
-import type { BridgeError, ChatRequest, ProviderModel } from '@geeked/protocol';
+import type { BridgeError, ChatRequest, ProviderModel } from '@command-center/protocol';
 import { DEFAULT_SYSTEM_PROMPT } from '../options';
 import { buildPrompt, renderMessage } from '../prompt';
 import { openTerminal } from './claude';
@@ -13,9 +13,9 @@ import type { ChatHandle, Provider, ProviderAuth, ProviderContext } from './type
  *     xAI API at https://api.x.ai/v1, OpenAI-compatible chat completions with SSE streaming.
  *  2. The official Grok CLI (`grok login`, which supports SuperGrok / X Premium+ sign-in) run
  *     headless with `-p`. xAI documents the flags but not a stable event schema for the JSON
- *     output formats, so Geeked uses plain text output only. This route is beta.
+ *     output formats, so Command Center uses plain text output only. This route is beta.
  *
- * Geeked never touches the CLI's credentials and never reuses a web session.
+ * Command Center never touches the CLI's credentials and never reuses a web session.
  */
 
 export const XAI_CHAT_URL = 'https://api.x.ai/v1/chat/completions';

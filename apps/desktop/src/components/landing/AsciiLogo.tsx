@@ -6,7 +6,11 @@ import { useOsEnvironment } from '../../lib/use-os-environment';
 import { usePrefs } from '../../stores/prefs';
 import { isPaused, useVisibility } from '../../stores/visibility';
 
-export const LOGO_WORD = 'GEEKED';
+/**
+ * The spinning mark spells the first word only: at the three-quarter still angle the 13-letter name
+ * no longer reads, and the full name is set in type beside it on Home.
+ */
+export const LOGO_WORD = 'COMMAND';
 export const LOGO_COLS = 120;
 export const LOGO_ROWS = 16;
 
@@ -29,10 +33,10 @@ const FONT_SIZE = {
 } as const;
 
 /**
- * "GEEKED" as a 3D solid in ASCII (see `lib/ascii3d.ts`), drawn into a <pre> in the accent color.
+ * "COMMAND" as a 3D solid in ASCII (see `lib/ascii3d.ts`), drawn into a <pre> in the accent color.
  * It spins only on the splash screen: the frame rate comes from the performance tier, it is one
  * still frame at Lightest or with animations off, and it pauses while the window is hidden or
- * minimized. The still frame is a three-quarter view that reads as GEEKED. Frames are written
+ * minimized. The still frame is a three-quarter view that reads as COMMAND. Frames are written
  * straight to the DOM, never through React state.
  */
 export function AsciiLogo({ className, size = 'splash', still: forceStill = false }: Props) {

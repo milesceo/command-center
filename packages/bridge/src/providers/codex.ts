@@ -1,5 +1,5 @@
 import { tmpdir } from 'node:os';
-import type { BridgeError, ChatRequest, ProviderModel } from '@geeked/protocol';
+import type { BridgeError, ChatRequest, ProviderModel } from '@command-center/protocol';
 import { buildPrompt } from '../prompt';
 import { DEFAULT_SYSTEM_PROMPT } from '../options';
 import { openTerminal } from './claude';
@@ -10,8 +10,8 @@ import type { ChatHandle, Provider, ProviderAuth, ProviderContext } from './type
  * ChatGPT / OpenAI, through OpenAI's official Codex CLI.
  *
  * OpenAI documents "Sign in with ChatGPT" (a subscription route) for Codex, and the Codex CLI
- * (`codex login`) is the supported way to use it. Geeked does not touch the login: the CLI
- * owns the credential cache, and Geeked only runs `codex exec` and reads its JSONL events.
+ * (`codex login`) is the supported way to use it. Command Center does not touch the login: the CLI
+ * owns the credential cache, and Command Center only runs `codex exec` and reads its JSONL events.
  * There is deliberately no API-key path here; OpenAI's own docs point API-key users to its API.
  *
  * Limits: Codex is a coding agent and answers as one; replies arrive per message (not token by
@@ -63,7 +63,7 @@ export const codexProvider: Provider = {
   id: 'openai',
   displayName: 'ChatGPT',
   authMethods: ['subscription'],
-  note: "Uses your ChatGPT plan through OpenAI's official Codex CLI. Install it (npm i -g @openai/codex) and sign in with Codex; Geeked never sees your credentials. Replies come as whole messages and tools are off.",
+  note: "Uses your ChatGPT plan through OpenAI's official Codex CLI. Install it (npm i -g @openai/codex) and sign in with Codex; Command Center never sees your credentials. Replies come as whole messages and tools are off.",
 
   models(): ProviderModel[] {
     return [{ id: 'default', label: 'Codex default' }];

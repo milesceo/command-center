@@ -6,7 +6,7 @@ import {
   type OverallStatus,
   type ProviderId,
   type StatusFeed,
-} from '@geeked/protocol';
+} from '@command-center/protocol';
 
 /**
  * The AI status feed: `latest.json` from engineerlish/geeked-ai-status, fetched on launch and
@@ -15,8 +15,8 @@ import {
  */
 
 export const REFRESH_MS = 30 * 60_000;
-const CACHE_KEY = 'geeked-status-feed';
-const KNOWN_KEY = 'geeked-status-known-models';
+const CACHE_KEY = 'command-center-status-feed';
+const KNOWN_KEY = 'command-center-status-known-models';
 
 // ----------------------------------------------------------------------------- cache
 
@@ -106,7 +106,7 @@ export const STATUS_DOT: Record<OverallStatus, DotStyle> = {
   unknown: { label: 'Status unknown', className: 'bg-fg-subtle' },
 };
 
-/** The status of one Geeked provider in a feed, or `unknown` when the feed has no entry for it. */
+/** The status of one Command Center provider in a feed, or `unknown` when the feed has no entry for it. */
 export function statusFor(feed: StatusFeed | null, provider: ProviderId): OverallStatus {
   if (!feed) return 'unknown';
   return feedProviderFor(feed, provider)?.status.overall ?? 'unknown';

@@ -1,4 +1,4 @@
-import type { ProviderId } from '@geeked/protocol';
+import type { ProviderId } from '@command-center/protocol';
 import { isTauri } from './tauri';
 
 /**
@@ -10,7 +10,7 @@ import { isTauri } from './tauri';
 
 export class SecretsUnavailableError extends Error {
   constructor() {
-    super('API keys can only be stored in the Geeked desktop app (OS credential store).');
+    super('API keys can only be stored in the Command Center desktop app (OS credential store).');
   }
 }
 

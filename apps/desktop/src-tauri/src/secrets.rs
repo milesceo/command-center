@@ -7,11 +7,11 @@
 
 use keyring::Entry;
 
-const SERVICE: &str = "geeked";
+pub(crate) const SERVICE: &str = "command-center";
 
 /// Providers that may have a key. Anything else is refused so the webview cannot create
 /// arbitrary entries under the app's service name.
-const PROVIDERS: [&str; 3] = ["claude", "openai", "xai"];
+pub(crate) const PROVIDERS: [&str; 3] = ["claude", "openai", "xai"];
 
 fn entry(provider: &str) -> Result<Entry, String> {
     if !PROVIDERS.contains(&provider) {

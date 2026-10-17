@@ -73,4 +73,4 @@ Figma needs your account, so setup is two steps on your side.
 
 - `pnpm check` fails if `docs/design/tokens.json` is stale (`pnpm design:tokens` refreshes it).
 - Storybook builds in CI as part of `pnpm check` only through type checking; run
-  `pnpm --filter @geeked/desktop build-storybook` to build the static site.
+  `pnpm --filter @command-center/desktop build-storybook` to build the static site.

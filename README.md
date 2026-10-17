@@ -1,13 +1,13 @@
-# Geeked
+# Command Center
 
 A lightweight desktop app for prompting about code, running on your own Claude Code login. No API key, no separate bill, and everything you save stays on your computer.
 
-![Geeked with a conversation and the live preview panel](docs/screenshots/chat-preview-dark.png)
+![Command Center with a conversation and the live preview panel](docs/screenshots/chat-preview-dark.png)
 
 ## Install
 
-1. Log in to Claude Code once: install it (`npm i -g @anthropic-ai/claude-code`), run `claude` and sign in. Geeked reads that login; it never asks for or stores credentials.
-2. Download `Geeked_<version>_x64-setup.exe` from the [latest release](https://github.com/engineerlish/geeked/releases/latest) and run it. It installs for your user only and needs no admin rights or developer tools: the app carries its own Node runtime, bridge and Claude runtime.
+1. Log in to Claude Code once: install it (`npm i -g @anthropic-ai/claude-code`), run `claude` and sign in. Command Center reads that login; it never asks for or stores credentials.
+2. Download `Command-Center_<version>_x64-setup.exe` from the [latest release](https://github.com/milesceo/command-center/releases/latest) and run it. It installs for your user only and needs no admin rights or developer tools: the app carries its own Node runtime, bridge and Claude runtime.
 3. The installer is not code signed yet, so Windows SmartScreen may warn on first run: choose **More info**, then **Run anyway**. Each release lists a SHA-256 checksum (`SHA256SUMS.txt`) if you want to verify the download.
 
 Windows 11 on x64 is the supported target. Building from source on other platforms works but is untested.
@@ -87,7 +87,7 @@ pnpm dev        # launches the Tauri app (builds the bridge first)
 pnpm dev:web    # UI only in a browser; the bridge shows as offline
 ```
 
-In the app, the sidebar footer shows the bridge status (the `ping`/`pong` round-trip time); click it to ping again, or to restart the bridge if it stopped. Sign in once with `claude` in a terminal; Geeked never asks for or stores credentials.
+In the app, the sidebar footer shows the bridge status (the `ping`/`pong` round-trip time); click it to ping again, or to restart the bridge if it stopped. Sign in once with `claude` in a terminal; Command Center never asks for or stores credentials.
 
 ## Scripts
 
@@ -112,8 +112,8 @@ packages/protocol/       Shared message types and NDJSON helpers (source-only)
 packages/bridge/         Node sidecar (bundled to dist/main.mjs with esbuild)
 scripts/                 Sidecar assembly, release tooling and the installed-app smoke test
 docs/screenshots/        README images
-docs/prompts/            The prompts used to build Geeked, one per session
-.claude/agents/          Claude Code subagents used while developing Geeked (not part of the app)
+docs/prompts/            The prompts used to build Command Center, one per session
+.claude/agents/          Claude Code subagents used while developing Command Center (not part of the app)
 ```
 
 ## Your data
@@ -124,7 +124,7 @@ One SQLite file in the app's config folder (Settings shows the exact path and ca
 
 Versions follow [SemVer](https://semver.org/) and [CHANGELOG.md](CHANGELOG.md) follows [Keep a Changelog](https://keepachangelog.com/). To release: update the changelog and bump the version in `package.json`, `apps/desktop/package.json`, `src-tauri/tauri.conf.json` and `src-tauri/Cargo.toml`, merge, then push a tag such as `v1.0.1`. The [release workflow](.github/workflows/release.yml) builds the installer on Windows, installs it silently, smoke-tests the installed files, launches the app and checks that it starts its bundled bridge, and then publishes the release with the changelog section as its notes. Running the workflow by hand does everything except publish.
 
-`pnpm sidecar` assembles the bundled pieces locally (`node`, the bridge bundle and the Claude runtime); `pnpm --filter @geeked/desktop tauri build` makes an installer for the machine it runs on.
+`pnpm sidecar` assembles the bundled pieces locally (`node`, the bridge bundle and the Claude runtime); `pnpm --filter @command-center/desktop tauri build` makes an installer for the machine it runs on.
 
 ## License
 

@@ -13,7 +13,7 @@ import {
   type ProvidersRequest,
   type UsageReportEvent,
   type UsageRequest,
-} from '@geeked/protocol';
+} from '@command-center/protocol';
 
 /** The raw line channel to the sidecar. Tauri implements it; tests fake it. */
 export interface BridgeTransport {

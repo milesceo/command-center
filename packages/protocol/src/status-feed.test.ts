@@ -66,7 +66,7 @@ describe('status feed', () => {
     );
   });
 
-  it('parses a snapshot and finds a provider by its Geeked id', () => {
+  it('parses a snapshot and finds a provider by its Command Center id', () => {
     const result = parseStatusFeed(feed());
     expect(result.ok).toBe(true);
     if (!result.ok) return;

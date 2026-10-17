@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import type { BridgeEvent } from '@geeked/protocol';
+import type { BridgeEvent } from '@command-center/protocol';
 import type * as LockBackendModule from './lib/lock-backend';
 import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';

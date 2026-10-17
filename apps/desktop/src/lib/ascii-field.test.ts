@@ -26,11 +26,11 @@ describe('fieldFrame', () => {
 
 describe('banner', () => {
   it('spells the word at the computed width', () => {
-    const rows = bannerRows('GEEKED', 1);
+    const rows = bannerRows('COMMAND CENTER', 1);
     expect(rows).toHaveLength(5);
-    expect(rows.every((r) => r.length === bannerWidth('GEEKED', 1))).toBe(true);
+    expect(rows.every((r) => r.length === bannerWidth('COMMAND CENTER', 1))).toBe(true);
     expect(rows.some((r) => r.includes('#'))).toBe(true);
-    expect(bannerRows('GEEKED', 2)[0]?.length).toBe(bannerWidth('GEEKED', 2));
+    expect(bannerRows('COMMAND CENTER', 2)[0]?.length).toBe(bannerWidth('COMMAND CENTER', 2));
   });
 
   it('lights only the letter pixels', () => {

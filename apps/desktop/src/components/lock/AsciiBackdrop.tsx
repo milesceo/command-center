@@ -6,9 +6,18 @@ import { useOsEnvironment } from '../../lib/use-os-environment';
 import { usePrefs } from '../../stores/prefs';
 import { isPaused, useVisibility } from '../../stores/visibility';
 
-const WORD = 'GEEKED';
 /** Below this many columns the wordmark is drawn at one column per pixel; above, doubled. */
 const WIDE = 130;
+/**
+ * Wordmark and pixel scale, largest first: the first that fits the window is drawn. Word and
+ * scale are chosen together so the full name is not replaced by the short one just because a
+ * doubled full name would be too wide.
+ */
+const CANDIDATES = [
+  ['COMMAND CENTER', 2],
+  ['COMMAND CENTER', 1],
+  ['COMMAND', 1],
+] as const;
 
 /**
  * Full-window animated ASCII: a drifting field with the wordmark lit across the middle.
@@ -37,7 +46,7 @@ export function AsciiBackdrop() {
 
     let cols = 80;
     let rows = 24;
-    let bannerLines = bannerRows(WORD, 1);
+    let bannerLines = bannerRows(CANDIDATES[1][0], 1);
     let raf = 0;
     let last = 0;
 
@@ -47,8 +56,10 @@ export function AsciiBackdrop() {
       const h = cell.height || 16;
       cols = Math.max(20, Math.ceil(el.clientWidth / w));
       rows = Math.max(8, Math.ceil(el.clientHeight / h));
-      const scale = cols >= WIDE ? 2 : 1;
-      bannerLines = bannerWidth(WORD, scale) < cols - 4 ? bannerRows(WORD, scale) : [];
+      const pick = CANDIDATES.find(
+        ([word, scale]) => (scale === 1 || cols >= WIDE) && bannerWidth(word, scale) < cols - 4,
+      );
+      bannerLines = pick ? bannerRows(pick[0], pick[1]) : [];
     };
 
     const draw = (seconds: number) => {

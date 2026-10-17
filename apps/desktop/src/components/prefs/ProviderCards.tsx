@@ -1,4 +1,4 @@
-import { PROVIDER_IDS, type ProviderId } from '@geeked/protocol';
+import { PROVIDER_IDS, type ProviderId } from '@command-center/protocol';
 import { Check, KeyRound, Loader2, Plus, RefreshCw, Terminal } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { cn } from '../../lib/cn';
@@ -120,7 +120,7 @@ function ApiKeyForm({ id }: { id: ProviderId }) {
         </Button>
       </div>
       <p className="text-[11px] text-fg-subtle">
-        Stored only in the Windows Credential Manager, never in Geeked's database or files.
+        Stored only in the Windows Credential Manager, never in Command Center's database or files.
       </p>
     </form>
   );

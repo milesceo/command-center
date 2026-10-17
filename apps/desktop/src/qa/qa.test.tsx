@@ -89,13 +89,13 @@ describe('report helpers', () => {
 
   it('builds a prefilled GitHub issue link for a failure', () => {
     const url = new URL(issueUrl(item, 'Circles did not clear', ENV));
-    expect(url.origin + url.pathname).toBe('https://github.com/engineerlish/geeked/issues/new');
+    expect(url.origin + url.pathname).toBe('https://github.com/milesceo/command-center/issues/new');
     expect(url.searchParams.get('template')).toBe('qa-failure.yml');
     expect(url.searchParams.get('title')).toBe(`QA LOCK-03: ${item.title}`);
     expect(url.searchParams.get('item')).toBe('LOCK-03');
     expect(url.searchParams.get('actual')).toBe('Circles did not clear');
     expect(url.searchParams.get('labels')).toContain('area:lock');
-    expect(url.searchParams.get('build')).toContain('Geeked 1.2.3');
+    expect(url.searchParams.get('build')).toContain('Command Center 1.2.3');
     expect(url.searchParams.get('expected')).toBe(item.expected);
   });
 
@@ -104,7 +104,7 @@ describe('report helpers', () => {
       { 'LOCK-03': { status: 'fail', note: 'no\nshake', at: 1, rev: item.rev } },
       ENV,
     );
-    expect(md).toContain('# Geeked manual test results');
+    expect(md).toContain('# Command Center manual test results');
     expect(md).toContain('## PIN and lock');
     expect(md).toContain('`FAIL` **LOCK-03**');
     expect(md).toContain('no shake');
@@ -126,13 +126,13 @@ describe('scenarios', () => {
     SCENARIOS['simulate-new-model'].run();
     expect(useStatus.getState().notices.map((n) => n.model.id)).toEqual(['claude-qa-preview-1']);
     expect(useStatus.getState().added.claude?.[0]?.id).toBe('claude-qa-preview-1');
-    expect(localStorage.getItem('geeked-status-known-models')).toBeNull();
+    expect(localStorage.getItem('command-center-status-known-models')).toBeNull();
 
     SCENARIOS['simulate-claude-degraded'].run();
     const feed = useStatus.getState().feed;
     const claude = Object.values(feed?.providers ?? {}).find((p) => p.geeked_provider === 'claude');
     expect(claude?.status.overall).toBe('degraded');
-    expect(localStorage.getItem('geeked-status-feed')).toBeNull();
+    expect(localStorage.getItem('command-center-status-feed')).toBeNull();
   });
 
   it('opens Home and a Settings section', () => {
@@ -160,7 +160,7 @@ describe('QaPanel', () => {
 
     const row = screen.getByTestId('qa-item-SPLASH-01');
     fireEvent.click(within(row).getByRole('button', { name: /Splash appears at once/ }));
-    expect(within(row).getByText(/Quit Geeked completely/)).toBeTruthy();
+    expect(within(row).getByText(/Quit Command Center completely/)).toBeTruthy();
     fireEvent.click(within(row).getByRole('button', { name: 'Pass' }));
     expect(useQa.getState().results['SPLASH-01']?.status).toBe('pass');
     expect(summary.textContent).toBe(`1/${QA_ITEMS.length} pass · 0 fail`);
@@ -207,7 +207,7 @@ describe('QaPanel', () => {
     await act(async () => undefined);
     expect(copyText).toHaveBeenCalledWith(expect.stringContaining('`SKIP` **HOME-01**'));
 
-    const saved = JSON.parse(localStorage.getItem('geeked-qa') ?? '{}');
+    const saved = JSON.parse(localStorage.getItem('command-center-qa') ?? '{}');
     expect(saved.results['HOME-01'].status).toBe('skip');
   });
 
