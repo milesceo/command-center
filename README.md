@@ -142,6 +142,8 @@ One SQLite file in the app's config folder (Settings shows the exact path and ca
 
 Versions follow [SemVer](https://semver.org/) and [CHANGELOG.md](CHANGELOG.md) follows [Keep a Changelog](https://keepachangelog.com/). To release: update the changelog and bump the version in `package.json`, `apps/desktop/package.json`, `src-tauri/tauri.conf.json` and `src-tauri/Cargo.toml`, merge, then push a tag such as `v1.0.1`. The [release workflow](.github/workflows/release.yml) builds the installer on Windows, installs it silently, smoke-tests the installed files, launches the app and checks that it starts its bundled bridge, and then publishes the release with the changelog section as its notes. In parallel it builds an unsigned dmg on macOS (Apple Silicon), installs the app from the dmg, smoke-tests it, launches it and checks that it starts its bundled bridge; the dmg and `SHA256SUMS-macos.txt` are attached to the same release. Running the workflow by hand does everything except publish.
 
+For your own Mac, `COMMAND_CENTER_LITE=1 pnpm --filter @command-center/desktop tauri build` makes a 10 MB lite build that uses your installed Node.js and Claude Code instead of bundling them (see [docs/macos.md](docs/macos.md)).
+
 `pnpm sidecar` assembles the bundled pieces locally (`node`, the bridge bundle and the Claude runtime); `pnpm --filter @command-center/desktop tauri build` makes an installer for the machine it runs on (an `.app` and `.dmg` on macOS).
 
 ## License

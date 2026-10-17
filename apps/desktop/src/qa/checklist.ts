@@ -16,6 +16,7 @@ export const QA_AREAS = [
   'status',
   'migration',
   'macos',
+  'performance',
 ] as const;
 export type QaArea = (typeof QA_AREAS)[number];
 
@@ -29,6 +30,7 @@ export const AREA_LABELS: Record<QaArea, string> = {
   status: 'Status feed',
   migration: 'Rename and data migration',
   macos: 'macOS',
+  performance: 'Lighter runtime',
 };
 
 /** What a scenario button in the panel can do for you (see `scenarios.ts`). */
@@ -678,6 +680,64 @@ export const QA_ITEMS: readonly QaItem[] = [
     ],
     expected:
       'The preview runs and shows its console output; the save dialog writes the file; the shortcut list shows ⌘ glyphs and every listed shortcut works, none of them triggering a system action instead; tooltips show ⌘ glyphs; Ctrl+T in the composer transposes letters instead of opening a thread.',
+    needs: 'mac-desktop',
+    rev: 1,
+  },
+  // ---------------------------------------------------------------- lighter runtime
+  {
+    id: 'PERF-01',
+    area: 'performance',
+    title: 'The lite build runs on the installed Node and Claude Code',
+    steps: [
+      'Build it: COMMAND_CENTER_LITE=1 pnpm --filter @command-center/desktop tauri build, and open the .app from Finder (not a terminal).',
+      'Send a Claude chat.',
+      'Temporarily rename your claude binary (or test on a Mac without Node) and open the app again, then send a chat.',
+    ],
+    expected:
+      'The app is about 10 MB; the chat works with no bundled runtime; with Node or Claude Code missing, the chat shows a message naming what to install instead of a generic error.',
+    needs: 'mac-desktop',
+    rev: 1,
+  },
+  {
+    id: 'PERF-02',
+    area: 'performance',
+    title: 'The bridge starts on first use and stops when idle',
+    steps: [
+      'Open Command Center and, before chatting, look at Activity Monitor for a node process under Command Center.',
+      'Send a chat; look again.',
+      'Set Settings > System > "Stop the AI helper when idle" to 5 min, wait 5 minutes without using it, look again; then send another chat.',
+    ],
+    expected:
+      'No node process until the first chat; one during and after it; gone after 5 idle minutes (the status reads "Bridge on standby", not an error); the next chat starts it again and works. Choosing Never while it runs keeps it running.',
+    needs: 'mac-desktop',
+    setup: 'open-settings-system',
+    rev: 1,
+  },
+  {
+    id: 'PERF-03',
+    area: 'performance',
+    title: 'Battery and Low Power Mode lower the tier',
+    steps: [
+      'On a MacBook on AC power, open Settings > Performance with the tier at Balanced or higher.',
+      'Unplug; wait up to a minute.',
+      'Turn on Low Power Mode (System Settings > Battery); wait up to a minute; then turn off "Lighter on battery".',
+    ],
+    expected:
+      'On AC the chosen tier applies; on battery the summary says it runs at Light (underlined on the scale); in Low Power Mode at Lightest (lock the app: the ASCII backdrop is a still frame); with "Lighter on battery" off the chosen tier applies again.',
+    needs: 'mac-desktop',
+    setup: 'tier-balanced',
+    rev: 1,
+  },
+  {
+    id: 'PERF-04',
+    area: 'performance',
+    title: 'Animations stop when the window is covered or minimized',
+    steps: [
+      'Lock the app so the ASCII backdrop animates, and open Activity Monitor > CPU.',
+      'Minimize Command Center, then cover it fully with another window.',
+    ],
+    expected:
+      'CPU for Command Center and its WebContent process drops to near zero while minimized or covered and the animation resumes when it is visible again.',
     needs: 'mac-desktop',
     rev: 1,
   },

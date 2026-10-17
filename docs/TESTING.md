@@ -16,7 +16,7 @@ item has a one-click setup, Pass / Fail / Skip, and a button that opens a prefil
 4. A fix references the issue. Items whose question changed get a new `rev`, which clears the old
    answer. **Copy results** puts a Markdown report on the clipboard.
 
-Checklist version 1, 42 items.
+Checklist version 1, 46 items.
 
 ## Splash and Home
 
@@ -448,3 +448,44 @@ Needs the Mac desktop app.
 3. Open the shortcuts list (Cmd+/) and try Cmd+K, Cmd+B, Cmd+T, Cmd+J, Cmd+L, Cmd+Shift+A and the QA panel (Cmd+Shift+Y); hover a toolbar button and read its tooltip; in the composer press Ctrl+T.
 
 **Expected:** The preview runs and shows its console output; the save dialog writes the file; the shortcut list shows ⌘ glyphs and every listed shortcut works, none of them triggering a system action instead; tooltips show ⌘ glyphs; Ctrl+T in the composer transposes letters instead of opening a thread.
+
+## Lighter runtime
+
+### PERF-01: The lite build runs on the installed Node and Claude Code
+
+Needs the Mac desktop app.
+
+1. Build it: COMMAND_CENTER_LITE=1 pnpm --filter @command-center/desktop tauri build, and open the .app from Finder (not a terminal).
+2. Send a Claude chat.
+3. Temporarily rename your claude binary (or test on a Mac without Node) and open the app again, then send a chat.
+
+**Expected:** The app is about 10 MB; the chat works with no bundled runtime; with Node or Claude Code missing, the chat shows a message naming what to install instead of a generic error.
+
+### PERF-02: The bridge starts on first use and stops when idle
+
+Needs the Mac desktop app. Panel setup: `open-settings-system`.
+
+1. Open Command Center and, before chatting, look at Activity Monitor for a node process under Command Center.
+2. Send a chat; look again.
+3. Set Settings > System > "Stop the AI helper when idle" to 5 min, wait 5 minutes without using it, look again; then send another chat.
+
+**Expected:** No node process until the first chat; one during and after it; gone after 5 idle minutes (the status reads "Bridge on standby", not an error); the next chat starts it again and works. Choosing Never while it runs keeps it running.
+
+### PERF-03: Battery and Low Power Mode lower the tier
+
+Needs the Mac desktop app. Panel setup: `tier-balanced`.
+
+1. On a MacBook on AC power, open Settings > Performance with the tier at Balanced or higher.
+2. Unplug; wait up to a minute.
+3. Turn on Low Power Mode (System Settings > Battery); wait up to a minute; then turn off "Lighter on battery".
+
+**Expected:** On AC the chosen tier applies; on battery the summary says it runs at Light (underlined on the scale); in Low Power Mode at Lightest (lock the app: the ASCII backdrop is a still frame); with "Lighter on battery" off the chosen tier applies again.
+
+### PERF-04: Animations stop when the window is covered or minimized
+
+Needs the Mac desktop app.
+
+1. Lock the app so the ASCII backdrop animates, and open Activity Monitor > CPU.
+2. Minimize Command Center, then cover it fully with another window.
+
+**Expected:** CPU for Command Center and its WebContent process drops to near zero while minimized or covered and the animation resumes when it is visible again.
