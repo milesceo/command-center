@@ -55,6 +55,11 @@ jobs:
 
       # beforeBuildCommand bundles the bridge, copies node.exe and the SDK's claude.exe, then
       # builds the frontend; `tauri build` compiles the app and packages the NSIS installer.
+      - name: Releases are never lite builds
+        if: env.COMMAND_CENTER_LITE != ''
+        shell: bash
+        run: echo 'COMMAND_CENTER_LITE must not be set for a release build' && exit 1
+
       - name: Build the installer
         run: pnpm --filter @command-center/desktop tauri build --bundles nsis
 
@@ -168,6 +173,10 @@ jobs:
 
       # beforeBuildCommand bundles the bridge and copies (and ad-hoc signs) node and claude; the
       # app is built for Apple Silicon (the runner's architecture) and packed into a dmg.
+      - name: Releases are never lite builds
+        if: env.COMMAND_CENTER_LITE != ''
+        run: echo 'COMMAND_CENTER_LITE must not be set for a release build' && exit 1
+
       - name: Build the app and dmg
         run: pnpm --filter @command-center/desktop tauri build --bundles app,dmg
 
