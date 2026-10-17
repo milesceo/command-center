@@ -1,10 +1,11 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { bannerFrame, bannerRows, bannerWidth, fieldFrame } from '../../lib/ascii-field';
 import { resolveAppearance } from '../../lib/apply-appearance';
 import { tierFlags } from '../../lib/performance';
 import { useOsEnvironment } from '../../lib/use-os-environment';
 import { usePrefs } from '../../stores/prefs';
 import { isPaused, useVisibility } from '../../stores/visibility';
+import { useEffectiveTier } from '../../stores/power';
 
 /** Below this many columns the wordmark is drawn at one column per pixel; above, doubled. */
 const WIDE = 130;
@@ -29,9 +30,21 @@ export function AsciiBackdrop() {
   const os = useOsEnvironment();
   const windowVisible = useVisibility((s) => s.windowVisible);
   // The tier sets the frame rate; 0 (Lightest) or animations off draws one still frame.
-  const fps = tierFlags(prefs.performance.tier).asciiFps;
-  const still = fps === 0 || resolveAppearance(prefs, os).motion === 'off';
-  const hidden = isPaused(windowVisible, typeof document !== 'undefined' && document.hidden);
+  const tier = useEffectiveTier();
+  const fps = tierFlags(tier).asciiFps;
+  const motion = resolveAppearance(prefs, os, tier).motion;
+  const still = fps === 0 || motion === 'off';
+  // Paused while minimized, hidden to the tray or covered (WebKit reports an occluded window as
+  // hidden); re-evaluated on every visibility change, not only when this renders.
+  const [documentHidden, setDocumentHidden] = useState(
+    typeof document !== 'undefined' && document.hidden,
+  );
+  useEffect(() => {
+    const onChange = () => setDocumentHidden(document.hidden);
+    document.addEventListener('visibilitychange', onChange);
+    return () => document.removeEventListener('visibilitychange', onChange);
+  }, []);
+  const hidden = isPaused(windowVisible, documentHidden);
   const box = useRef<HTMLDivElement>(null);
   const field = useRef<HTMLPreElement>(null);
   const banner = useRef<HTMLPreElement>(null);
@@ -47,7 +60,7 @@ export function AsciiBackdrop() {
     let cols = 80;
     let rows = 24;
     let bannerLines = bannerRows(CANDIDATES[1][0], 1);
-    let raf = 0;
+    let timer: ReturnType<typeof setTimeout> | undefined;
     let last = 0;
 
     const measure = () => {
@@ -67,27 +80,31 @@ export function AsciiBackdrop() {
       bannerEl.textContent = bannerLines.length > 0 ? bannerFrame(bannerLines, seconds) : '';
     };
 
-    const tick = (now: number) => {
-      raf = requestAnimationFrame(tick);
-      if (now - last < 1000 / Math.max(1, fps)) return;
-      last = now;
-      draw(now / 1000);
+    // Reduced motion halves the rate, as the splash logo does.
+    const delay = 1000 / Math.max(1, motion === 'reduced' ? Math.ceil(fps / 2) : fps);
+    // A timer at the tier's frame rate, not a requestAnimationFrame loop: that would wake the
+    // webview 60 times a second just to skip most frames (measured: ~16% of a core idle).
+    const tick = () => {
+      last = performance.now();
+      draw(last / 1000);
+      timer = setTimeout(tick, delay);
     };
 
     measure();
-    draw(2);
+    // Resume where the animation is now (a still frame uses a fixed time), so it never flashes.
+    draw(still ? 2 : performance.now() / 1000);
     const observer = new ResizeObserver(() => {
       measure();
       draw(last / 1000 || 2);
     });
     observer.observe(el);
-    if (!still && !hidden) raf = requestAnimationFrame(tick);
+    if (!still && !hidden) timer = setTimeout(tick, delay);
 
     return () => {
-      cancelAnimationFrame(raf);
+      clearTimeout(timer);
       observer.disconnect();
     };
-  }, [fps, still, hidden]);
+  }, [fps, still, hidden, motion]);
 
   return (
     <div ref={box} aria-hidden="true" className="absolute inset-0 overflow-hidden">
