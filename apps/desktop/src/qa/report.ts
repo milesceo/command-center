@@ -23,7 +23,7 @@ export interface QaEnvironment {
   desktop: boolean;
 }
 
-export const REPO_ISSUES_URL = 'https://github.com/engineerlish/geeked/issues/new';
+export const REPO_ISSUES_URL = 'https://github.com/milesceo/command-center/issues/new';
 
 /** A result only counts while the question it answered is unchanged. */
 export function currentResult(item: QaItem, results: QaResults): QaResult | null {
@@ -51,7 +51,7 @@ export function summarize(items: readonly QaItem[], results: QaResults): Summary
 
 export function environmentText(env: QaEnvironment): string {
   return [
-    `Geeked ${env.appVersion}${env.desktop ? '' : ' (browser preview)'}`,
+    `Command Center ${env.appVersion}${env.desktop ? '' : ' (browser preview)'}`,
     `Bridge: ${env.bridge}`,
     `Platform: ${env.platform}`,
     `Tier: ${env.tier}, theme: ${env.theme}, animations: ${env.motion}`,
@@ -91,7 +91,7 @@ export function resultsMarkdown(
 ): string {
   const s = summarize(items, results);
   const lines = [
-    '# Geeked manual test results',
+    '# Command Center manual test results',
     '',
     '```text',
     environmentText(env),

@@ -4,7 +4,7 @@ import {
   type Attachment,
   type BridgeError,
   type ProviderId,
-} from '@geeked/protocol';
+} from '@command-center/protocol';
 import type { Db } from './db';
 import {
   DEFAULT_TITLE,

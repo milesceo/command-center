@@ -158,10 +158,10 @@ function ForgetPanel({ onCancel }: { onCancel: () => void }) {
           Forgot your PIN?
         </h2>
         <p className="mt-2 text-fg-muted">
-          A PIN cannot be recovered; there is no account to reset it through. To get back in, Geeked
-          erases the PIN and everything stored on this computer: conversations, prompts, projects,
-          usage history, settings and saved API keys. Your Claude login is not touched. Geeked then
-          starts setup again.
+          A PIN cannot be recovered; there is no account to reset it through. To get back in,
+          Command Center erases the PIN and everything stored on this computer: conversations,
+          prompts, projects, usage history, settings and saved API keys. Your Claude login is not
+          touched. Command Center then starts setup again.
         </p>
         <label className="mt-3 block text-fg-subtle" htmlFor="forget-confirm">
           Type DELETE to confirm

@@ -92,7 +92,7 @@ export function ClassicTitleBar() {
         data-tauri-drag-region
         className="mx-auto font-mono text-[11px] tracking-tight text-fg-muted select-none"
       >
-        geeked
+        command center
       </span>
       <WindowControls className="w-14 justify-end" />
     </header>

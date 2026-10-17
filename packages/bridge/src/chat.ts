@@ -1,4 +1,4 @@
-import type { BridgeError, BridgeEvent, ChatRequest } from '@geeked/protocol';
+import type { BridgeError, BridgeEvent, ChatRequest } from '@command-center/protocol';
 import { fromThrown } from './errors';
 import { buildOptions } from './options';
 import { buildPrompt } from './prompt';

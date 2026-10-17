@@ -55,7 +55,7 @@ export function PromptsView() {
 
   const exportLibrary = async () => {
     try {
-      if (await saveTextFile('geeked-prompts.json', promptsStore.getState().exportJson()))
+      if (await saveTextFile('command-center-prompts.json', promptsStore.getState().exportJson()))
         toast('Library exported');
     } catch (err) {
       toast(`Could not export: ${err instanceof Error ? err.message : String(err)}`);

@@ -80,10 +80,10 @@ export function AppLockSection() {
   return (
     <Section
       title="Security"
-      hint="A PIN screen when Geeked starts or sits idle. It keeps casual snoopers out; it does not encrypt your chats on disk."
+      hint="A PIN screen when Command Center starts or sits idle. It keeps casual snoopers out; it does not encrypt your chats on disk."
     >
       {!hasPin && mode === 'idle' && (
-        <Row label="PIN" hint="No PIN is set, so Geeked opens straight to Home.">
+        <Row label="PIN" hint="No PIN is set, so Command Center opens straight to Home.">
           <Button size="sm" onClick={() => setMode('add')}>
             Set a PIN
           </Button>

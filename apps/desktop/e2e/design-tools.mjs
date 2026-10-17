@@ -1,6 +1,6 @@
 // Screenshots of the in-app QA panel and of Storybook (built statically and served locally).
-//   pnpm --filter @geeked/bridge build
-//   pnpm --filter @geeked/desktop build-storybook
+//   pnpm --filter @command-center/bridge build
+//   pnpm --filter @command-center/desktop build-storybook
 //   E2E_CHROMIUM=<chrome> E2E_OUT=../../docs/design-tools node e2e/design-tools.mjs
 import assert from 'node:assert/strict';
 import { createReadStream, existsSync, statSync } from 'node:fs';
@@ -13,7 +13,7 @@ const desktop = join(fileURLToPath(new URL('.', import.meta.url)), '..');
 const storybookDir = join(desktop, 'storybook-static');
 assert.ok(
   existsSync(storybookDir),
-  'Build Storybook first: pnpm --filter @geeked/desktop build-storybook',
+  'Build Storybook first: pnpm --filter @command-center/desktop build-storybook',
 );
 
 const h = await startHarness({ real: false });
@@ -27,7 +27,7 @@ const app = await h.launch({
   home: true,
   setup: async (context) => {
     await context.addInitScript(() => {
-      localStorage.setItem('geeked-qa', JSON.stringify({ enabled: true, results: {} }));
+      localStorage.setItem('command-center-qa', JSON.stringify({ enabled: true, results: {} }));
     });
   },
 });

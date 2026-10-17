@@ -1,4 +1,4 @@
-import { DEFAULT_PROVIDER, type ProviderId, type ProviderInfo } from '@geeked/protocol';
+import { DEFAULT_PROVIDER, type ProviderId, type ProviderInfo } from '@command-center/protocol';
 import { claudeProvider } from './claude';
 import { codexProvider } from './codex';
 import { grokProvider } from './grok';

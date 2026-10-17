@@ -1,13 +1,13 @@
 # AI providers
 
-How Geeked talks to each provider, what was researched, what is implemented and where the limits
+How Command Center talks to each provider, what was researched, what is implemented and where the limits
 are. Researched 2026-10-15 from the providers' own documentation. Re-check before relying on
 anything marked **unverified**; both vendors' CLIs are changing quickly.
 
 ## The rule
 
 Subscription sign-in goes through each provider's **official, documented route only**: their own
-CLI or SDK. Geeked never scrapes a web session, reuses browser cookies, or reads or copies OAuth
+CLI or SDK. Command Center never scrapes a web session, reuses browser cookies, or reads or copies OAuth
 tokens that another app wrote. API keys are kept in the OS credential store (Windows Credential
 Manager, via the `keyring` crate) and are passed to the bridge for one request at a time; they are
 never written to SQLite, config files or logs.
@@ -19,7 +19,7 @@ Mechanically:
   and `usage`).
 - `registry.ts` lists the adapters; the bridge routes `ChatRequest.provider` to one.
 - A provider's `login` only **opens the provider's own sign-in in a terminal window** (for example
-  `codex login`); the user completes it there. Geeked polls `authStatus` while the card is open.
+  `codex login`); the user completes it there. Command Center polls `authStatus` while the card is open.
 
 ## Claude (Anthropic)
 
@@ -48,7 +48,7 @@ local Codex runtime and, per OpenAI's CI guidance, recommends API keys for autom
 What I could **not** find: any OpenAI page that grants or forbids third-party apps reusing a
 ChatGPT subscription login beyond the Codex clients themselves. The docs navigation lists a
 separate "Sign in with ChatGPT" section for apps powered by the user's ChatGPT plan, but its terms
-were not readable from the pages fetched. So Geeked does the conservative thing: it **runs the
+were not readable from the pages fetched. So Command Center does the conservative thing: it **runs the
 user's own installed `codex` CLI** and never touches its credentials.
 
 |             |                                                                                                                              |
@@ -88,7 +88,7 @@ xAI offers **two** official routes, so both are implemented and the API key is p
    Build is available to SuperGrok and X Premium+ subscribers (early beta). Headless use is
    `grok -p "<prompt>" --output-format plain|json|streaming-json`, `-m <model>`,
    `--no-auto-update`, `--cwd`. The documented page does **not** specify the JSON event schema,
-   exit codes, or whether a subscription login is meant for headless/third-party use, so Geeked
+   exit codes, or whether a subscription login is meant for headless/third-party use, so Command Center
    uses `plain` output only and treats this route as **beta**.
 
 |              |                                                                                                       |

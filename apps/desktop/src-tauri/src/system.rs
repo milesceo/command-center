@@ -90,13 +90,13 @@ fn show_main(app: &AppHandle) {
         let _ = win.show();
         let _ = win.unminimize();
         let _ = win.set_focus();
-        let _ = app.emit("geeked://window-visible", true);
+        let _ = app.emit("command-center://window-visible", true);
     }
 }
 
 /// Builds the tray icon and its menu. Called once from setup.
 pub fn build_tray(app: &AppHandle) -> tauri::Result<()> {
-    let open = MenuItemBuilder::with_id("open", "Open Geeked").build(app)?;
+    let open = MenuItemBuilder::with_id("open", "Open Command Center").build(app)?;
     let new_chat = MenuItemBuilder::with_id("new-chat", "New chat").build(app)?;
     let lock = MenuItemBuilder::with_id("lock", "Lock").build(app)?;
     let quit = MenuItemBuilder::with_id("quit", "Quit").build(app)?;
@@ -104,18 +104,18 @@ pub fn build_tray(app: &AppHandle) -> tauri::Result<()> {
         .items(&[&open, &new_chat, &lock, &quit])
         .build()?;
 
-    let mut builder = TrayIconBuilder::with_id("geeked")
-        .tooltip("Geeked")
+    let mut builder = TrayIconBuilder::with_id("command-center")
+        .tooltip("Command Center")
         .menu(&menu)
         .show_menu_on_left_click(false)
         .on_menu_event(|app, event| match event.id().as_ref() {
             "open" => show_main(app),
             "new-chat" => {
                 show_main(app);
-                let _ = app.emit("geeked://new-chat", ());
+                let _ = app.emit("command-center://new-chat", ());
             }
             "lock" => {
-                let _ = app.emit("geeked://lock", ());
+                let _ = app.emit("command-center://lock", ());
             }
             "quit" => app.exit(0),
             _ => {}
@@ -144,7 +144,9 @@ pub fn on_window_event(window: &tauri::Window, event: &WindowEvent) {
         if window.label() == MAIN && state.close_to_tray() {
             api.prevent_close();
             let _ = window.hide();
-            let _ = window.app_handle().emit("geeked://window-visible", false);
+            let _ = window
+                .app_handle()
+                .emit("command-center://window-visible", false);
         }
     }
 }
@@ -154,7 +156,10 @@ mod tests {
     use super::*;
 
     fn scratch(name: &str) -> PathBuf {
-        let dir = std::env::temp_dir().join(format!("geeked-system-{name}-{}", std::process::id()));
+        let dir = std::env::temp_dir().join(format!(
+            "command-center-system-{name}-{}",
+            std::process::id()
+        ));
         let _ = fs::remove_dir_all(&dir);
         dir
     }

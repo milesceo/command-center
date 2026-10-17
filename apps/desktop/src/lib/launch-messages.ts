@@ -87,7 +87,7 @@ export const MESSAGES: readonly MessageTemplate[] = [
   q('ten-min', 'Ten minutes of prompting can save ten minutes of reading the docs.'),
   q('merge', 'Merge conflicts are just git asking for a second opinion.'),
   q('rm-rf', "Measure twice, rm -rf once. Or don't."),
-  q('stack', "Stack Overflow can't see your codebase. Geeked can."),
+  q('stack', "Stack Overflow can't see your codebase. Command Center can."),
   q('refactor', 'Refactoring: moving the bugs somewhere cleaner.'),
   q('coffee', 'Insert coffee to continue.'),
   q('prod', 'Everything is fine in production. Probably.'),
@@ -98,7 +98,7 @@ export const MESSAGES: readonly MessageTemplate[] = [
   q('type', 'Types are comments the compiler actually reads.'),
   q('bug-feature', "It's not a bug. It's an undocumented feature."),
   q('clean', 'Clean code is code you can read at 2 a.m.'),
-  q('geeked', 'Geeked: because "prompting about code" is a mouthful.'),
+  q('command-center', 'Command Center: mission control for your code.'),
 
   // Stats (only when there is something to report)
   s('stat-yesterday', '{chatsYesterday} yesterday. Keeping the streak?'),
@@ -178,7 +178,8 @@ export function pickMessage(
       eligible.push({ id: m.id, kind: m.kind, text, weight: m.weight });
     }
   }
-  if (eligible.length === 0) return { id: 'fallback', kind: 'quip', text: 'Welcome to Geeked.' };
+  if (eligible.length === 0)
+    return { id: 'fallback', kind: 'quip', text: 'Welcome to Command Center.' };
   const pool = eligible.length > 1 ? eligible.filter((m) => m.id !== lastId) : eligible;
   const total = pool.reduce((sum, m) => sum + m.weight, 0);
   let roll = Math.min(Math.max(rng(), 0), 0.999999999) * total;
@@ -190,7 +191,7 @@ export function pickMessage(
   return { id: last.id, kind: last.kind, text: last.text };
 }
 
-const LAST_KEY = 'geeked-last-message';
+const LAST_KEY = 'command-center-last-message';
 
 /** Picks for this launch and remembers it, so the next launch shows something different. */
 export function pickForLaunch(ctx: MessageContext): PickedMessage {

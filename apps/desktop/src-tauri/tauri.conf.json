@@ -1,19 +1,20 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
-  "productName": "Geeked",
+  "productName": "Command Center",
   "version": "1.0.0",
-  "identifier": "com.engineerlish.geeked",
+  "identifier": "com.milesceo.commandcenter",
+  "mainBinaryName": "command-center",
   "build": {
-    "beforeDevCommand": "pnpm -w run sidecar:placeholder && pnpm --filter @geeked/bridge build && pnpm --filter @geeked/desktop dev",
+    "beforeDevCommand": "pnpm -w run sidecar:placeholder && pnpm --filter @command-center/bridge build && pnpm --filter @command-center/desktop dev",
     "devUrl": "http://localhost:1420",
-    "beforeBuildCommand": "pnpm -w run sidecar && pnpm --filter @geeked/bridge build && pnpm --filter @geeked/desktop build",
+    "beforeBuildCommand": "pnpm -w run sidecar && pnpm --filter @command-center/bridge build && pnpm --filter @command-center/desktop build",
     "frontendDist": "../dist"
   },
   "app": {
     "windows": [
       {
         "create": false,
-        "title": "Geeked",
+        "title": "Command Center",
         "width": 1200,
         "height": 800,
         "minWidth": 720,
@@ -39,11 +40,11 @@
     "resources": {
       "resources/bridge/*": "bridge/"
     },
-    "publisher": "engineerlish",
-    "copyright": "Copyright (c) 2026 engineerlish",
+    "publisher": "milesceo",
+    "copyright": "Copyright (c) 2026 engineerlish, milesceo",
     "category": "DeveloperTool",
     "shortDescription": "A desktop app for prompting about code, on your Claude subscription",
-    "longDescription": "Geeked is a lightweight desktop client for developers who mostly prompt about code. It runs on your Claude Code login: chat, code blocks and diffs, live previews, a prompt library, and usage tracking.",
+    "longDescription": "Command Center is a lightweight desktop client for developers who mostly prompt about code. It runs on your Claude Code login: chat, code blocks and diffs, live previews, a prompt library, and usage tracking.",
     "windows": {
       "nsis": {
         "installMode": "currentUser",

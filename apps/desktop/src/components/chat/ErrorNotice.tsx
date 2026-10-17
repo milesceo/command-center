@@ -1,4 +1,4 @@
-import type { BridgeError } from '@geeked/protocol';
+import type { BridgeError } from '@command-center/protocol';
 import { RefreshCw, TriangleAlert, X } from 'lucide-react';
 import { describeError } from '../../lib/errors';
 import { Button } from '../ui/button';

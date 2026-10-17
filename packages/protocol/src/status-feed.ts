@@ -54,7 +54,7 @@ export interface FeedProvider {
   id: string;
   name: string;
   vendor: string;
-  /** The Geeked provider id this entry belongs to (`claude`, `openai`, `xai`), when it maps to one. */
+  /** The Command Center provider id this entry belongs to (`claude`, `openai`, `xai`), when it maps to one. */
   geeked_provider: string | null;
   models: {
     state: 'ok' | 'error' | 'unavailable';
@@ -221,7 +221,7 @@ export function parseStatusFeed(raw: unknown): FeedParseResult {
   };
 }
 
-/** Looks up a feed entry by the Geeked provider id (`claude`, `openai`, `xai`). */
-export function feedProviderFor(feed: StatusFeed, geekedId: string): FeedProvider | null {
-  return Object.values(feed.providers).find((p) => p.geeked_provider === geekedId) ?? null;
+/** Looks up a feed entry by the Command Center provider id (`claude`, `openai`, `xai`). */
+export function feedProviderFor(feed: StatusFeed, appProviderId: string): FeedProvider | null {
+  return Object.values(feed.providers).find((p) => p.geeked_provider === appProviderId) ?? null;
 }

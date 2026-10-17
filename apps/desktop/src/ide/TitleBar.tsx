@@ -28,7 +28,7 @@ export function TitleBar() {
       <div data-tauri-drag-region className="flex w-56 items-center gap-3">
         {!isTauri() && (
           <span className="px-1 font-mono text-[12px] font-semibold tracking-tight text-fg">
-            geeked
+            command center
           </span>
         )}
         <Button
@@ -84,7 +84,7 @@ export function TitleBar() {
           variant="ghost"
           size="icon"
           className="size-7"
-          aria-label="Lock Geeked"
+          aria-label="Lock Command Center"
           title={hasPin ? 'Lock (Ctrl+L)' : 'Set a PIN in Settings to enable the lock'}
           onClick={() => {
             if (hasPin) useLockStore.getState().lock();

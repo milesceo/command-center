@@ -39,7 +39,7 @@ export const useSettings = create<SettingsState>()(
       setDefaultSystemPrompt: (defaultSystemPrompt) => set({ defaultSystemPrompt }),
       reset: () => set({ ...DEFAULTS }),
     }),
-    { name: 'geeked-settings' },
+    { name: 'command-center-settings' },
   ),
 );
 

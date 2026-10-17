@@ -1,4 +1,4 @@
-import { STATUS_HISTORY_URL, feedProviderFor, type ProviderId } from '@geeked/protocol';
+import { STATUS_HISTORY_URL, feedProviderFor, type ProviderId } from '@command-center/protocol';
 import { ExternalLink } from 'lucide-react';
 import { useEffect, useId, useRef, useState } from 'react';
 import { cn } from '../../lib/cn';

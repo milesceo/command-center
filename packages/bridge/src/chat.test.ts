@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import type { ChatRequest } from '@geeked/protocol';
+import type { ChatRequest } from '@command-center/protocol';
 import { runChat } from './chat';
 import type { QueryFn } from './sdk';
 import { collector, scripted, sdk } from './testing';

@@ -1,4 +1,4 @@
-import { MODEL_OPTIONS, PROVIDER_IDS } from '@geeked/protocol';
+import { MODEL_OPTIONS, PROVIDER_IDS } from '@command-center/protocol';
 import { Download, FolderOpen, Trash2 } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { clearData, countData, exportAll, type ClearScope, type DataCounts } from '../../lib/data';
@@ -88,7 +88,7 @@ export function SettingsView() {
   const exportData = async () => {
     try {
       const file = await exportAll(await getDb());
-      if (await saveTextFile('geeked-data.json', JSON.stringify(file, null, 2)))
+      if (await saveTextFile('command-center-data.json', JSON.stringify(file, null, 2)))
         toast('Data exported');
     } catch (err) {
       toast(`Could not export: ${err instanceof Error ? err.message : String(err)}`);
@@ -169,7 +169,7 @@ export function SettingsView() {
 
         <Section
           title="Performance"
-          hint="How much Geeked does in the background and how fancy it looks. Lighter tiers use less CPU and battery."
+          hint="How much Command Center does in the background and how fancy it looks. Lighter tiers use less CPU and battery."
         >
           <PerformanceControls />
         </Section>
@@ -297,9 +297,9 @@ export function SettingsView() {
 
         <Section title="About">
           <p className="text-xs text-fg-muted">
-            Geeked {version && `v${version}`}. Chats run on the providers you connect: Claude and
-            ChatGPT through your subscriptions and their official CLIs, Grok through an API key or
-            its CLI. Keys stay in the Windows Credential Manager.
+            Command Center {version && `v${version}`}. Chats run on the providers you connect:
+            Claude and ChatGPT through your subscriptions and their official CLIs, Grok through an
+            API key or its CLI. Keys stay in the Windows Credential Manager.
           </p>
           <Row
             label="QA checklist panel"

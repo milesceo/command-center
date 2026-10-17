@@ -1,6 +1,6 @@
 import { createRequire } from 'node:module';
 import { existsSync } from 'node:fs';
-import { MODEL_OPTIONS, type ChatRequest, type ProviderModel } from '@geeked/protocol';
+import { MODEL_OPTIONS, type ChatRequest, type ProviderModel } from '@command-center/protocol';
 import { runChat } from '../chat';
 import { runUsage } from '../usage-report';
 import { claudeExecutable } from '../sdk';

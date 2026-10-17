@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import type { FeedModel, ProviderId, StatusFeed } from '@geeked/protocol';
+import type { FeedModel, ProviderId, StatusFeed } from '@command-center/protocol';
 import {
   REFRESH_MS,
   detectNewModels,

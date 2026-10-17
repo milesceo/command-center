@@ -1,4 +1,4 @@
-import { STATUS_HISTORY_URL } from '@geeked/protocol';
+import { STATUS_HISTORY_URL } from '@command-center/protocol';
 import { ExternalLink, RefreshCw } from 'lucide-react';
 import { openExternal } from '../../lib/external';
 import { ago } from '../../lib/status-feed';

@@ -1,4 +1,4 @@
-import type { BridgeEvent, ChatRequest, ChatUsage } from '@geeked/protocol';
+import type { BridgeEvent, ChatRequest, ChatUsage } from '@command-center/protocol';
 import { beforeEach, describe, expect, it } from 'vitest';
 import type { BridgeClient, ChatHandle } from '../lib/bridge';
 import * as repo from '../lib/repo';

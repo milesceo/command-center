@@ -61,20 +61,20 @@ describe('PreviewPanel', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'Toggle console' }));
     postFromFrame(frame, {
-      source: 'geeked-preview',
+      source: 'command-center-preview',
       id,
       level: 'log',
       text: 'hello from the page',
     });
     postFromFrame(frame, {
-      source: 'geeked-preview',
+      source: 'command-center-preview',
       id,
       level: 'error',
       text: 'ReferenceError: nope',
     });
     // A message tagged with another frame's id, or sent by another window, is ignored.
     postFromFrame(frame, {
-      source: 'geeked-preview',
+      source: 'command-center-preview',
       id: 'stale',
       level: 'log',
       text: 'old frame',
@@ -82,7 +82,7 @@ describe('PreviewPanel', () => {
     act(() => {
       window.dispatchEvent(
         new MessageEvent('message', {
-          data: { source: 'geeked-preview', id, level: 'log', text: 'spoof' },
+          data: { source: 'command-center-preview', id, level: 'log', text: 'spoof' },
           source: window,
         }),
       );

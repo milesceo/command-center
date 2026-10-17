@@ -126,8 +126,8 @@ test('the tester may run the project test commands, and only those', () => {
     'pnpm lint',
     'pnpm typecheck',
     'pnpm format:check',
-    'pnpm --filter @geeked/desktop exec vitest run src/qa/qa.test.tsx',
-    'pnpm --filter @geeked/bridge test',
+    'pnpm --filter @command-center/desktop exec vitest run src/qa/qa.test.tsx',
+    'pnpm --filter @command-center/bridge test',
     'cargo test --manifest-path apps/desktop/src-tauri/Cargo.toml',
     'pnpm rust:lint',
     'node --test scripts/agent-guard.test.mjs',
@@ -141,7 +141,7 @@ test('the tester may run the project test commands, and only those', () => {
   }
   const blocked = [
     'pnpm lint --fix',
-    'pnpm --filter @geeked/desktop lint --fix',
+    'pnpm --filter @command-center/desktop lint --fix',
     'cargo clippy --fix --allow-dirty',
     'node -e "process.exit(0)"',
     'node --test --eval "x"',

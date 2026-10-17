@@ -1,5 +1,5 @@
 {
-  "name": "@geeked/desktop",
+  "name": "@command-center/desktop",
   "version": "1.0.0",
   "private": true,
   "type": "module",
@@ -10,14 +10,14 @@
     "tauri": "tauri",
     "typecheck": "tsc -p tsconfig.json",
     "test": "vitest run",
-    "e2e": "pnpm --filter @geeked/bridge build && node e2e/run.mjs",
+    "e2e": "pnpm --filter @command-center/bridge build && node e2e/run.mjs",
     "storybook": "storybook dev -p 6006 --no-open",
     "build-storybook": "storybook build -o storybook-static"
   },
   "dependencies": {
     "@fontsource-variable/geist": "^5.3.0",
     "@fontsource-variable/geist-mono": "^5.3.0",
-    "@geeked/protocol": "workspace:*",
+    "@command-center/protocol": "workspace:*",
     "@tanstack/react-virtual": "^3.14.18",
     "@tauri-apps/api": "^2.12.3",
     "@tauri-apps/plugin-autostart": "^2.7.0",

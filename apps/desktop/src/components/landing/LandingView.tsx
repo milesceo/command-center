@@ -4,7 +4,7 @@ import { pickForLaunch, type PickedMessage } from '../../lib/launch-messages';
 import { launchStats } from '../../lib/repo-stats';
 import { usePrefs } from '../../stores/prefs';
 import { AsciiLogo } from './AsciiLogo';
-import { GeekedMark } from './GeekedMark';
+import { CommandCenterMark } from './CommandCenterMark';
 
 /**
  * The message is chosen once per launch (not per visit to this screen), so returning to Home
@@ -27,7 +27,7 @@ async function choose(name: string): Promise<PickedMessage> {
   return pickForLaunch({ name, now: new Date(), stats });
 }
 
-/** Home: a still ASCII logo top left, and the Geeked mark with a rotating line at the center. */
+/** Home: a still ASCII logo top left, and the Command Center mark with a rotating line at the center. */
 export function LandingView() {
   const name = usePrefs((s) => s.prefs.profile.name);
   const [message, setMessage] = useState<PickedMessage | null>(launchMessage);
@@ -54,8 +54,8 @@ export function LandingView() {
       <AsciiLogo size="corner" still className="absolute top-4 left-5" />
 
       <div className="flex flex-1 flex-col items-center justify-center gap-5 px-6 text-center">
-        <GeekedMark size={76} />
-        <h1 className="font-mono text-2xl font-semibold tracking-tight">geeked</h1>
+        <CommandCenterMark size={76} />
+        <h1 className="font-mono text-2xl font-semibold tracking-tight">command center</h1>
         <p
           key={message?.id ?? 'pending'}
           role="status"

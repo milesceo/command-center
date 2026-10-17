@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { beforeEach, describe, expect, it } from 'vitest';
-import type { StatusFeed } from '@geeked/protocol';
+import type { StatusFeed } from '@command-center/protocol';
 import {
   STATUS_DOT,
   ago,
@@ -21,11 +21,11 @@ const model = (id: string, name = id) => ({
   first_seen: '2026-10-15',
 });
 
-const entry = (geeked: string, ids: string[], overall = 'operational', state = 'ok') => ({
-  id: geeked,
-  name: geeked,
-  vendor: geeked,
-  geeked_provider: geeked,
+const entry = (appId: string, ids: string[], overall = 'operational', state = 'ok') => ({
+  id: appId,
+  name: appId,
+  vendor: appId,
+  geeked_provider: appId,
   models: { state, source: '', error: null, items: ids.map((id) => model(id)) },
   status: {
     state: 'ok',
@@ -163,10 +163,10 @@ describe('cache and fetch', () => {
     const parsed = feed({ a: entry('claude', ['c1']) });
     saveCachedFeed({ fetchedAt: 1234, feed: parsed });
     expect(loadCachedFeed()).toMatchObject({ fetchedAt: 1234 });
-    localStorage.setItem('geeked-status-feed', '{not json');
+    localStorage.setItem('command-center-status-feed', '{not json');
     expect(loadCachedFeed()).toBeNull();
     localStorage.setItem(
-      'geeked-status-feed',
+      'command-center-status-feed',
       JSON.stringify({ fetchedAt: 1, feed: { schema_version: 9 } }),
     );
     expect(loadCachedFeed()).toBeNull();

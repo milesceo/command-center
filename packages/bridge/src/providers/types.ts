@@ -5,7 +5,7 @@ import type {
   ProviderAuthState,
   ProviderId,
   ProviderModel,
-} from '@geeked/protocol';
+} from '@command-center/protocol';
 import type { QueryFn } from '../sdk';
 import type { SpawnFn } from './process';
 

@@ -17,7 +17,7 @@ function AppearanceBridge() {
   return null;
 }
 
-const withGeekedAppearance: Decorator = (Story, context) => {
+const withCommandCenterAppearance: Decorator = (Story, context) => {
   const { theme, palette, density, motion, tier } = context.globals as Record<string, string>;
 
   useEffect(() => {
@@ -49,7 +49,7 @@ const withGeekedAppearance: Decorator = (Story, context) => {
 };
 
 const preview: Preview = {
-  decorators: [withGeekedAppearance],
+  decorators: [withCommandCenterAppearance],
   globalTypes: {
     theme: {
       description: 'Theme',

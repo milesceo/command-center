@@ -1,6 +1,6 @@
 {
   "mcpServers": {
-    "geeked-storybook": {
+    "command-center-storybook": {
       "type": "http",
       "url": "http://localhost:6006/mcp"
     }

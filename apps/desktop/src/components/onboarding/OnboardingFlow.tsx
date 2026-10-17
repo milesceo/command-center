@@ -27,21 +27,21 @@ export const ONBOARDING_STEPS: readonly StepDef[] = [
   {
     id: 'name',
     label: 'Name',
-    title: 'What should Geeked call you?',
+    title: 'What should Command Center call you?',
     subtitle: 'Used for greetings. It stays on this computer.',
     settings: 'Settings → Profile',
   },
   {
     id: 'pin',
     label: 'PIN',
-    title: 'Lock Geeked with a PIN',
+    title: 'Lock Command Center with a PIN',
     subtitle: 'Asked at launch and after a period of inactivity.',
     settings: 'Settings → Security',
   },
   {
     id: 'system',
     label: 'System',
-    title: 'How should Geeked behave?',
+    title: 'How should Command Center behave?',
     subtitle: 'Startup and what the close button does.',
     settings: 'Settings → System',
   },
@@ -49,7 +49,7 @@ export const ONBOARDING_STEPS: readonly StepDef[] = [
     id: 'look',
     label: 'Look & feel',
     title: 'Performance and appearance',
-    subtitle: 'Pick how much Geeked does, and how it looks.',
+    subtitle: 'Pick how much Command Center does, and how it looks.',
     settings: 'Settings → Performance and Settings → Appearance',
   },
   {
@@ -312,10 +312,10 @@ export function OnboardingFlow() {
                     <strong className="font-medium text-fg">
                       There is no way to recover a PIN.
                     </strong>{' '}
-                    Geeked has no account to reset it through. If you forget it, the only way back
-                    in is to erase everything stored here: chats, prompts, settings and API keys.
-                    The PIN is kept only as a salted Argon2id hash and is never stored itself, and
-                    repeated wrong attempts are slowed down. It is a screen lock, not disk
+                    Command Center has no account to reset it through. If you forget it, the only
+                    way back in is to erase everything stored here: chats, prompts, settings and API
+                    keys. The PIN is kept only as a salted Argon2id hash and is never stored itself,
+                    and repeated wrong attempts are slowed down. It is a screen lock, not disk
                     encryption.
                   </p>
                   {!hasPin && (

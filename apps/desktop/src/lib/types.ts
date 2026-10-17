@@ -1,4 +1,4 @@
-import type { Attachment, BridgeError, ProviderId, ToolsMode } from '@geeked/protocol';
+import type { Attachment, BridgeError, ProviderId, ToolsMode } from '@command-center/protocol';
 
 /** Per-conversation knobs; also used for the not-yet-created "new chat" draft. */
 export interface ConversationSettings {

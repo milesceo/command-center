@@ -175,9 +175,9 @@ describe('PromptsView', () => {
     render(<PromptsView />);
     fireEvent.click(screen.getByRole('button', { name: 'Export' }));
     await waitFor(() => expect(hoisted.saved).toHaveLength(1));
-    expect(hoisted.saved[0]?.name).toBe('geeked-prompts.json');
+    expect(hoisted.saved[0]?.name).toBe('command-center-prompts.json');
     expect(JSON.parse(hoisted.saved[0]?.text ?? '')).toMatchObject({
-      format: 'geeked-prompts',
+      format: 'command-center-prompts',
       prompts: [{ title: 'Code review', tags: ['review'] }],
     });
   });

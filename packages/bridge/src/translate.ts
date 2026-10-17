@@ -3,7 +3,7 @@ import type {
   SDKMessage,
   SDKRateLimitInfo,
 } from '@anthropic-ai/claude-agent-sdk';
-import type { BridgeError, BridgeEvent } from '@geeked/protocol';
+import type { BridgeError, BridgeEvent } from '@command-center/protocol';
 import { fromAssistantError, fromFailureText, normalizeResetsAt } from './errors';
 import { usageFromResult, windowsFromRateLimitInfo } from './usage';
 

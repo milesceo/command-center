@@ -1,7 +1,7 @@
 import type { StorybookConfig } from '@storybook/react-vite';
 
 /**
- * Component workshop for Geeked. Every UI piece with a story can be viewed in isolation, in both
+ * Component workshop for Command Center. Every UI piece with a story can be viewed in isolation, in both
  * themes, with every palette, density and animation level from the toolbar, and the MCP addon
  * lets Claude list components and read their stories (see docs/design-tools.md).
  */

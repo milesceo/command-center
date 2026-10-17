@@ -89,7 +89,7 @@ export function PreviewCard() {
       >
         <span className="size-2 rounded-full" style={{ background: 'var(--accent)' }} />
         <span className="text-[11px]" style={{ color: 'var(--fg-muted)' }}>
-          Geeked
+          Command Center
         </span>
         <span
           className={cn(

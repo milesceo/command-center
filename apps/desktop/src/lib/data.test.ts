@@ -50,7 +50,7 @@ describe('data export and clear', () => {
     await seed();
     const file = await exportAll(db, new Date('2026-10-14T00:00:00Z'));
     expect(file).toMatchObject({
-      format: 'geeked-data',
+      format: 'command-center-data',
       version: 1,
       exportedAt: '2026-10-14T00:00:00.000Z',
     });

@@ -1,4 +1,4 @@
-import type { FeedProvider, StatusFeed } from '@geeked/protocol';
+import type { FeedProvider, StatusFeed } from '@command-center/protocol';
 import { usePrefs } from '../stores/prefs';
 import { useStatus } from '../stores/status';
 import { useUiStore } from '../stores/ui';

@@ -1,4 +1,4 @@
-import type { Attachment } from '@geeked/protocol';
+import type { Attachment } from '@command-center/protocol';
 
 export const MAX_ATTACHMENT_BYTES = 200 * 1024;
 export const MAX_ATTACHMENTS = 10;

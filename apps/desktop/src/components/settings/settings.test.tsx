@@ -74,8 +74,8 @@ describe('SettingsView', () => {
     fireEvent.click(screen.getByRole('button', { name: /Export all data/ }));
     await waitFor(() => expect(hoisted.saved).toHaveLength(1));
     const file = JSON.parse(hoisted.saved[0]?.text ?? '');
-    expect(hoisted.saved[0]?.name).toBe('geeked-data.json');
-    expect(file.format).toBe('geeked-data');
+    expect(hoisted.saved[0]?.name).toBe('command-center-data.json');
+    expect(file.format).toBe('command-center-data');
     expect(file.tables.conversations[0].title).toBe('Keep me?');
   });
 
