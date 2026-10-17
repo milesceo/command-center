@@ -22,7 +22,7 @@ const MODEL_PATTERN = /^[A-Za-z0-9][A-Za-z0-9._:/-]{0,63}$/;
 const TIMEOUT_MS = 10 * 60_000;
 
 export function findCodex(ctx: ProviderContext): ResolvedCommand | null {
-  return resolveCommand('codex', ctx.env, ctx.platform);
+  return resolveCommand('codex', ctx.env, ctx.platform, undefined, ctx.gui);
 }
 
 interface CodexItem {
@@ -211,6 +211,6 @@ export const codexProvider: Provider = {
   async login(ctx) {
     const command = findCodex(ctx);
     if (!command) throw new Error('The Codex CLI is not installed. Run: npm i -g @openai/codex');
-    openTerminal(ctx, command, ['login']);
+    await openTerminal(ctx, command, ['login']);
   },
 };

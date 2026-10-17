@@ -28,7 +28,7 @@
   },
   "bundle": {
     "active": true,
-    "targets": ["nsis", "deb"],
+    "targets": ["nsis", "deb", "app", "dmg"],
     "icon": [
       "icons/32x32.png",
       "icons/128x128.png",
@@ -45,6 +45,9 @@
     "category": "DeveloperTool",
     "shortDescription": "A desktop app for prompting about code, on your Claude subscription",
     "longDescription": "Command Center is a lightweight desktop client for developers who mostly prompt about code. It runs on your Claude Code login: chat, code blocks and diffs, live previews, a prompt library, and usage tracking.",
+    "macOS": {
+      "minimumSystemVersion": "13.0"
+    },
     "windows": {
       "nsis": {
         "installMode": "currentUser",

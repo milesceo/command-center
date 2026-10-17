@@ -34,6 +34,7 @@ type Filter = 'open' | 'all' | 'fail';
 const NEEDS_LABEL: Record<QaItem['needs'], string> = {
   any: 'Anywhere',
   'windows-desktop': 'Windows desktop app',
+  'mac-desktop': 'Mac desktop app',
   'real-login': 'A real login or key',
   network: 'Network',
 };
@@ -218,8 +219,8 @@ function Item({
 
 /**
  * The in-app QA drawer: the manual test checklist with one-click setup, pass/fail/skip, and a
- * button that opens a prefilled GitHub issue for a failure. Toggled with Ctrl+Shift+Q or the
- * command palette; Settings turns it on for release builds.
+ * button that opens a prefilled GitHub issue for a failure. Toggled with Ctrl+Shift+Q (Cmd+Shift+Y
+ * on macOS) or the command palette; Settings turns it on for release builds.
  */
 export function QaPanel() {
   const enabled = useQa((s) => s.enabled);

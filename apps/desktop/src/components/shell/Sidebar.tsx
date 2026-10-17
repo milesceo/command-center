@@ -5,6 +5,7 @@ import { Button } from '../ui/button';
 import { BridgeStatus } from './BridgeStatus';
 import { ConversationList } from './ConversationList';
 import { ThemeToggle } from './ThemeToggle';
+import { isMacPlatform, shortcutLabel } from '../../lib/shortcuts';
 
 export function Sidebar() {
   const open = useUiStore((s) => s.sidebarOpen);
@@ -60,7 +61,7 @@ export function Sidebar() {
           variant="ghost"
           size="icon"
           aria-label="Command palette"
-          title="Command palette (Ctrl+K)"
+          title={`Command palette (${shortcutLabel('Mod+K', isMacPlatform())})`}
           onClick={() => useUiStore.getState().setPaletteOpen(true)}
         >
           <Command size={15} />

@@ -1,4 +1,4 @@
-//! System behavior: what closing the window does, and the tray icon.
+//! System behavior: what closing the window does, the tray icon, and the macOS app menu.
 //!
 //! The close behavior lives here (not only in the webview) so it applies the moment the window
 //! exists, and so "minimize to tray" works even if the webview is busy. It is kept in
@@ -85,7 +85,7 @@ fn main_window(app: &AppHandle) -> Option<WebviewWindow> {
     app.get_webview_window(MAIN)
 }
 
-fn show_main(app: &AppHandle) {
+pub fn show_main(app: &AppHandle) {
     if let Some(win) = main_window(app) {
         let _ = win.show();
         let _ = win.unminimize();
@@ -130,11 +130,90 @@ pub fn build_tray(app: &AppHandle) -> tauri::Result<()> {
                 show_main(tray.app_handle());
             }
         });
-    if let Some(icon) = app.default_window_icon() {
+    if cfg!(target_os = "macos") {
+        // A template image: macOS uses only its alpha and tints it for the light or dark menu bar.
+        let icon =
+            tauri::image::Image::from_bytes(include_bytes!("../icons/tray-template@2x.png"))?;
+        builder = builder.icon(icon).icon_as_template(true);
+    } else if let Some(icon) = app.default_window_icon() {
         builder = builder.icon(icon.clone());
     }
     builder.build(app)?;
     Ok(())
+}
+
+/// The standard macOS menu bar: the app menu (About, Settings, Services, Hide, Quit), Edit (so
+/// copy, paste and undo reach the webview through the usual shortcuts) and Window. Settings
+/// opens the app's own Settings view through `command-center://settings`.
+#[cfg(target_os = "macos")]
+pub fn build_app_menu(app: &AppHandle) -> tauri::Result<()> {
+    use tauri::menu::{AboutMetadataBuilder, PredefinedMenuItem, SubmenuBuilder};
+
+    let about = AboutMetadataBuilder::new()
+        .name(Some("Command Center"))
+        .version(Some(app.package_info().version.to_string()))
+        .build();
+    let settings = MenuItemBuilder::with_id("settings", "Settings…")
+        .accelerator("CmdOrCtrl+,")
+        .build(app)?;
+    let app_menu = SubmenuBuilder::new(app, "Command Center")
+        .item(&PredefinedMenuItem::about(
+            app,
+            Some("About Command Center"),
+            Some(about),
+        )?)
+        .separator()
+        .item(&settings)
+        .separator()
+        .item(&PredefinedMenuItem::services(app, None)?)
+        .separator()
+        .item(&PredefinedMenuItem::hide(app, Some("Hide Command Center"))?)
+        .item(&PredefinedMenuItem::hide_others(app, None)?)
+        .item(&PredefinedMenuItem::show_all(app, None)?)
+        .separator()
+        .item(&PredefinedMenuItem::quit(app, Some("Quit Command Center"))?)
+        .build()?;
+    let edit = SubmenuBuilder::new(app, "Edit")
+        .undo()
+        .redo()
+        .separator()
+        .cut()
+        .copy()
+        .paste()
+        .select_all()
+        .build()?;
+    let window = SubmenuBuilder::new(app, "Window")
+        .minimize()
+        .maximize()
+        .separator()
+        .close_window()
+        .build()?;
+    let menu = MenuBuilder::new(app)
+        .items(&[&app_menu, &edit, &window])
+        .build()?;
+    app.set_menu(menu)?;
+    app.on_menu_event(|app, event| {
+        if event.id().as_ref() == "settings" {
+            show_main(app);
+            let _ = app.emit("command-center://settings", ());
+        }
+    });
+    Ok(())
+}
+
+/// App-level events. On macOS, clicking the Dock icon while the window is hidden (closed to the
+/// tray) shows it again, as Mac apps do.
+pub fn on_run_event(app: &AppHandle, event: tauri::RunEvent) {
+    #[cfg(target_os = "macos")]
+    if let tauri::RunEvent::Reopen {
+        has_visible_windows: false,
+        ..
+    } = event
+    {
+        show_main(app);
+    }
+    #[cfg(not(target_os = "macos"))]
+    let _ = (app, event);
 }
 
 /// Window-event hook: with "minimize to tray" the close button hides the window instead.

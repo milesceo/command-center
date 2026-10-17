@@ -1,5 +1,11 @@
 import { useEffect } from 'react';
-import { FIXED_SHORTCUTS, SHORTCUTS, formatKeys, isMacPlatform } from '../../lib/shortcuts';
+import {
+  FIXED_SHORTCUTS,
+  SHORTCUTS,
+  formatKeys,
+  isMacPlatform,
+  keysFor,
+} from '../../lib/shortcuts';
 import { useUiStore } from '../../stores/ui';
 
 function Keys({ keys, mac }: { keys: string; mac: boolean }) {
@@ -49,7 +55,7 @@ export function ShortcutsDialog() {
           {[...SHORTCUTS, ...FIXED_SHORTCUTS].map((s) => (
             <li key={s.keys} className="flex items-center justify-between gap-4">
               <span className="text-fg-muted">{s.description}</span>
-              <Keys keys={s.keys} mac={mac} />
+              <Keys keys={keysFor(s, mac)} mac={mac} />
             </li>
           ))}
         </ul>

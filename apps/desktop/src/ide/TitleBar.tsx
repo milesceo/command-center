@@ -2,8 +2,9 @@ import { Lock, PanelBottom, PanelLeft, PanelRight, Search } from 'lucide-react';
 import { Button } from '../components/ui/button';
 import { WindowControls } from '../components/shell/WindowControls';
 import { isTauri } from '../lib/tauri';
+import { NATIVE_LIGHTS_INSET, usesNativeTitleBar } from '../lib/window-chrome';
 import { cn } from '../lib/cn';
-import { formatKeys, isMacPlatform } from '../lib/shortcuts';
+import { isMacPlatform, shortcutLabel } from '../lib/shortcuts';
 import { toast } from '../stores/toast';
 import { useConversations } from '../stores/conversations';
 import { useIdeStore } from '../stores/ide';
@@ -24,8 +25,21 @@ export function TitleBar() {
   const toggle = (active: boolean) => cn('size-7', active && 'bg-hover text-fg');
 
   return (
-    <header data-tauri-drag-region className="flex h-11 shrink-0 items-center gap-2 px-3">
-      <div data-tauri-drag-region className="flex w-56 items-center gap-3">
+    <header
+      data-tauri-drag-region
+      className={cn(
+        'flex h-11 shrink-0 items-center gap-2 px-3',
+        usesNativeTitleBar() && NATIVE_LIGHTS_INSET,
+      )}
+    >
+      <div
+        data-tauri-drag-region
+        className={cn(
+          'flex items-center gap-3',
+          // The native lights take the inset; narrowing keeps the command pill centred.
+          usesNativeTitleBar() ? 'w-40' : 'w-56',
+        )}
+      >
         {!isTauri() && (
           <span className="px-1 font-mono text-[12px] font-semibold tracking-tight text-fg">
             command center
@@ -37,7 +51,7 @@ export function TitleBar() {
           className={toggle(sidebarOpen)}
           aria-label="Toggle sidebar"
           aria-pressed={sidebarOpen}
-          title={`Sidebar (${formatKeys('Mod+B', mac)})`}
+          title={`Sidebar (${shortcutLabel('Mod+B', mac)})`}
           onClick={() => useUiStore.getState().toggleSidebar()}
         >
           <PanelLeft size={15} />
@@ -53,7 +67,7 @@ export function TitleBar() {
         <Search size={12} className="shrink-0" />
         <span className="min-w-0 flex-1 truncate text-left">{title}</span>
         <kbd className="rounded border border-border px-1 font-mono text-[10px] text-fg-subtle">
-          {formatKeys('Mod+K', mac)}
+          {shortcutLabel('Mod+K', mac)}
         </kbd>
       </button>
 
@@ -64,7 +78,7 @@ export function TitleBar() {
           className={toggle(bottomOpen)}
           aria-label="Toggle activity panel"
           aria-pressed={bottomOpen}
-          title="Activity panel (Ctrl+J)"
+          title={`Activity panel (${shortcutLabel('Mod+J', mac)})`}
           onClick={() => useIdeStore.getState().toggleBottom()}
         >
           <PanelBottom size={15} />
@@ -75,7 +89,7 @@ export function TitleBar() {
           className={toggle(assistantOpen)}
           aria-label="Toggle assistant"
           aria-pressed={assistantOpen}
-          title="Assistant (Ctrl+Shift+A)"
+          title={`Assistant (${shortcutLabel('Mod+Shift+A', mac)})`}
           onClick={() => useIdeStore.getState().toggleAssistant()}
         >
           <PanelRight size={15} />
@@ -85,7 +99,11 @@ export function TitleBar() {
           size="icon"
           className="size-7"
           aria-label="Lock Command Center"
-          title={hasPin ? 'Lock (Ctrl+L)' : 'Set a PIN in Settings to enable the lock'}
+          title={
+            hasPin
+              ? `Lock (${shortcutLabel('Mod+L', mac)})`
+              : 'Set a PIN in Settings to enable the lock'
+          }
           onClick={() => {
             if (hasPin) useLockStore.getState().lock();
             else {

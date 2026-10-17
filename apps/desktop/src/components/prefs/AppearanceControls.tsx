@@ -19,6 +19,7 @@ import { usePrefs } from '../../stores/prefs';
 import { Segmented } from '../ui/segmented';
 import { Row } from '../settings/parts';
 import { useOsEnvironment } from '../../lib/use-os-environment';
+import { platformCopy } from '../../lib/platform-copy';
 
 const THEME_LABELS: Record<ThemeChoice, string> = {
   dark: 'Dark',
@@ -249,7 +250,7 @@ export function AppearanceControls() {
 
   return (
     <div className="flex flex-col gap-4" data-testid="appearance-controls">
-      <Row label="Theme" hint="System follows Windows.">
+      <Row label="Theme" hint={`System follows ${platformCopy.os()}.`}>
         <Segmented
           label="Theme"
           value={a.theme}
@@ -270,7 +271,7 @@ export function AppearanceControls() {
 
       <Row
         label="Animations"
-        hint="System follows your Windows reduced-motion setting. The performance tier can lower this further."
+        hint={`System follows your ${platformCopy.os()} reduced-motion setting. The performance tier can lower this further.`}
       >
         <Segmented
           label="Animations"

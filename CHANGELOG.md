@@ -7,33 +7,17 @@ recorded here. The format follows
 
 ## [Unreleased]
 
-### Changed
-
-- **Renamed to Command Center** (from Geeked). The window, menus, tray, installer and docs use the
-  new name; the bundle identifier is now `com.milesceo.commandcenter`, the database
-  `command-center.db`, the credential-store service `command-center`, packages `@command-center/*`
-  and environment variables `COMMAND_CENTER_*`. The repository moved to `milesceo/command-center`.
-- **Your data moves automatically** on the first launch after updating, from a Geeked install or
-  straight from a Programish one: chats and everything else in the database, preferences and the
-  PIN lock (including its lockout state), the close-to-tray choice and stored API keys are copied
-  to the new locations and verified. Nothing under the old name is modified or deleted, and an
-  existing file under the new name is never overwritten.
-- Prompt libraries exported as Geeked or Programish files still import.
-- Command Center installs **beside** Geeked rather than over it. Once your data is here, turn off
-  Geeked's "start at login", quit it from the tray and uninstall it. If Geeked is still running
-  when Command Center first starts, nothing is copied and Command Center asks you to quit Geeked
-  and start again (or to start without the old data).
-- Erasing data in Command Center ("Forgot PIN", or clearing data in Settings) erases only Command
-  Center's own copy. The previous install's folder and its stored API keys stay until you
-  uninstall the previous version.
-
-### Deprecated
-
-- The `GEEKED_*` environment variables (`GEEKED_BRIDGE_ENTRY`, `GEEKED_CLAUDE_EXECUTABLE`,
-  `GEEKED_QUERY_MODULE`) still work for one release and print a warning; use `COMMAND_CENTER_*`.
-
 ### Added
 
+- **macOS support** (Apple Silicon first): a `.dmg` for each release, native traffic lights over the
+  toolbar, the standard menu bar (About, Settings ⌘,, Hide, Quit, Edit and Window), a monochrome
+  menu-bar icon, the Dock icon reopening a window kept in the tray, start at login through a
+  LaunchAgent, and the Keychain for API keys. See `docs/macos.md` for the first-launch Gatekeeper steps.
+- Sign-in buttons for Claude, ChatGPT (Codex) and Grok open Terminal on macOS (iTerm when the app
+  was started from it).
+- On macOS the app finds `claude`, `codex`, `grok`, `node` and `ollama` installed with Homebrew,
+  npm, nvm, volta or fnm even when opened from the Dock.
+- Shortcut hints show ⌘ and ⇧ on macOS everywhere, not only in the shortcuts list.
 - Four Claude Code project subagents (reviewer, tester, ui-polish, regulator) with a permission
   guard hook, a "Subagents" workflow in `CLAUDE.md`, and `docs/prompts/` for the prompts used to
   build Geeked.
@@ -71,6 +55,26 @@ recorded here. The format follows
 
 ### Changed
 
+- The QA checklist panel opens with ⌘⇧Y on macOS (⌘⇧Q is the system's Log Out); it stays Ctrl+Shift+Q
+  elsewhere.
+
+- **Renamed to Command Center** (from Geeked). The window, menus, tray, installer and docs use the
+  new name; the bundle identifier is now `com.milesceo.commandcenter`, the database
+  `command-center.db`, the credential-store service `command-center`, packages `@command-center/*`
+  and environment variables `COMMAND_CENTER_*`. The repository moved to `milesceo/command-center`.
+- **Your data moves automatically** on the first launch after updating, from a Geeked install or
+  straight from a Programish one: chats and everything else in the database, preferences and the
+  PIN lock (including its lockout state), the close-to-tray choice and stored API keys are copied
+  to the new locations and verified. Nothing under the old name is modified or deleted, and an
+  existing file under the new name is never overwritten.
+- Prompt libraries exported as Geeked or Programish files still import.
+- Command Center installs **beside** Geeked rather than over it. Once your data is here, turn off
+  Geeked's "start at login", quit it from the tray and uninstall it. If Geeked is still running
+  when Command Center first starts, nothing is copied and Command Center asks you to quit Geeked
+  and start again (or to start without the old data).
+- Erasing data in Command Center ("Forgot PIN", or clearing data in Settings) erases only Command
+  Center's own copy. The previous install's folder and its stored API keys stay until you
+  uninstall the previous version.
 - The app is now called **Geeked** (it was Programish): window title, installer, executable
   (`geeked.exe`), workspace packages (`@geeked/*`), Rust crate, environment variables
   (`GEEKED_*`) and export file names. Prompt libraries exported under the old name still import.
@@ -79,6 +83,11 @@ recorded here. The format follows
   from the old location, verifies every file, and only then records the migration. The old
   data is never deleted or modified; remove it yourself once you are satisfied. A new installer
   installs beside the old Programish app, which you can uninstall afterwards.
+
+### Deprecated
+
+- The `GEEKED_*` environment variables (`GEEKED_BRIDGE_ENTRY`, `GEEKED_CLAUDE_EXECUTABLE`,
+  `GEEKED_QUERY_MODULE`) still work for one release and print a warning; use `COMMAND_CENTER_*`.
 
 ## [1.0.0] - 2026-10-14
 

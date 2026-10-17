@@ -33,7 +33,7 @@ function sdkRuntime(platform: NodeJS.Platform): string | null {
 export function findClaude(ctx: ProviderContext): ResolvedCommand | null {
   const bundled = claudeExecutable(ctx.env);
   if (bundled) return { file: bundled, prefix: [], viaShell: false };
-  const onPath = resolveCommand('claude', ctx.env, ctx.platform);
+  const onPath = resolveCommand('claude', ctx.env, ctx.platform, undefined, ctx.gui);
   if (onPath) return onPath;
   const fromSdk = sdkRuntime(ctx.platform);
   return fromSdk ? { file: fromSdk, prefix: [], viaShell: false } : null;
@@ -107,7 +107,7 @@ export const claudeProvider: Provider = {
   async login(ctx) {
     const command = findClaude(ctx);
     if (!command) throw new Error('The Claude Code runtime was not found.');
-    openTerminal(ctx, command, ['auth', 'login']);
+    await openTerminal(ctx, command, ['auth', 'login']);
   },
 
   async usage(id, ctx) {
@@ -127,14 +127,67 @@ export const claudeProvider: Provider = {
   },
 };
 
+/** POSIX single-quoting: safe for any characters, including quotes, spaces and unicode. */
+export const shellQuote = (arg: string): string =>
+  /^[A-Za-z0-9_./:@%+=,-]+$/.test(arg) ? arg : `'${arg.replace(/'/g, `'\\''`)}'`;
+
+/** An AppleScript string literal (backslashes and double quotes escaped). */
+export const appleScriptString = (text: string): string =>
+  `"${text.replace(/\\/g, '\\\\').replace(/"/g, '\\"')}"`;
+
+/**
+ * The `osascript -e` lines that open a new terminal window running `commandLine`: iTerm when the
+ * bridge was started from it (`TERM_PROGRAM`), otherwise Terminal.app. Both run it in the user's
+ * own login shell and keep the window open afterwards.
+ */
+export function macTerminalScript(commandLine: string, env: NodeJS.ProcessEnv): string[] {
+  const text = appleScriptString(commandLine);
+  if (env.TERM_PROGRAM === 'iTerm.app') {
+    return [
+      'tell application "iTerm"',
+      'activate',
+      'set w to (create window with default profile)',
+      `tell current session of w to write text ${text}`,
+      'end tell',
+    ];
+  }
+  return ['tell application "Terminal"', 'activate', `do script ${text}`, 'end tell'];
+}
+
 /**
  * Opens the CLI's own sign-in in a terminal window so the user completes it there (the CLI may
- * ask them to paste a code). Windows only; elsewhere the UI shows the command to run.
+ * ask them to paste a code). Windows opens a console window; macOS opens Terminal.app (or
+ * iTerm) through `osascript`, with the command quoted for the shell and then for AppleScript,
+ * and no shell of ours in between. Elsewhere the UI shows the command to run.
  */
-export function openTerminal(ctx: ProviderContext, command: ResolvedCommand, args: string[]): void {
-  if (ctx.platform !== 'win32') {
-    throw new Error(`Run \`${[command.file, ...args].join(' ')}\` in a terminal to sign in.`);
+export async function openTerminal(
+  ctx: ProviderContext,
+  command: ResolvedCommand,
+  args: string[],
+): Promise<void> {
+  const instructions = () =>
+    new Error(`Run \`${[command.file, ...args].join(' ')}\` in a terminal to sign in.`);
+  if (ctx.platform === 'darwin') {
+    const line = [command.file, ...args].map(shellQuote).join(' ');
+    const script = macTerminalScript(line, ctx.env);
+    // Waits for osascript: if macOS refuses (Automation permission denied, Terminal missing),
+    // the card shows the command to run instead of silently doing nothing.
+    const ok = await new Promise<boolean>((resolve) => {
+      const child = ctx.spawn(
+        '/usr/bin/osascript',
+        script.flatMap((l) => ['-e', l]),
+        {
+          stdio: 'ignore',
+          env: ctx.env,
+        },
+      );
+      child.on('error', () => resolve(false));
+      child.on('close', (code) => resolve(code === 0));
+    });
+    if (!ok) throw instructions();
+    return;
   }
+  if (ctx.platform !== 'win32') throw instructions();
   const program = command.viaShell ? (command.prefix[2] ?? command.file) : command.file;
   // `start "" cmd /k <program> <args>` opens a new console window that stays open.
   const child = ctx.spawn(

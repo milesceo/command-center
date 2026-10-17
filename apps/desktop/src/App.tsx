@@ -65,6 +65,7 @@ export function App() {
         // Hiding to the tray locks the app, so it is not sitting open behind a hidden window.
         if (!visible) useLockStore.getState().lock();
       },
+      onSettings: () => useUiStore.getState().setView('settings'),
     }).then((unlisten) => {
       if (disposed) unlisten();
       else off = unlisten;

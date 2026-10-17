@@ -4,6 +4,8 @@
 //! the only place the old name may appear.
 
 use std::path::Path;
+use std::sync::{Condvar, Mutex};
+use std::time::Duration;
 
 use keyring::Entry;
 
@@ -53,7 +55,8 @@ impl CredentialStore for OsStore {
 /// copy that does not read back identically is removed again and reported, so a half-written
 /// entry never shadows the good old one. The old entries are never modified or deleted.
 /// Returns the providers whose key was copied. Never logs or returns a value.
-pub fn migrate_legacy_keys(store: &dyn CredentialStore) -> Result<Vec<String>, String> {
+/// Copies every provider's key it can; returns the providers copied and the failures.
+fn copy_all(store: &dyn CredentialStore) -> (Vec<String>, Vec<String>) {
     let mut copied = Vec::new();
     let mut failures = Vec::new();
     for provider in PROVIDERS {
@@ -78,6 +81,13 @@ pub fn migrate_legacy_keys(store: &dyn CredentialStore) -> Result<Vec<String>, S
             Err(e) => failures.push(format!("{provider}: {e}")),
         }
     }
+    (copied, failures)
+}
+
+/// Copies each provider's key from the old service (see `copy_all`); any failure is an error.
+#[cfg(test)]
+fn migrate_legacy_keys(store: &dyn CredentialStore) -> Result<Vec<String>, String> {
+    let (copied, failures) = copy_all(store);
     if failures.is_empty() {
         Ok(copied)
     } else {
@@ -85,21 +95,91 @@ pub fn migrate_legacy_keys(store: &dyn CredentialStore) -> Result<Vec<String>, S
     }
 }
 
-/// Runs `migrate_legacy_keys` once per install: skipped when the marker exists, and the marker
-/// is written only after every key copied cleanly, so a failure is retried on the next start.
+/// Runs the copy once per install: skipped when the marker exists. Normally the marker is written
+/// only after every key copied cleanly, so a failure is retried on the next start. With
+/// `failures_are_final` (macOS, where a failed read is usually a Keychain prompt the user
+/// denied, and retrying would prompt again on every launch) the marker is written anyway and
+/// lists the providers that were skipped; their keys can be entered again in Settings.
 pub fn migrate_legacy_keys_once(
     config_dir: &Path,
     store: &dyn CredentialStore,
+    failures_are_final: bool,
 ) -> Result<Option<Vec<String>>, String> {
     let marker = config_dir.join(LEGACY_MARKER);
     if marker.exists() {
         return Ok(None);
     }
-    let copied = migrate_legacy_keys(store)?;
+    let (copied, failures) = copy_all(store);
+    if !failures.is_empty() && !failures_are_final {
+        return Err(failures.join("; "));
+    }
     std::fs::create_dir_all(config_dir).map_err(|e| e.to_string())?;
-    let json = serde_json::json!({ "from": LEGACY_SERVICE, "providers": copied });
+    let skipped: Vec<&str> = failures
+        .iter()
+        .filter_map(|f| f.split(':').next())
+        .collect();
+    let json =
+        serde_json::json!({ "from": LEGACY_SERVICE, "providers": copied, "skipped": skipped });
     std::fs::write(&marker, json.to_string()).map_err(|e| e.to_string())?;
-    Ok(Some(copied))
+    if failures.is_empty() {
+        Ok(Some(copied))
+    } else {
+        Err(format!("skipped for good: {}", failures.join("; ")))
+    }
+}
+
+/// Lets the key commands wait until the one-time copy has finished. On macOS the copy runs on a
+/// background thread after the window opens (a Keychain prompt must not appear before the app
+/// does), so the first `secret_get` could otherwise race it and miss a key.
+#[derive(Default)]
+pub struct KeysReady {
+    done: Mutex<bool>,
+    changed: Condvar,
+}
+
+/// How long a key command waits for the copy (a Keychain prompt waits on the user).
+const READY_TIMEOUT: Duration = Duration::from_secs(30);
+
+impl KeysReady {
+    pub fn mark_done(&self) {
+        let mut done = match self.done.lock() {
+            Ok(done) => done,
+            Err(poisoned) => poisoned.into_inner(),
+        };
+        *done = true;
+        self.changed.notify_all();
+    }
+
+    /// Returns once the copy is done, or after the timeout (the command then proceeds anyway).
+    pub fn wait(&self) {
+        self.wait_for(READY_TIMEOUT);
+    }
+
+    /// `wait` with a given timeout. A timeout counts as done, so only the first caller ever
+    /// waits for a copy that never finishes.
+    fn wait_for(&self, timeout: Duration) {
+        let done = match self.done.lock() {
+            Ok(done) => done,
+            Err(poisoned) => poisoned.into_inner(),
+        };
+        let (mut done, _) = match self
+            .changed
+            .wait_timeout_while(done, timeout, |done| !*done)
+        {
+            Ok(result) => result,
+            Err(poisoned) => poisoned.into_inner(),
+        };
+        *done = true;
+    }
+}
+
+/// Marks the copy done when dropped, so a panic or an early return still releases the waiters.
+pub struct ReleaseOnDrop<'a>(pub &'a KeysReady);
+
+impl Drop for ReleaseOnDrop<'_> {
+    fn drop(&mut self) {
+        self.0.mark_done();
+    }
 }
 
 #[cfg(test)]
@@ -217,12 +297,12 @@ mod tests {
         let _ = std::fs::remove_dir_all(&dir);
         let mut failing = FakeStore::with(&[(LEGACY_SERVICE, "api-key:xai", "SECRET-VALUE")]);
         failing.corrupt_writes = true;
-        assert!(migrate_legacy_keys_once(&dir, &failing).is_err());
+        assert!(migrate_legacy_keys_once(&dir, &failing, false).is_err());
         assert!(!dir.join(LEGACY_MARKER).exists());
 
         let store = FakeStore::with(&[(LEGACY_SERVICE, "api-key:xai", "SECRET-VALUE")]);
         assert_eq!(
-            migrate_legacy_keys_once(&dir, &store).unwrap(),
+            migrate_legacy_keys_once(&dir, &store, false).unwrap(),
             Some(vec!["xai".to_string()])
         );
         assert!(dir.join(LEGACY_MARKER).is_file());
@@ -231,6 +311,96 @@ mod tests {
             !marker.contains("SECRET-VALUE"),
             "no key value in the marker"
         );
-        assert_eq!(migrate_legacy_keys_once(&dir, &store).unwrap(), None);
+        assert_eq!(migrate_legacy_keys_once(&dir, &store, false).unwrap(), None);
+    }
+
+    #[test]
+    fn on_macos_a_failed_read_is_final_and_names_the_provider() {
+        let dir =
+            std::env::temp_dir().join(format!("command-center-keys-final-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&dir);
+        let mut store = FakeStore::with(&[(LEGACY_SERVICE, "api-key:xai", "SECRET-VALUE")]);
+        store.corrupt_writes = true;
+        let err = migrate_legacy_keys_once(&dir, &store, true).unwrap_err();
+        assert!(err.contains("xai"));
+        let marker = std::fs::read_to_string(dir.join(LEGACY_MARKER)).unwrap();
+        assert!(marker.contains("\"skipped\":[\"xai\"]"), "{marker}");
+        assert!(!marker.contains("SECRET-VALUE"));
+        // Not attempted again.
+        assert_eq!(migrate_legacy_keys_once(&dir, &store, true).unwrap(), None);
+    }
+
+    #[test]
+    fn the_ready_gate_releases_waiters() {
+        let ready = std::sync::Arc::new(KeysReady::default());
+        let waiter = {
+            let ready = ready.clone();
+            std::thread::spawn(move || ready.wait())
+        };
+        ready.mark_done();
+        waiter.join().unwrap();
+        ready.wait(); // already done: returns at once
+    }
+
+    #[test]
+    fn a_timed_out_wait_counts_as_done_for_everyone_after() {
+        let ready = KeysReady::default();
+        let started = std::time::Instant::now();
+        ready.wait_for(Duration::from_millis(20));
+        assert!(started.elapsed() >= Duration::from_millis(20));
+        let again = std::time::Instant::now();
+        ready.wait_for(Duration::from_secs(5));
+        assert!(again.elapsed() < Duration::from_secs(1));
+    }
+
+    #[test]
+    fn the_release_guard_marks_done_even_on_panic() {
+        let ready = std::sync::Arc::new(KeysReady::default());
+        let inner = ready.clone();
+        let _ = std::thread::spawn(move || {
+            let _release = ReleaseOnDrop(&inner);
+            panic!("copy failed");
+        })
+        .join();
+        let started = std::time::Instant::now();
+        ready.wait_for(Duration::from_secs(5));
+        assert!(started.elapsed() < Duration::from_secs(1));
+    }
+
+    /// A store whose reads of the old service fail, like a denied Keychain prompt.
+    struct DeniedStore;
+    impl CredentialStore for DeniedStore {
+        fn get(&self, service: &str, _user: &str) -> Result<Option<String>, String> {
+            if service == LEGACY_SERVICE {
+                Err("User canceled the operation.".into())
+            } else {
+                Ok(None)
+            }
+        }
+        fn set(&self, _: &str, _: &str, _: &str) -> Result<(), String> {
+            Ok(())
+        }
+        fn delete(&self, _: &str, _: &str) -> Result<(), String> {
+            Ok(())
+        }
+    }
+
+    #[test]
+    fn a_denied_keychain_read_is_retried_off_macos_and_final_on_macos() {
+        let dir =
+            std::env::temp_dir().join(format!("command-center-keys-denied-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&dir);
+        assert!(migrate_legacy_keys_once(&dir, &DeniedStore, false).is_err());
+        assert!(!dir.join(LEGACY_MARKER).exists(), "retried next start");
+        assert!(migrate_legacy_keys_once(&dir, &DeniedStore, true).is_err());
+        let marker = std::fs::read_to_string(dir.join(LEGACY_MARKER)).unwrap();
+        assert!(
+            marker.contains("\"skipped\":[\"claude\",\"openai\",\"xai\"]"),
+            "{marker}"
+        );
+        assert_eq!(
+            migrate_legacy_keys_once(&dir, &DeniedStore, true).unwrap(),
+            None
+        );
     }
 }

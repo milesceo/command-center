@@ -2,6 +2,7 @@ import { Minus, Plus, X, type LucideIcon } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { cn } from '../../lib/cn';
 import { isTauri } from '../../lib/tauri';
+import { usesNativeTitleBar } from '../../lib/window-chrome';
 
 type Action = 'close' | 'minimize' | 'maximize';
 
@@ -28,9 +29,10 @@ async function run(action: Action): Promise<void> {
 }
 
 /**
- * macOS-style traffic lights for the frameless window. Hidden outside the desktop app,
- * and gray while the window is not focused, as on a Mac. Place it inside an element
- * with `data-tauri-drag-region` so the rest of the bar still drags the window.
+ * macOS-style traffic lights for the frameless window on Windows and Linux. Hidden outside the
+ * desktop app and on macOS (which shows its own), and gray while the window is not focused, as
+ * on a Mac. Place it inside an element with `data-tauri-drag-region` so the rest of the bar
+ * still drags the window.
  */
 export function WindowControls({ className }: { className?: string }) {
   const [focused, setFocused] = useState(() =>
@@ -48,7 +50,7 @@ export function WindowControls({ className }: { className?: string }) {
     };
   }, []);
 
-  if (!isTauri()) return null;
+  if (!isTauri() || usesNativeTitleBar()) return null;
 
   return (
     <div
@@ -82,19 +84,28 @@ export function WindowControls({ className }: { className?: string }) {
 /** A slim title strip for the classic layout, which has no toolbar of its own. */
 export function ClassicTitleBar() {
   if (!isTauri()) return null;
+  const native = usesNativeTitleBar();
   return (
     <header
       data-tauri-drag-region
-      className="flex h-9 shrink-0 items-center border-b border-border bg-surface px-3"
+      // On macOS the strip matches the other toolbars' height, so one traffic-light position fits all.
+      className={cn(
+        'flex shrink-0 items-center border-b border-border bg-surface px-3',
+        native ? 'h-11' : 'h-9',
+      )}
     >
-      <span data-tauri-drag-region className="w-14" />
+      <span data-tauri-drag-region className={native ? 'w-[64px]' : 'w-14'} />
       <span
         data-tauri-drag-region
         className="mx-auto font-mono text-[11px] tracking-tight text-fg-muted select-none"
       >
         command center
       </span>
-      <WindowControls className="w-14 justify-end" />
+      {native ? (
+        <span data-tauri-drag-region className="w-[64px]" />
+      ) : (
+        <WindowControls className="w-14 justify-end" />
+      )}
     </header>
   );
 }

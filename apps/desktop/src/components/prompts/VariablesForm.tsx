@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { renderPrompt } from '../../lib/prompt-vars';
 import { Button } from '../ui/button';
 import { Modal } from '../ui/dialog';
+import { isMacPlatform, shortcutLabel } from '../../lib/shortcuts';
 
 interface Props {
   title: string;
@@ -69,7 +70,7 @@ export function VariablesForm({
         </div>
         <div className="flex shrink-0 items-center justify-between gap-2 border-t border-border px-4 py-3">
           <span className="text-[11px] text-fg-subtle">
-            Ctrl+Enter to confirm. Blank fields stay empty.
+            {shortcutLabel('Mod+Enter', isMacPlatform())} to confirm. Blank fields stay empty.
           </span>
           <span className="flex gap-2">
             <Button type="button" onClick={onCancel}>

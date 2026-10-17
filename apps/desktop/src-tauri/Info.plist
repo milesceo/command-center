@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!-- Merged by Tauri into the macOS app bundle's Info.plist. Sign-in buttons ask Terminal (or
+     iTerm) through Apple Events to open a window running the provider's own sign-in command;
+     macOS shows this text when it asks the user to allow that. -->
+<plist version="1.0">
+<dict>
+  <key>NSAppleEventsUsageDescription</key>
+  <string>Command Center opens Terminal to run a provider's own sign-in command.</string>
+</dict>
+</plist>

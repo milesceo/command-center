@@ -4,6 +4,7 @@ import type * as LockBackendModule from './lib/lock-backend';
 import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { Db } from './lib/db';
+import type { TrayHandlers } from './lib/system';
 import { createTestDb } from './lib/sqlite-test-db';
 
 // The app talks to SQLite and the sidecar through two seams; fake both so the
@@ -11,6 +12,7 @@ import { createTestDb } from './lib/sqlite-test-db';
 const hoisted = vi.hoisted(() => ({
   db: undefined as unknown as Db,
   script: { current: 'echo' as 'echo' | 'slow' | 'auth' | 'limit' },
+  tray: { current: null as null | TrayHandlers },
 }));
 
 vi.mock('./lib/db', () => ({ getDb: () => Promise.resolve(hoisted.db) }));
@@ -23,7 +25,10 @@ vi.mock('./lib/system', () => ({
     setAutostart: () => Promise.resolve(false),
     isAutostartEnabled: () => Promise.resolve(false),
   },
-  listenToTray: () => Promise.resolve(() => undefined),
+  listenToTray: (handlers: TrayHandlers) => {
+    hoisted.tray.current = handlers;
+    return Promise.resolve(() => undefined);
+  },
 }));
 vi.mock('./lib/lock-backend', async (importOriginal) => {
   const actual = await importOriginal<typeof LockBackendModule>();
@@ -287,5 +292,29 @@ describe('conversations', () => {
       within(screen.getByRole('alertdialog')).getByRole('button', { name: 'Delete' }),
     );
     await waitFor(() => expect(within(nav).queryByText('Borrow checker')).toBeNull());
+  });
+});
+
+describe('tray and app menu', () => {
+  it('opens Settings when the macOS app menu sends Settings (Cmd+,)', async () => {
+    hoisted.tray.current = null;
+    render(<App />);
+    await waitFor(() => expect(hoisted.tray.current?.onSettings).toBeTypeOf('function'));
+    expect(useUiStore.getState().view).toBe('chat');
+    act(() => hoisted.tray.current!.onSettings!());
+    expect(useUiStore.getState().view).toBe('settings');
+    expect(await screen.findByRole('heading', { name: 'Settings', level: 1 })).toBeTruthy();
+    // Choosing it again while Settings is open keeps it open.
+    act(() => hoisted.tray.current!.onSettings!());
+    expect(useUiStore.getState().view).toBe('settings');
+  });
+
+  it('New chat from the tray leaves Settings for the chat view', async () => {
+    hoisted.tray.current = null;
+    render(<App />);
+    await waitFor(() => expect(hoisted.tray.current).not.toBeNull());
+    act(() => hoisted.tray.current!.onSettings!());
+    act(() => hoisted.tray.current!.onNewChat());
+    expect(useUiStore.getState().view).toBe('chat');
   });
 });

@@ -1,9 +1,12 @@
 import { describe, expect, it, vi } from 'vitest';
 import { PROTOCOL_VERSION, encodeMessage, type BridgeRequest } from '@command-center/protocol';
 import { BRIDGE_VERSION, Bridge } from './handler';
+import type { GuiPathDeps } from './providers/process';
 import type { QueryFn } from './sdk';
 import { collector, scripted, sdk } from './testing';
 
+// On macOS a Bridge without `gui` reads the real login shell's PATH; tests never do that.
+const NO_GUI_PATH: GuiPathDeps = { loginShellPath: () => null, listDir: () => [] };
 const line = (r: BridgeRequest) => encodeMessage(r);
 const chat = (id: string): BridgeRequest => ({
   type: 'chat',
@@ -15,9 +18,11 @@ const chat = (id: string): BridgeRequest => ({
 describe('Bridge', () => {
   it('answers ping with pong', () => {
     const out = collector();
-    new Bridge({ getQuery: () => Promise.resolve(scripted([])), emit: out.emit }).handleLine(
-      line({ type: 'ping', id: '1', sentAt: 42 }),
-    );
+    new Bridge({
+      gui: NO_GUI_PATH,
+      getQuery: () => Promise.resolve(scripted([])),
+      emit: out.emit,
+    }).handleLine(line({ type: 'ping', id: '1', sentAt: 42 }));
     expect(out.events).toEqual([
       {
         type: 'pong',
@@ -31,15 +36,18 @@ describe('Bridge', () => {
 
   it('turns garbage into an error event instead of throwing', () => {
     const out = collector();
-    new Bridge({ getQuery: () => Promise.resolve(scripted([])), emit: out.emit }).handleLine(
-      'garbage',
-    );
+    new Bridge({
+      gui: NO_GUI_PATH,
+      getQuery: () => Promise.resolve(scripted([])),
+      emit: out.emit,
+    }).handleLine('garbage');
     expect(out.events[0]).toMatchObject({ type: 'error', error: { code: 'invalid_message' } });
   });
 
   it('runs a chat to completion', async () => {
     const out = collector();
     const bridge = new Bridge({
+      gui: NO_GUI_PATH,
       getQuery: () => Promise.resolve(scripted([sdk.start(), sdk.delta('yo'), sdk.success()])),
       emit: out.emit,
     });
@@ -59,7 +67,11 @@ describe('Bridge', () => {
             rate_limits: null,
           } as never),
       });
-    const bridge = new Bridge({ getQuery: () => Promise.resolve(query), emit: out.emit });
+    const bridge = new Bridge({
+      gui: NO_GUI_PATH,
+      getQuery: () => Promise.resolve(query),
+      emit: out.emit,
+    });
     bridge.handleLine(line({ type: 'usage', id: 'u1' }));
     await vi.waitFor(() => expect(out.events).toHaveLength(1));
     expect(out.events[0]).toMatchObject({ type: 'usage.report', id: 'u1', available: false });
@@ -73,7 +85,11 @@ describe('Bridge', () => {
         return: () => Promise.resolve({ done: true as const, value: undefined }),
       }),
     });
-    const bridge = new Bridge({ getQuery: () => Promise.resolve(never), emit: out.emit });
+    const bridge = new Bridge({
+      gui: NO_GUI_PATH,
+      getQuery: () => Promise.resolve(never),
+      emit: out.emit,
+    });
     bridge.handleLine(line(chat('c1')));
     await new Promise((r) => setTimeout(r, 10));
     bridge.handleLine(line({ type: 'cancel', id: 'x', targetId: 'c1' }));
@@ -83,9 +99,11 @@ describe('Bridge', () => {
 
   it('ignores cancel for unknown chats', () => {
     const out = collector();
-    new Bridge({ getQuery: () => Promise.resolve(scripted([])), emit: out.emit }).handleLine(
-      line({ type: 'cancel', id: 'x', targetId: 'nope' }),
-    );
+    new Bridge({
+      gui: NO_GUI_PATH,
+      getQuery: () => Promise.resolve(scripted([])),
+      emit: out.emit,
+    }).handleLine(line({ type: 'cancel', id: 'x', targetId: 'nope' }));
     expect(out.events).toEqual([]);
   });
 
@@ -97,7 +115,11 @@ describe('Bridge', () => {
         return: () => Promise.resolve({ done: true as const, value: undefined }),
       }),
     });
-    const bridge = new Bridge({ getQuery: () => Promise.resolve(never), emit: out.emit });
+    const bridge = new Bridge({
+      gui: NO_GUI_PATH,
+      getQuery: () => Promise.resolve(never),
+      emit: out.emit,
+    });
     bridge.handleLine(line(chat('c1')));
     await new Promise((r) => setTimeout(r, 10));
     bridge.handleLine(line(chat('c1')));
@@ -112,6 +134,7 @@ describe('Bridge', () => {
   it('reports sdk_unavailable when the SDK cannot be loaded', async () => {
     const out = collector();
     const bridge = new Bridge({
+      gui: NO_GUI_PATH,
       getQuery: () => Promise.reject(new Error('Cannot find package')),
       emit: out.emit,
     });

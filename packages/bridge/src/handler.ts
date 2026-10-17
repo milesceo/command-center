@@ -7,7 +7,12 @@ import {
   type ProviderId,
 } from '@command-center/protocol';
 import { fromThrown } from './errors';
-import { defaultSpawn, type SpawnFn } from './providers/process';
+import {
+  defaultSpawn,
+  primeLoginShellPath,
+  type GuiPathDeps,
+  type SpawnFn,
+} from './providers/process';
 import { createRegistry, describeProviders, providerFor } from './providers/registry';
 import type { ChatHandle, Provider, ProviderContext } from './providers/types';
 import type { QueryFn } from './sdk';
@@ -23,6 +28,8 @@ export interface BridgeDeps {
   fetch?: typeof fetch;
   env?: NodeJS.ProcessEnv;
   platform?: NodeJS.Platform;
+  /** macOS PATH discovery; tests pass a stub so no real login shell runs. */
+  gui?: GuiPathDeps;
   /** Extra provider adapters (tests, future providers). */
   providers?: readonly Provider[];
 }
@@ -36,6 +43,7 @@ export class Bridge {
   private readonly active = new Map<string, ChatHandle>();
   private readonly registry: ReadonlyMap<ProviderId, Provider>;
   private readonly ctx: ProviderContext;
+  private readonly guiReady: Promise<void>;
 
   constructor(private readonly deps: BridgeDeps) {
     this.registry = createRegistry(deps.providers);
@@ -46,7 +54,16 @@ export class Bridge {
       fetch: deps.fetch ?? fetch,
       env: deps.env ?? process.env,
       platform: deps.platform ?? process.platform,
+      ...(deps.gui ? { gui: deps.gui } : {}),
     };
+    // On macOS, read the login shell's PATH in the background from the start. Provider reports,
+    // sign-in and usage wait for it (at most a few seconds); pings never do, and neither does a
+    // chat, so a cancel sent right after it is never lost (an early chat still finds CLIs in the
+    // Homebrew, npm and nvm folders, and the login PATH is merged in once it is known).
+    this.guiReady =
+      this.ctx.platform === 'darwin' && !deps.gui
+        ? primeLoginShellPath(this.ctx.env)
+        : Promise.resolve();
   }
 
   /** Handle one raw stdin line. Never throws: bad input becomes an `error` event. */
@@ -87,12 +104,15 @@ export class Bridge {
         await this.startChat(request);
         return;
       case 'usage':
+        await this.guiReady;
         await this.readUsage(request.id);
         return;
       case 'providers':
+        await this.guiReady;
         await this.report(request.id, request.hasKey);
         return;
       case 'provider.login':
+        await this.guiReady;
         await this.login(request.id, request.provider);
         return;
     }

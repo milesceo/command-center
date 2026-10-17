@@ -10,6 +10,7 @@ import { toast } from '../../stores/toast';
 import { Button } from '../ui/button';
 import { Switch } from '../ui/switch';
 import { StatusDot } from '../status/StatusDot';
+import { platformCopy } from '../../lib/platform-copy';
 
 const BADGES: Record<ConnectionState, { text: string; className: string }> = {
   connected: { text: 'Connected', className: 'bg-success/15 text-fg' },
@@ -62,7 +63,8 @@ function ApiKeyForm({ id }: { id: ProviderId }) {
   if (!secrets.available()) {
     return (
       <p className="text-[11px] text-fg-subtle">
-        API keys are stored in the Windows Credential Manager, so adding one needs the desktop app.
+        API keys are stored in the {platformCopy.credentialStore()}, so adding one needs the desktop
+        app.
       </p>
     );
   }
@@ -71,7 +73,7 @@ function ApiKeyForm({ id }: { id: ProviderId }) {
     return (
       <div className="flex items-center gap-2 text-[12px]">
         <KeyRound size={12} className="text-success" aria-hidden="true" />
-        <span className="text-fg-muted">API key saved in Windows Credential Manager.</span>
+        <span className="text-fg-muted">API key saved in {platformCopy.credentialStore()}.</span>
         <Button size="sm" onClick={() => void removeKey(id)}>
           Remove key
         </Button>
@@ -120,7 +122,8 @@ function ApiKeyForm({ id }: { id: ProviderId }) {
         </Button>
       </div>
       <p className="text-[11px] text-fg-subtle">
-        Stored only in the Windows Credential Manager, never in Command Center's database or files.
+        Stored only in the {platformCopy.credentialStore()}, never in Command Center's database or
+        files.
       </p>
     </form>
   );

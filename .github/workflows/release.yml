@@ -1,8 +1,10 @@
 name: Release
 
-# A version tag builds the Windows installer, smoke-tests the installed layout and publishes the
-# release with the matching CHANGELOG section as its notes. Pull requests that touch packaging and
-# manual runs do the same build and checks but publish nothing (the installer is kept as an artifact).
+# A version tag builds the Windows installer and the macOS dmg, smoke-tests each installed layout and
+# publishes the release with the matching CHANGELOG section as its notes (the Windows job creates
+# the release; the macOS dmg is attached to it afterwards). Pull requests that touch packaging and
+# manual runs do the same builds and checks but publish nothing (the files are kept as artifacts).
+# The macOS app is unsigned (ad-hoc signed inside); see docs/macos.md for Developer ID signing.
 on:
   push:
     tags: ['v[0-9]+.[0-9]+.[0-9]+']
@@ -147,3 +149,99 @@ jobs:
             --notes-file "$GITHUB_WORKSPACE/release-notes.md" \
             --verify-tag \
             ./*-setup.exe ./SHA256SUMS.txt
+
+  macos:
+    name: macOS app
+    runs-on: macos-14
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: apps/desktop/src-tauri
+      - run: pnpm install --frozen-lockfile
+
+      # beforeBuildCommand bundles the bridge and copies (and ad-hoc signs) node and claude; the
+      # app is built for Apple Silicon (the runner's architecture) and packed into a dmg.
+      - name: Build the app and dmg
+        run: pnpm --filter @command-center/desktop tauri build --bundles app,dmg
+
+      - name: Locate the dmg
+        id: dmg
+        run: |
+          file=$(ls apps/desktop/src-tauri/target/release/bundle/dmg/*.dmg | head -n 1)
+          # Space-free asset name (GitHub renames spaces in assets, which breaks the checksum file).
+          renamed="$(dirname "$file")/$(basename "$file" | tr ' ' '-')"
+          if [ "$file" != "$renamed" ]; then mv "$file" "$renamed"; file="$renamed"; fi
+          echo "path=$file" >> "$GITHUB_OUTPUT"
+          ls -l "$file"
+
+      - name: Install from the dmg, like a user would
+        run: |
+          mount=$(mktemp -d)
+          hdiutil attach "${{ steps.dmg.outputs.path }}" -nobrowse -readonly -mountpoint "$mount"
+          app=$(ls -d "$mount"/*.app | head -n 1)
+          target="$RUNNER_TEMP/Applications"
+          mkdir -p "$target"
+          cp -R "$app" "$target/"
+          hdiutil detach "$mount"
+          echo "APP=$target/$(basename "$app")" >> "$GITHUB_ENV"
+          du -sh "$target"/*.app
+
+      - name: Smoke test the installed app (bundled Node starts the bundled bridge and runtime)
+        run: node scripts/smoke-installed.mjs "$APP"
+
+      - name: Launch the installed app and check it starts its bridge
+        run: |
+          exe="$APP/Contents/MacOS/command-center"
+          test -x "$exe" || { echo "command-center is not in $APP/Contents/MacOS"; exit 1; }
+          "$exe" > "$RUNNER_TEMP/app.log" 2>&1 &
+          pid=$!
+          bridge=""
+          for i in $(seq 1 60); do
+            sleep 0.5
+            kill -0 "$pid" 2>/dev/null || { cat "$RUNNER_TEMP/app.log"; echo "the app exited early"; exit 1; }
+            bridge=$(pgrep -P "$pid" -fl node || true)
+            [ -n "$bridge" ] && break
+          done
+          [ -n "$bridge" ] || { cat "$RUNNER_TEMP/app.log"; echo "the app never started its bridge"; exit 1; }
+          echo "bridge: $bridge"
+          case "$bridge" in *"$APP"*main.mjs*) ;; *) echo "the bridge is not the bundled one"; exit 1;; esac
+          sleep 5
+          kill -0 "$pid" 2>/dev/null || { cat "$RUNNER_TEMP/app.log"; echo "the app crashed"; exit 1; }
+          kill "$pid"
+
+      - name: Checksum
+        run: |
+          cd "$(dirname "${{ steps.dmg.outputs.path }}")"
+          shasum -a 256 *.dmg | tee SHA256SUMS-macos.txt
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: macos-dmg
+          path: |
+            apps/desktop/src-tauri/target/release/bundle/dmg/*.dmg
+            apps/desktop/src-tauri/target/release/bundle/dmg/SHA256SUMS-macos.txt
+          if-no-files-found: error
+
+  publish-macos:
+    name: Attach the macOS dmg to the release
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: [windows, macos]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: macos-dmg
+          path: dmg
+      - name: Upload to the release the Windows job created
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release upload "$GITHUB_REF_NAME" --repo "$GITHUB_REPOSITORY" dmg/*.dmg dmg/SHA256SUMS-macos.txt

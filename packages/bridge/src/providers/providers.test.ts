@@ -5,7 +5,16 @@ import type { BridgeEvent, ChatRequest } from '@command-center/protocol';
 import { Bridge } from '../handler';
 import { codexProvider, parseCodexLine } from './codex';
 import { grokProvider, MAX_CLI_PROMPT_CHARS, SseParser, XAI_CHAT_URL } from './grok';
-import { argsAreShellSafe, resolveCommand, type ChildLike, type SpawnFn } from './process';
+import {
+  argsAreShellSafe,
+  resolveCommand,
+  type ChildLike,
+  type GuiPathDeps,
+  type SpawnFn,
+} from './process';
+
+/** No login shell and no folders: tests must not depend on what this machine has installed. */
+const NO_GUI_PATH: GuiPathDeps = { loginShellPath: () => null, listDir: () => [] };
 import { createRegistry, describeProviders } from './registry';
 import type { ProviderContext } from './types';
 
@@ -85,6 +94,7 @@ function context(overrides: Partial<ProviderContext> & { events?: BridgeEvent[] 
     fetch: () => Promise.reject(new Error('no network in this test')),
     env: { PATH: '/bin' },
     platform: process.platform,
+    gui: NO_GUI_PATH,
     ...overrides,
   };
   return { ctx, events };
@@ -418,6 +428,7 @@ describe('Bridge provider routing', () => {
       emit: (e) => events.push(e),
       env: { PATH: '/nowhere' },
       platform: process.platform,
+      gui: NO_GUI_PATH,
       spawn: fakeSpawn({}).spawn,
       ...deps,
     });

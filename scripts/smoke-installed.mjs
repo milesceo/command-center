@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// Checks an installed (or extracted) copy of the app without a display:
+// Checks an installed (or extracted) copy of the app, or a macOS .app bundle, without a display:
 // the bundled Node starts the bundled bridge, the bridge answers a ping, and the bundled Claude
 // runtime starts. It cannot check the login; that comes from the user's own profile.
 //   node scripts/smoke-installed.mjs <install-dir>
@@ -42,6 +42,14 @@ if (!dir) {
 const node = need(dir, exe('node'));
 const main = need(dir, 'main.mjs');
 const claude = need(dir, exe('claude'));
+
+// On macOS an invalid signature gets a bundled binary killed on launch; check both are signed.
+if (process.platform === 'darwin') {
+  for (const bin of [node, claude]) {
+    execFileSync('codesign', ['--verify', '--strict', bin], { stdio: 'pipe' });
+    console.log(`ok   signature valid: ${bin}`);
+  }
+}
 
 const version = execFileSync(claude, ['--version'], { encoding: 'utf8', timeout: 60_000 }).trim();
 console.log(`ok   claude runtime: ${version}`);
