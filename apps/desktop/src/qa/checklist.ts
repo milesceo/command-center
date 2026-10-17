@@ -15,6 +15,7 @@ export const QA_AREAS = [
   'providers',
   'status',
   'migration',
+  'macos',
 ] as const;
 export type QaArea = (typeof QA_AREAS)[number];
 
@@ -27,6 +28,7 @@ export const AREA_LABELS: Record<QaArea, string> = {
   providers: 'Providers and keys',
   status: 'Status feed',
   migration: 'Rename and data migration',
+  macos: 'macOS',
 };
 
 /** What a scenario button in the panel can do for you (see `scenarios.ts`). */
@@ -47,7 +49,7 @@ export const SCENARIO_IDS = [
 export type ScenarioId = (typeof SCENARIO_IDS)[number];
 
 /** `any`: works anywhere. The others say what the test needs that CI and I cannot provide. */
-export type QaNeeds = 'any' | 'windows-desktop' | 'real-login' | 'network';
+export type QaNeeds = 'any' | 'windows-desktop' | 'mac-desktop' | 'real-login' | 'network';
 
 export interface QaItem {
   /** `AREA-NN`, unique and stable. */
@@ -378,7 +380,7 @@ export const QA_ITEMS: readonly QaItem[] = [
     area: 'providers',
     title: 'ChatGPT sign-in through the Codex CLI',
     steps: [
-      'Install the Codex CLI (npm i -g @openai/codex) if needed.',
+      'Needs real Codex and Claude logins. Install the Codex CLI (npm i -g @openai/codex) if needed.',
       'On the ChatGPT card click "Sign in with ChatGPT CLI" and finish in the terminal window.',
       'Start a chat with ChatGPT.',
     ],
@@ -547,6 +549,136 @@ export const QA_ITEMS: readonly QaItem[] = [
     expected:
       'A message box explains the previous version is still running before any window opens; after Quit no Command Center data folder content exists yet; the second start copies everything (MIGRATE-01 holds).',
     needs: 'windows-desktop',
+    rev: 1,
+  },
+  // ---------------------------------------------------------------- macOS
+  {
+    id: 'MAC-01',
+    area: 'macos',
+    title: 'Native traffic lights and a draggable title bar',
+    steps: [
+      'Start Command Center on a Mac (editor layout).',
+      'Look at the top-left corner, then drag the empty part of the toolbar.',
+      'Switch to the classic layout (palette: "Use classic layout") and look again; then lock the app and look at the lock screen; re-run onboarding and look at its top strip; enter full screen.',
+    ],
+    expected:
+      'The red, yellow and green buttons are the system ones, vertically centered in the toolbar, with the sidebar button just to their right and nothing under them; no second set of buttons appears at the right; dragging the toolbar moves the window; the classic title and the command pill are centred; green zooms and full-screens as usual (in full screen an empty strip remains where the buttons were).',
+    needs: 'mac-desktop',
+    rev: 1,
+  },
+  {
+    id: 'MAC-02',
+    area: 'macos',
+    title: 'The menu bar works like a Mac app',
+    steps: [
+      'Open the Command Center menu: About Command Center, then Settings… (also try Cmd+,).',
+      'Type in the composer, select the text, and use Edit > Copy, Edit > Paste, Undo (Cmd+Z) and Select All.',
+      'Use Hide Command Center (Cmd+H), bring it back from the Dock, then Window > Minimize (Cmd+M).',
+    ],
+    expected:
+      'About names Command Center and its version; Settings opens the Settings view; copy, paste, undo and select all work in text fields; Hide, Minimize and Dock restore behave normally; Cmd+Q quits.',
+    needs: 'mac-desktop',
+    rev: 1,
+  },
+  {
+    id: 'MAC-03',
+    area: 'macos',
+    title: 'Menu-bar icon, close to tray and Dock reopen',
+    steps: [
+      'Look for the >_ icon in the menu bar, in both light and dark menu bars (System Settings > Appearance).',
+      'Click it and use Open, New chat and Lock.',
+      'In Settings > System choose "Minimize to menu bar", close the window with the red button, then click the Dock icon.',
+    ],
+    expected:
+      'The icon is monochrome and readable in both appearances; its menu works; closing hides the window and locks the app; clicking the Dock icon shows the window again (asking for the PIN if one is set).',
+    needs: 'mac-desktop',
+    rev: 1,
+  },
+  {
+    id: 'MAC-04',
+    area: 'macos',
+    title: 'Sign-in opens Terminal',
+    steps: [
+      'Needs real Codex and Claude logins. Install the Codex CLI (npm i -g @openai/codex) if needed.',
+      'Open Command Center from the Dock (not from a terminal).',
+      'In Settings > AI agents, click Sign in on the ChatGPT (Codex) card; repeat for Claude.',
+    ],
+    expected:
+      'Terminal.app comes to the front with a new window already running the sign-in command (codex login, claude auth login); after signing in there, the card turns Connected without restarting the app. If the app was started from iTerm, iTerm is used instead.',
+    needs: 'mac-desktop',
+    setup: 'open-settings-agents',
+    rev: 1,
+  },
+  {
+    id: 'MAC-05',
+    area: 'macos',
+    title: 'CLIs are found when the app is opened from the Dock',
+    steps: [
+      'Quit Command Center, then open it from the Dock or Applications (not a terminal).',
+      'Open Settings > AI agents.',
+    ],
+    expected:
+      'Claude, and Codex or Grok if installed (Homebrew, npm, nvm, volta or fnm), show as installed or connected exactly as they do when started from a terminal.',
+    needs: 'mac-desktop',
+    setup: 'open-settings-agents',
+    rev: 1,
+  },
+  {
+    id: 'MAC-06',
+    area: 'macos',
+    title: 'An API key lands in the Keychain',
+    steps: [
+      'Needs an xAI API key. In Settings > AI agents, paste it on the Grok card and save.',
+      'Open Keychain Access and search for api-key:xai.',
+      'Send one Grok chat, then remove the key and search again.',
+    ],
+    expected:
+      'An item named api-key:xai with service command-center appears and is gone after Remove; any Keychain prompt names Command Center; the chat answers.',
+    needs: 'mac-desktop',
+    setup: 'open-settings-agents',
+    rev: 1,
+  },
+  {
+    id: 'MAC-07',
+    area: 'macos',
+    title: 'The downloaded dmg installs and opens',
+    steps: [
+      'Download the dmg from a release (or the macOS app artifact of a CI run), open it and drag Command Center to Applications.',
+      'Open it from Applications; when macOS blocks it, follow the README steps (right-click > Open, or Privacy & Security > Open Anyway).',
+      'Send a Claude chat.',
+    ],
+    expected:
+      'After the one-time approval the app opens, starts its bundled bridge (chat works with no Node installed), and later launches open without a warning.',
+    needs: 'mac-desktop',
+    rev: 1,
+  },
+  {
+    id: 'MAC-08',
+    area: 'macos',
+    title: 'Start at login uses a login item',
+    steps: [
+      'Turn on "Launch Command Center when you log in" in Settings > System.',
+      'Open System Settings > General > Login Items, then log out and back in.',
+      'Turn it off again and check Login Items.',
+    ],
+    expected:
+      'Command Center is listed (as a background item) while on and starts after logging in; it is gone when off.',
+    needs: 'mac-desktop',
+    setup: 'open-settings-system',
+    rev: 1,
+  },
+  {
+    id: 'MAC-09',
+    area: 'macos',
+    title: 'Preview, save and shortcuts in WKWebView',
+    steps: [
+      'Ask for a small HTML page with a script that logs to the console, and open it in the preview.',
+      'Save a code block with Save as file.',
+      'Open the shortcuts list (Cmd+/) and try Cmd+K, Cmd+B, Cmd+T, Cmd+J, Cmd+L, Cmd+Shift+A and the QA panel (Cmd+Shift+Y); hover a toolbar button and read its tooltip; in the composer press Ctrl+T.',
+    ],
+    expected:
+      'The preview runs and shows its console output; the save dialog writes the file; the shortcut list shows ⌘ glyphs and every listed shortcut works, none of them triggering a system action instead; tooltips show ⌘ glyphs; Ctrl+T in the composer transposes letters instead of opening a thread.',
+    needs: 'mac-desktop',
     rev: 1,
   },
 ];
