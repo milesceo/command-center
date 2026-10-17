@@ -108,6 +108,24 @@ fn migrate_previous_data(app: &tauri::AppHandle) {
     }
 }
 
+/// Copies API keys from the old credential-store service once, then releases the key commands.
+/// They are released however this ends: no config folder, an error, or a panic in the copy.
+fn migrate_legacy_keys(app: &tauri::AppHandle) {
+    let _release = legacy_keys::ReleaseOnDrop(app.state::<legacy_keys::KeysReady>().inner());
+    let Ok(dir) = app.path().app_config_dir() else {
+        return;
+    };
+    let failures_are_final = cfg!(target_os = "macos");
+    match legacy_keys::migrate_legacy_keys_once(&dir, &legacy_keys::OsStore, failures_are_final) {
+        Ok(Some(copied)) if !copied.is_empty() => eprintln!(
+            "[command-center] copied {} API key(s) from the previous name",
+            copied.len()
+        ),
+        Ok(_) => {}
+        Err(e) => eprintln!("[command-center] API key migration did not complete: {e}"),
+    }
+}
+
 pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
@@ -126,26 +144,30 @@ pub fn run() {
         .manage(lock::LockGuard::default())
         .manage(system::SystemState::default())
         .manage(preview::PreviewStore::default())
+        .manage(legacy_keys::KeysReady::default())
         .register_uri_scheme_protocol("preview", preview::handle)
         .setup(|app| {
             // The window is created here, not from the config (`create: false`), so the data
             // from before the rename is in place before the webview opens its profile.
             migrate_previous_data(app.handle());
+            // API keys stored under the old credential-store service; values are never logged.
+            // On macOS this waits until the window is up (below): reading another app's
+            // Keychain items can raise a prompt, which must not appear before the app does.
+            if !cfg!(target_os = "macos") {
+                migrate_legacy_keys(app.handle());
+            }
             if let Ok(dir) = app.path().app_config_dir() {
-                // API keys stored under the old credential-store service; values are never logged.
-                match legacy_keys::migrate_legacy_keys_once(&dir, &legacy_keys::OsStore) {
-                    Ok(Some(copied)) if !copied.is_empty() => eprintln!(
-                        "[command-center] copied {} API key(s) from the previous name",
-                        copied.len()
-                    ),
-                    Ok(_) => {}
-                    Err(e) => eprintln!("[command-center] API key migration did not complete: {e}"),
-                }
                 app.state::<system::SystemState>().set(system::load(&dir));
             }
             system::build_tray(app.handle())?;
+            #[cfg(target_os = "macos")]
+            system::build_app_menu(app.handle())?;
             for config in &app.config().app.windows {
                 WebviewWindowBuilder::from_config(app.handle(), config)?.build()?;
+            }
+            if cfg!(target_os = "macos") {
+                let handle = app.handle().clone();
+                std::thread::spawn(move || migrate_legacy_keys(&handle));
             }
             Ok(())
         })
@@ -168,8 +190,9 @@ pub fn run() {
             secrets::secret_wipe,
             system::system_set_close_behavior
         ])
-        .run(tauri::generate_context!())
-        .expect("error while running Command Center");
+        .build(tauri::generate_context!())
+        .expect("error while building Command Center")
+        .run(system::on_run_event);
 }
 
 #[cfg(test)]

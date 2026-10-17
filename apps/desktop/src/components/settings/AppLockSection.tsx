@@ -9,6 +9,7 @@ import { PinSetup } from '../prefs/PinSetup';
 import { Button } from '../ui/button';
 import { Segmented } from '../ui/segmented';
 import { Row, Section } from './parts';
+import { isMacPlatform, shortcutLabel } from '../../lib/shortcuts';
 
 type Mode = 'idle' | 'add' | 'change' | 'remove';
 
@@ -100,7 +101,10 @@ export function AppLockSection() {
               onChange={setAutoLock}
             />
           </Row>
-          <Row label="PIN" hint="Locking is also on Ctrl+L, the tray menu and the command palette.">
+          <Row
+            label="PIN"
+            hint={`Locking is also on ${shortcutLabel('Mod+L', isMacPlatform())}, the tray menu and the command palette.`}
+          >
             <span className="flex items-center gap-2">
               <Button size="sm" onClick={() => useLockStore.getState().lock()}>
                 Lock now

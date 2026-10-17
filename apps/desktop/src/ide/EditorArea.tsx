@@ -3,7 +3,7 @@ import { lazy, Suspense, useEffect, useRef } from 'react';
 import { ViewSkeleton } from '../components/ui/skeleton';
 import { cn } from '../lib/cn';
 import { formatAgo } from '../lib/format';
-import { formatKeys, isMacPlatform } from '../lib/shortcuts';
+import { isMacPlatform, shortcutLabel } from '../lib/shortcuts';
 import { conversationsStore, useConversations } from '../stores/conversations';
 import { useIdeStore } from '../stores/ide';
 import { useProjects } from '../stores/projects';
@@ -236,7 +236,7 @@ function Welcome() {
                   <li key={label} className="flex items-center justify-between text-xs">
                     <span className="text-fg-muted">{label}</span>
                     <kbd className="rounded border border-border px-1.5 font-mono text-[10px] text-fg-subtle">
-                      {formatKeys(keys, mac)}
+                      {shortcutLabel(keys, mac)}
                     </kbd>
                   </li>
                 ))}

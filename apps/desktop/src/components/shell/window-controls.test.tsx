@@ -12,7 +12,11 @@ vi.mock('@tauri-apps/api/window', () => ({ getCurrentWindow: () => hoisted.win }
 
 const { ClassicTitleBar, WindowControls } = await import('./WindowControls');
 
+const setPlatform = (value: string) =>
+  Object.defineProperty(navigator, 'platform', { configurable: true, value });
+
 beforeEach(() => {
+  setPlatform('Win32');
   hoisted.tauri.current = true;
   Object.values(hoisted.win).forEach((fn) => fn.mockReset());
 });
@@ -55,5 +59,46 @@ describe('ClassicTitleBar', () => {
     hoisted.tauri.current = false;
     rerender(<ClassicTitleBar />);
     expect(container.firstChild).toBeNull();
+  });
+});
+
+describe('on macOS', () => {
+  beforeEach(() => setPlatform('MacIntel'));
+
+  it('hides the custom lights in the desktop app (the native ones show)', () => {
+    const { container } = render(<WindowControls />);
+    expect(container.firstChild).toBeNull();
+  });
+
+  it('gives the classic title strip the toolbar height and two 64px spacers instead of the lights', () => {
+    const { container } = render(<ClassicTitleBar />);
+    const header = container.querySelector('header')!;
+    expect(header.className).toContain('h-11');
+    expect(header.className).not.toContain('h-9');
+    expect(screen.queryByRole('group', { name: 'Window controls' })).toBeNull();
+    const spacers = [...header.querySelectorAll('span')].filter((s) =>
+      s.className.includes('w-[64px]'),
+    );
+    expect(spacers).toHaveLength(2);
+    expect(spacers.every((s) => s.hasAttribute('data-tauri-drag-region'))).toBe(true);
+    expect(header.textContent).toContain('command center');
+  });
+
+  it('still renders nothing in a browser', () => {
+    hoisted.tauri.current = false;
+    expect(render(<WindowControls />).container.firstChild).toBeNull();
+    cleanup();
+    expect(render(<ClassicTitleBar />).container.firstChild).toBeNull();
+  });
+});
+
+describe('on Windows and Linux', () => {
+  it.each(['Win32', 'Linux x86_64'])('%s keeps the custom lights and the h-9 strip', (p) => {
+    setPlatform(p);
+    const { container } = render(<ClassicTitleBar />);
+    const header = container.querySelector('header')!;
+    expect(header.className).toContain('h-9');
+    expect(header.querySelector('.w-\\[64px\\]')).toBeNull();
+    expect(screen.getByRole('group', { name: 'Window controls' })).toBeTruthy();
   });
 });

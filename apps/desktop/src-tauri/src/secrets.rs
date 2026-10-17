@@ -6,6 +6,9 @@
 //! bridge for a single request; it is otherwise never kept in JavaScript state.
 
 use keyring::Entry;
+use tauri::State;
+
+use crate::legacy_keys::KeysReady;
 
 pub(crate) const SERVICE: &str = "command-center";
 
@@ -45,29 +48,43 @@ fn delete(provider: &str) -> Result<(), String> {
     }
 }
 
+/// The key commands are `async` so Tauri runs them off the main thread: they can wait on the
+/// one-time copy (`KeysReady`) while a Keychain prompt is up, and the window must stay usable.
 #[tauri::command]
-pub fn secret_set(provider: String, key: String) -> Result<(), String> {
+pub async fn secret_set(
+    ready: State<'_, KeysReady>,
+    provider: String,
+    key: String,
+) -> Result<(), String> {
+    ready.wait();
     set(&provider, &key)
 }
 
 #[tauri::command]
-pub fn secret_exists(provider: String) -> Result<bool, String> {
+pub async fn secret_exists(ready: State<'_, KeysReady>, provider: String) -> Result<bool, String> {
+    ready.wait();
     Ok(get(&provider)?.is_some())
 }
 
 #[tauri::command]
-pub fn secret_get(provider: String) -> Result<Option<String>, String> {
+pub async fn secret_get(
+    ready: State<'_, KeysReady>,
+    provider: String,
+) -> Result<Option<String>, String> {
+    ready.wait();
     get(&provider)
 }
 
 #[tauri::command]
-pub fn secret_delete(provider: String) -> Result<(), String> {
+pub async fn secret_delete(ready: State<'_, KeysReady>, provider: String) -> Result<(), String> {
+    ready.wait();
     delete(&provider)
 }
 
 /// Removes every stored key (used by "Forgot PIN" and reset).
 #[tauri::command]
-pub fn secret_wipe() -> Result<(), String> {
+pub async fn secret_wipe(ready: State<'_, KeysReady>) -> Result<(), String> {
+    ready.wait();
     for provider in PROVIDERS {
         delete(provider)?;
     }

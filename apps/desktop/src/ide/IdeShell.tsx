@@ -12,6 +12,7 @@ import { Explorer } from './Explorer';
 import { ResizeHandle } from './ResizeHandle';
 import { Hud } from './shared/Hud';
 import { TitleBar } from './TitleBar';
+import { isMacPlatform } from '../lib/shortcuts';
 
 /** Window padding and status bar height, used to turn pointer positions into pane sizes. */
 const GUTTER = 8;
@@ -31,7 +32,10 @@ export function IdeShell() {
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if (!(e.ctrlKey || e.metaKey) || e.altKey) return;
+      // Cmd only on macOS (where Ctrl+T and Ctrl+P edit text). Elsewhere Ctrl or the Win/Super
+      // key, unchanged from before.
+      const mod = isMacPlatform() ? e.metaKey : e.ctrlKey || e.metaKey;
+      if (!mod || e.altKey) return;
       const key = e.key.toLowerCase();
       const run = (fn: () => void) => {
         e.preventDefault();

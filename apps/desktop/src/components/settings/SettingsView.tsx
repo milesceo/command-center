@@ -33,6 +33,8 @@ import { SystemControls } from '../prefs/SystemControls';
 import { StatusFeedRow } from '../status/StatusFeedRow';
 import { AppLockSection } from './AppLockSection';
 import { Row, Section } from './parts';
+import { platformCopy } from '../../lib/platform-copy';
+import { isMacPlatform, shortcutKeys, shortcutLabel } from '../../lib/shortcuts';
 
 const CLEAR_COPY: Record<ClearScope, { button: string; title: string; body: string }> = {
   usage: {
@@ -163,7 +165,7 @@ export function SettingsView() {
 
         <AppLockSection />
 
-        <Section title="System" hint="Windows startup and what the close button does.">
+        <Section title="System" hint="Start at login and what the close button does.">
           <SystemControls />
         </Section>
 
@@ -188,7 +190,7 @@ export function SettingsView() {
 
         <Section
           title="AI agents"
-          hint="Connect the providers you use. Subscription sign-in always goes through the provider's own official CLI; API keys live in the Windows Credential Manager."
+          hint={`Connect the providers you use. Subscription sign-in always goes through the provider's own official CLI; API keys live in the ${platformCopy.credentialStore()}.`}
         >
           <ProviderCards />
           <StatusFeedRow />
@@ -299,11 +301,11 @@ export function SettingsView() {
           <p className="text-xs text-fg-muted">
             Command Center {version && `v${version}`}. Chats run on the providers you connect:
             Claude and ChatGPT through your subscriptions and their official CLIs, Grok through an
-            API key or its CLI. Keys stay in the Windows Credential Manager.
+            API key or its CLI. Keys stay in the {platformCopy.credentialStore()}.
           </p>
           <Row
             label="QA checklist panel"
-            hint="A testing aid: the manual test list with one-click setup and GitHub issue reports. Ctrl+Shift+Q."
+            hint={`A testing aid: the manual test list with one-click setup and GitHub issue reports. ${shortcutLabel(shortcutKeys('toggleQa', isMacPlatform()), isMacPlatform())}.`}
           >
             <Switch
               label="QA checklist panel"

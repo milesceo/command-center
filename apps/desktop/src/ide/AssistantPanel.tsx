@@ -4,6 +4,7 @@ import { ConversationUsage } from '../components/usage/ConversationUsage';
 import { conversationsStore, useConversations } from '../stores/conversations';
 import { useUiStore } from '../stores/ui';
 import { ChatColumn } from './shared/ChatColumn';
+import { isMacPlatform, shortcutLabel } from '../lib/shortcuts';
 
 /** The conversation, docked on the right like an editor's assistant panel. */
 export function AssistantPanel({ width }: { width: number }) {
@@ -27,7 +28,7 @@ export function AssistantPanel({ width }: { width: number }) {
           <button
             type="button"
             aria-label="New thread"
-            title="New thread (Ctrl+T)"
+            title={`New thread (${shortcutLabel('Mod+T', isMacPlatform())})`}
             onClick={() => {
               conversationsStore.getState().newChat();
               useUiStore.getState().setView('chat');

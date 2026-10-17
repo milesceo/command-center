@@ -109,3 +109,31 @@ describe('SettingsView', () => {
     );
   });
 });
+
+describe('SettingsView platform wording', () => {
+  const setPlatform = (value: string) =>
+    Object.defineProperty(navigator, 'platform', { configurable: true, value });
+  afterEach(() => setPlatform(''));
+
+  it('keeps the Windows wording and Ctrl+Shift+Q off macOS', () => {
+    setPlatform('Win32');
+    const { container } = render(<SettingsView />);
+    const text = container.textContent ?? '';
+    expect(text).toContain('Start at login and what the close button does.');
+    expect(text).toContain('API keys live in the Windows Credential Manager.');
+    expect(text).toContain('Keys stay in the Windows Credential Manager.');
+    expect(text).toContain('GitHub issue reports. Ctrl+Shift+Q.');
+    expect(text).not.toContain('Keychain');
+  });
+
+  it('names the Keychain and Cmd+Shift+Y on macOS, and never Windows', () => {
+    setPlatform('MacIntel');
+    const { container } = render(<SettingsView />);
+    const text = container.textContent ?? '';
+    expect(text).toContain('API keys live in the macOS Keychain.');
+    expect(text).toContain('Keys stay in the macOS Keychain.');
+    expect(text).toContain('GitHub issue reports. ⇧⌘Y.');
+    expect(text).not.toContain('Ctrl+Shift+Q');
+    expect(text).not.toMatch(/Windows/);
+  });
+});

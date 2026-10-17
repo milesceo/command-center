@@ -4,7 +4,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { filterCommands, type Command } from '../../lib/commands';
 import { getDb } from '../../lib/db';
 import * as repo from '../../lib/repo';
-import { formatKeys, isMacPlatform } from '../../lib/shortcuts';
+import { isMacPlatform, shortcutKeys, shortcutLabel } from '../../lib/shortcuts';
 import { useFocusTrap } from '../../lib/use-focus-trap';
 import type { Conversation } from '../../lib/types';
 import { cn } from '../../lib/cn';
@@ -81,7 +81,7 @@ function useCommands(conversations: Conversation[]): {
         id: 'qa-panel',
         title: 'Show QA checklist',
         group: 'Actions',
-        shortcut: 'Mod+Shift+Q',
+        shortcut: shortcutKeys('toggleQa', isMacPlatform()),
         keywords: 'test testing checklist manual qa',
         run: () => {
           const qa = useQa.getState();
@@ -340,7 +340,7 @@ function PaletteSurface({ commands }: { commands: Command[] }) {
                   <span className="flex shrink-0 items-center gap-2 text-[11px] text-fg-subtle">
                     {query.trim() !== '' && <span>{c.group}</span>}
                     {c.shortcut && (
-                      <kbd className="font-mono">{formatKeys(c.shortcut, mac).join(' ')}</kbd>
+                      <kbd className="font-mono">{shortcutLabel(c.shortcut, mac)}</kbd>
                     )}
                   </span>
                 </div>

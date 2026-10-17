@@ -9,6 +9,7 @@ import { projectsStore } from '../stores/projects';
 import { useUiStore } from '../stores/ui';
 import { useActiveFiles, useNewestFileKey, useThreadGroups } from './shared/hooks';
 import { projectColor } from './shared/threads';
+import { isMacPlatform, shortcutLabel } from '../lib/shortcuts';
 
 function SectionHeader({
   id,
@@ -99,7 +100,7 @@ export function Explorer() {
         <button
           type="button"
           aria-label="New thread"
-          title="New thread (Ctrl+T)"
+          title={`New thread (${shortcutLabel('Mod+T', isMacPlatform())})`}
           onClick={() => {
             conversationsStore.getState().newChat();
             useUiStore.getState().setView('chat');
@@ -149,7 +150,9 @@ export function Explorer() {
             )}
             {visible.length === 0 && (
               <p className="px-2 py-2 text-xs text-fg-subtle">
-                {q ? 'No matching threads.' : 'No threads yet. Press Ctrl+T.'}
+                {q
+                  ? 'No matching threads.'
+                  : `No threads yet. Press ${shortcutLabel('Mod+T', isMacPlatform())}.`}
               </p>
             )}
             {visible.map((g) => {

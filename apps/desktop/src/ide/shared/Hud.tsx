@@ -7,6 +7,7 @@ import { useBridgeStore } from '../../stores/bridge';
 import { useChat } from '../../stores/chat';
 import { useActiveSettings, useConversations } from '../../stores/conversations';
 import { usageStore, useUsage } from '../../stores/usage';
+import { isMacPlatform, shortcutLabel } from '../../lib/shortcuts';
 
 /** Window size used for the context-fill estimate; the SDK does not report the real one per model. */
 const CONTEXT_WINDOW = 200_000;
@@ -85,7 +86,7 @@ export function Hud({ className, children }: { className?: string; children?: Re
           {plan.window.label} {formatPercent(plan.remaining)} left
         </span>
       )}
-      <span className="hidden sm:inline">Mod+K palette</span>
+      <span className="hidden sm:inline">{`${shortcutLabel('Mod+K', isMacPlatform())} palette`}</span>
     </div>
   );
 }

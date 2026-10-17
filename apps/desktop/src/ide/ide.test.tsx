@@ -181,3 +181,81 @@ describe('lock screen', () => {
     );
   });
 });
+
+describe('editor shell keys by platform', () => {
+  const setPlatform = (value: string) =>
+    Object.defineProperty(navigator, 'platform', { configurable: true, value });
+  /** Fires a keydown on the window; returns true when the shell called preventDefault. */
+  const press = (k: string, init: Partial<KeyboardEventInit>) => {
+    let prevented = false;
+    act(() => {
+      prevented = !fireEvent.keyDown(window, { key: k, ...init });
+    });
+    return prevented;
+  };
+
+  it('on macOS only Cmd triggers: Ctrl+T, Ctrl+J and Ctrl+P are left to the text field', () => {
+    setPlatform('MacIntel');
+    render(<App />);
+    useUiStore.setState({ view: 'settings' });
+    const newChat = vi.spyOn(conversationsStore.getState(), 'newChat');
+
+    expect(press('t', { ctrlKey: true })).toBe(false);
+    expect(newChat).not.toHaveBeenCalled();
+    expect(useUiStore.getState().view).toBe('settings');
+
+    expect(press('j', { ctrlKey: true })).toBe(false);
+    expect(useIdeStore.getState().bottomOpen).toBe(false);
+    expect(press('p', { ctrlKey: true })).toBe(false);
+    expect(useUiStore.getState().paletteOpen).toBe(false);
+    expect(press('A', { ctrlKey: true, shiftKey: true })).toBe(false);
+    expect(useIdeStore.getState().assistantOpen).toBe(true);
+
+    expect(press('t', { metaKey: true })).toBe(true);
+    expect(newChat).toHaveBeenCalledTimes(1);
+    expect(useUiStore.getState().view).toBe('chat');
+    expect(press('j', { metaKey: true })).toBe(true);
+    expect(useIdeStore.getState().bottomOpen).toBe(true);
+    expect(press('A', { metaKey: true, shiftKey: true })).toBe(true);
+    expect(useIdeStore.getState().assistantOpen).toBe(false);
+    expect(press('p', { metaKey: true })).toBe(true);
+    expect(useUiStore.getState().paletteOpen).toBe(true);
+    newChat.mockRestore();
+  });
+
+  it('off macOS Ctrl and the Win/Super key both trigger, as before', () => {
+    setPlatform('Win32');
+    render(<App />);
+    useUiStore.setState({ view: 'settings' });
+    const newChat = vi.spyOn(conversationsStore.getState(), 'newChat');
+
+    expect(press('j', { metaKey: true })).toBe(true);
+    expect(useIdeStore.getState().bottomOpen).toBe(true);
+    expect(press('t', { ctrlKey: true })).toBe(true);
+    expect(newChat).toHaveBeenCalled();
+  });
+
+  it('ignores Option/Alt on both platforms', () => {
+    setPlatform('MacIntel');
+    render(<App />);
+    expect(press('j', { metaKey: true, altKey: true })).toBe(false);
+    expect(useIdeStore.getState().bottomOpen).toBe(false);
+    cleanup();
+    setPlatform('Win32');
+    render(<App />);
+    expect(press('j', { ctrlKey: true, altKey: true })).toBe(false);
+    expect(useIdeStore.getState().bottomOpen).toBe(false);
+  });
+
+  it('locks with Cmd+L on macOS but not with Ctrl+L', () => {
+    setPlatform('MacIntel');
+    useLockStore.setState({ phase: 'unlocked', hasPin: true });
+    const lock = vi.spyOn(useLockStore.getState(), 'lock');
+    render(<App />);
+    expect(press('l', { ctrlKey: true })).toBe(false);
+    expect(lock).not.toHaveBeenCalled();
+    expect(press('l', { metaKey: true })).toBe(true);
+    expect(lock).toHaveBeenCalledTimes(1);
+    lock.mockRestore();
+  });
+});
