@@ -36,8 +36,8 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        # Windows 11 is the primary target, so it is checked on every PR.
-        os: [ubuntu-latest, windows-latest]
+        # macOS (Apple Silicon) and Windows 11 are the targets, so both are checked on every PR.
+        os: [ubuntu-latest, windows-latest, macos-14]
     steps:
       - uses: actions/checkout@v4
       - name: Install Linux system libraries for Tauri
