@@ -40,7 +40,8 @@ test('prepares a macOS binary: executable, ad-hoc signed, quarantine removed', (
     calls.push([cmd, ...args]);
     if (cmd === 'xattr') throw new Error('No such xattr'); // not quarantined is fine
   });
-  assert.equal(statSync(file).mode & 0o777, 0o755);
+  // Windows has no Unix permission bits; the helper only ever runs for macOS builds.
+  if (process.platform !== 'win32') assert.equal(statSync(file).mode & 0o777, 0o755);
   assert.deepEqual(calls, [
     ['codesign', '--force', '--sign', '-', file],
     ['xattr', '-d', 'com.apple.quarantine', file],
