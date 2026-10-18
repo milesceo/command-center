@@ -201,6 +201,58 @@ pub fn build_app_menu(app: &AppHandle) -> tauri::Result<()> {
     Ok(())
 }
 
+/// What macOS says about power, for the performance tier (`effectiveTier` in the app).
+#[derive(Debug, Clone, Copy, Serialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct PowerState {
+    /// False where it cannot be read (other platforms, `pmset` missing).
+    pub known: bool,
+    pub on_battery: bool,
+    pub low_power: bool,
+}
+
+/// `pmset -g batt` names the source: "Now drawing from 'Battery Power'" or "'AC Power'".
+pub fn on_battery_from_pmset(batt: &str) -> bool {
+    batt.contains("'Battery Power'")
+}
+
+/// `pmset -g` lists `lowpowermode 1` while Low Power Mode is on.
+pub fn low_power_from_pmset(settings: &str) -> bool {
+    settings.lines().any(|line| {
+        let mut words = line.split_whitespace();
+        words.next() == Some("lowpowermode") && words.next() == Some("1")
+    })
+}
+
+/// Reads the power source and Low Power Mode (macOS; about 10 ms, the app asks once a minute).
+#[tauri::command]
+pub async fn system_power_state() -> PowerState {
+    let unknown = PowerState {
+        known: false,
+        on_battery: false,
+        low_power: false,
+    };
+    if !cfg!(target_os = "macos") {
+        return unknown;
+    }
+    let read = |args: &[&str]| {
+        std::process::Command::new("/usr/bin/pmset")
+            .args(args)
+            .output()
+            .ok()
+            .filter(|o| o.status.success())
+            .map(|o| String::from_utf8_lossy(&o.stdout).into_owned())
+    };
+    match (read(&["-g", "batt"]), read(&["-g"])) {
+        (Some(batt), Some(settings)) => PowerState {
+            known: true,
+            on_battery: on_battery_from_pmset(&batt),
+            low_power: low_power_from_pmset(&settings),
+        },
+        _ => unknown,
+    }
+}
+
 /// App-level events. On macOS, clicking the Dock icon while the window is hidden (closed to the
 /// tray) shows it again, as Mac apps do.
 pub fn on_run_event(app: &AppHandle, event: tauri::RunEvent) {
@@ -241,6 +293,36 @@ mod tests {
         ));
         let _ = fs::remove_dir_all(&dir);
         dir
+    }
+
+    #[test]
+    fn reads_the_power_source_and_low_power_mode_from_pmset() {
+        assert!(on_battery_from_pmset(
+            "Now drawing from 'Battery Power'\n -InternalBattery-0\t69%; discharging;"
+        ));
+        assert!(!on_battery_from_pmset("Now drawing from 'AC Power'\n"));
+        assert!(!on_battery_from_pmset(""));
+        assert!(low_power_from_pmset(
+            "System-wide power settings:\n lowpowermode         1\n"
+        ));
+        assert!(!low_power_from_pmset(" lowpowermode         0\n"));
+        assert!(!low_power_from_pmset(" powermode 1\n"));
+    }
+
+    #[test]
+    fn power_state_serializes_in_camel_case_for_the_app() {
+        let v = serde_json::to_value(PowerState {
+            known: true,
+            on_battery: true,
+            low_power: false,
+        })
+        .unwrap();
+        assert_eq!(
+            v,
+            serde_json::json!({ "known": true, "onBattery": true, "lowPower": false })
+        );
+        assert!(!on_battery_from_pmset("Now drawing from 'UPS Power'\n"));
+        assert!(!low_power_from_pmset(" lowpowermode 10\n"));
     }
 
     #[test]

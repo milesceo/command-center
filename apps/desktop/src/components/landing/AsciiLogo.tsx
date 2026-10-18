@@ -5,6 +5,7 @@ import { tierFlags } from '../../lib/performance';
 import { useOsEnvironment } from '../../lib/use-os-environment';
 import { usePrefs } from '../../stores/prefs';
 import { isPaused, useVisibility } from '../../stores/visibility';
+import { useEffectiveTier } from '../../stores/power';
 
 /**
  * The spinning mark spells the first word only: at the three-quarter still angle the 13-letter name
@@ -47,9 +48,13 @@ export function AsciiLogo({ className, size = 'splash', still: forceStill = fals
     typeof document !== 'undefined' && document.hidden,
   );
   const pre = useRef<HTMLPreElement>(null);
+  // Kept across effect runs, so a tier or visibility change continues the spin instead of
+  // snapping back to the start.
+  const started = useRef<number | null>(null);
 
-  const fps = tierFlags(prefs.performance.tier).asciiFps;
-  const motion = resolveAppearance(prefs, os).motion;
+  const tier = useEffectiveTier();
+  const fps = tierFlags(tier).asciiFps;
+  const motion = resolveAppearance(prefs, os, tier).motion;
   const still = forceStill || fps === 0 || motion === 'off';
   const paused = isPaused(windowVisible, documentHidden);
 
@@ -62,18 +67,19 @@ export function AsciiLogo({ className, size = 'splash', still: forceStill = fals
   useEffect(() => {
     const el = pre.current;
     if (!el) return;
+    started.current ??= performance.now();
+    const t0 = started.current;
     const draw = (seconds: number) => {
       el.textContent = renderSpin(LOGO_WORD, angleAt(seconds, still), LOGO_COLS, LOGO_ROWS).join(
         '\n',
       );
     };
-    draw(0);
+    draw(still ? 0 : (performance.now() - t0) / 1000);
     if (still || paused) return;
 
     // Reduced motion halves the rate rather than stopping: it is still motion, but gentler.
     const rate = Math.max(1, motion === 'reduced' ? Math.ceil(fps / 2) : fps);
-    const started = performance.now();
-    const timer = setInterval(() => draw((performance.now() - started) / 1000), 1000 / rate);
+    const timer = setInterval(() => draw((performance.now() - t0) / 1000), 1000 / rate);
     return () => clearInterval(timer);
   }, [still, paused, fps, motion]);
 

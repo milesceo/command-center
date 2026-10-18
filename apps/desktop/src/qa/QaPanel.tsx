@@ -28,6 +28,7 @@ import {
   type QaStatus,
 } from './report';
 import { SCENARIOS } from './scenarios';
+import { useEffectiveTier } from '../stores/power';
 
 type Filter = 'open' | 'all' | 'fail';
 
@@ -48,6 +49,7 @@ const STATUS_STYLE: Record<QaStatus, string> = {
 /** What a failure report needs to say about this build, gathered at the moment it is used. */
 function useEnvironment(): QaEnvironment {
   const prefs = usePrefs((s) => s.prefs);
+  const effective = useEffectiveTier();
   const ping = useBridgeStore((s) => s.lastPing);
   const [version, setVersion] = useState('?');
   useEffect(() => {
@@ -55,9 +57,12 @@ function useEnvironment(): QaEnvironment {
   }, []);
   return {
     appVersion: version,
-    bridge: ping ? `${ping.bridgeVersion} (protocol ${ping.protocolVersion})` : 'not connected',
+    bridge: ping ? `${ping.bridgeVersion} (protocol ${ping.protocolVersion})` : 'not started yet',
     platform: typeof navigator === 'undefined' ? 'unknown' : navigator.platform,
-    tier: prefs.performance.tier,
+    tier:
+      effective === prefs.performance.tier
+        ? prefs.performance.tier
+        : `${prefs.performance.tier} (in effect: ${effective})`,
     theme: prefs.appearance.theme,
     motion: prefs.appearance.motion,
     desktop: isTauri(),

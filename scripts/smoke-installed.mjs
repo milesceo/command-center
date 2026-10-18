@@ -25,6 +25,11 @@ function find(dir, name, depth = 4) {
 
 function need(dir, name) {
   const found = find(dir, name);
+  // An empty file is a lite or placeholder stand-in: never acceptable in a release.
+  if (found && statSync(found).size === 0) {
+    console.error(`FAIL ${name} at ${found} is an empty stand-in (lite or placeholder build)`);
+    process.exit(1);
+  }
   if (!found) {
     console.error(`FAIL ${name} not found under ${dir}`);
     process.exit(1);

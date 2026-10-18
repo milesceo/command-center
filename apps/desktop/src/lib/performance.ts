@@ -109,6 +109,28 @@ export const isTierId = (value: unknown): value is TierId =>
 
 export const tierFlags = (id: TierId): TierFlags => TIERS[id].flags;
 
+/** What the operating system says about power (macOS; null where unknown). */
+export interface PowerState {
+  onBattery: boolean;
+  lowPower: boolean;
+}
+
+/**
+ * The tier actually used: the chosen one, capped while the Mac saves power when the user lets
+ * it (`followPower`): Low Power Mode caps at Lightest, running on battery at Light. Never raises
+ * the chosen tier.
+ */
+export function effectiveTier(
+  chosen: TierId,
+  power: PowerState | null,
+  followPower: boolean,
+): TierId {
+  if (!followPower || !power) return chosen;
+  const cap: TierId | null = power.lowPower ? 'lightest' : power.onBattery ? 'light' : null;
+  if (!cap) return chosen;
+  return TIER_IDS.indexOf(chosen) > TIER_IDS.indexOf(cap) ? cap : chosen;
+}
+
 const MOTION_RANK: Record<MotionCap, number> = { off: 0, reduced: 1, full: 2 };
 
 export type MotionSetting = 'system' | 'full' | 'reduced' | 'off';

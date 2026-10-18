@@ -7,6 +7,7 @@ import {
   defaultPrefs,
   migratePrefs,
   type AutoLockMinutes,
+  type BridgeIdleMinutes,
   type CloseBehavior,
   type ConnectionMethod,
   type LegacySettings,
@@ -66,7 +67,9 @@ interface PrefsState {
   setAutoLock: (minutes: AutoLockMinutes) => void;
   setAutostart: (enabled: boolean) => void;
   setCloseBehavior: (behavior: CloseBehavior) => void;
+  setBridgeIdle: (minutes: BridgeIdleMinutes) => void;
   setTier: (tier: TierId) => void;
+  setFollowPower: (follow: boolean) => void;
   setAppearance: (patch: Partial<Prefs['appearance']>) => void;
   setTheme: (theme: ThemeChoice) => void;
   setPalette: (palette: PaletteId) => void;
@@ -105,7 +108,11 @@ export const usePrefs = create<PrefsState>()((set, get) => {
     setAutostart: (autostart) => patch((p) => ({ ...p, system: { ...p.system, autostart } })),
     setCloseBehavior: (closeBehavior) =>
       patch((p) => ({ ...p, system: { ...p.system, closeBehavior } })),
-    setTier: (tier) => patch((p) => ({ ...p, performance: { tier } })),
+    setBridgeIdle: (bridgeIdleMinutes) =>
+      patch((p) => ({ ...p, system: { ...p.system, bridgeIdleMinutes } })),
+    setTier: (tier) => patch((p) => ({ ...p, performance: { ...p.performance, tier } })),
+    setFollowPower: (followPower) =>
+      patch((p) => ({ ...p, performance: { ...p.performance, followPower } })),
     setAppearance: (partial) =>
       patch((p) => ({ ...p, appearance: { ...p.appearance, ...partial } })),
     setTheme: (theme) => get().setAppearance({ theme }),

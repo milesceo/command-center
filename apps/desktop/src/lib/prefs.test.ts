@@ -16,7 +16,7 @@ describe('defaults', () => {
     expect(normalizePrefs(d)).toEqual(d);
     expect(d.performance.tier).toBe('balanced');
     expect(d.appearance.motion).toBe('system');
-    expect(d.system).toEqual({ autostart: false, closeBehavior: 'quit' });
+    expect(d.system).toEqual({ autostart: false, closeBehavior: 'quit', bridgeIdleMinutes: 10 });
     expect(d.providers.default).toBe('claude');
     expect(d.onboarding.completed).toBe(false);
   });
@@ -55,7 +55,7 @@ describe('normalizePrefs', () => {
       density: 'compact',
     });
     expect(out.security.autoLockMinutes).toBe(15);
-    expect(out.system).toEqual({ autostart: false, closeBehavior: 'tray' });
+    expect(out.system).toEqual({ autostart: false, closeBehavior: 'tray', bridgeIdleMinutes: 10 });
   });
 
   it('drops unknown keys and survives garbage', () => {
@@ -131,5 +131,22 @@ describe('migrations', () => {
 
   it('has one migration per schema version', () => {
     expect(MIGRATIONS).toHaveLength(PREFS_VERSION);
+  });
+});
+
+describe('bridge idle setting (version 2)', () => {
+  it('defaults to 10 minutes and repairs invalid values', () => {
+    expect(defaultPrefs().system.bridgeIdleMinutes).toBe(10);
+    expect(normalizePrefs({ system: { bridgeIdleMinutes: 7 } }).system.bridgeIdleMinutes).toBe(10);
+    expect(normalizePrefs({ system: { bridgeIdleMinutes: 0 } }).system.bridgeIdleMinutes).toBe(0);
+    expect(normalizePrefs({ system: { bridgeIdleMinutes: 60 } }).system.bridgeIdleMinutes).toBe(60);
+  });
+
+  it('migrates a version-1 document, keeping its other system choices', () => {
+    const out = runMigrations({ version: 1, system: { autostart: true, closeBehavior: 'tray' } });
+    expect(out).toMatchObject({
+      version: 2,
+      system: { autostart: true, closeBehavior: 'tray', bridgeIdleMinutes: 10 },
+    });
   });
 });

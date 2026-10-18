@@ -11,7 +11,7 @@ import {
   startOfWeek,
   type SeriesPoint,
 } from '../lib/usage-series';
-import { useBridgeStore } from './bridge';
+import { ensureBridge } from './bridge';
 
 export type RangeDays = 7 | 30 | 90;
 export type Metric = 'tokens' | 'cost';
@@ -65,11 +65,7 @@ export interface UsageDeps {
   now: () => number;
 }
 
-const defaultEnsureConnected = async () => {
-  await useBridgeStore.getState().connect();
-  const { status, error } = useBridgeStore.getState();
-  if (status !== 'ready') throw new Error(error ?? 'The Claude bridge is not available.');
-};
+const defaultEnsureConnected = ensureBridge;
 
 export function createUsageStore(deps: Partial<UsageDeps> = {}) {
   const database = deps.database ?? getDb;

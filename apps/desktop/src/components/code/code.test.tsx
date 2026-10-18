@@ -188,18 +188,24 @@ describe('diff blocks', () => {
 
   it('renders a unified diff in a reply as a diff, switchable between layouts', async () => {
     render(<Markdown text={fence('diff', patch)} messageId="m1" />);
-    const diff = await screen.findByTestId('diff-block');
+    // The diff view and the word-diff library load lazily; on a busy machine (CI) that takes more
+    // than the default 1 s, so wait for each piece instead of assuming it is already there.
+    const slow = { timeout: 5000 };
+    const diff = await screen.findByTestId('diff-block', undefined, slow);
+    await waitFor(() => expect(diff.querySelector('[data-mode="split"]')).not.toBeNull(), slow);
     expect(within(diff).getAllByText('+1').length).toBeGreaterThan(0);
-    expect(diff.querySelector('[data-mode="split"]')).not.toBeNull();
-    expect(diff.querySelector('mark.diff-word-add')?.textContent).toContain('+ c');
+    await waitFor(
+      () => expect(diff.querySelector('mark.diff-word-add')?.textContent).toContain('+ c'),
+      slow,
+    );
     fireEvent.click(within(diff).getByRole('button', { name: 'Inline diff' }));
-    expect(diff.querySelector('[data-mode="inline"]')).not.toBeNull();
+    await waitFor(() => expect(diff.querySelector('[data-mode="inline"]')).not.toBeNull(), slow);
     expect(diff.querySelectorAll('[data-kind="add"]')).toHaveLength(1);
   });
 
   it('recognizes an unlabeled block that is a diff', async () => {
     render(<Markdown text={fence('', patch)} messageId="m1" />);
-    expect(await screen.findByTestId('diff-block')).toBeTruthy();
+    expect(await screen.findByTestId('diff-block', undefined, { timeout: 5000 })).toBeTruthy();
   });
 
   it('opens the diff in the panel', async () => {

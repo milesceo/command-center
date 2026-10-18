@@ -39,6 +39,9 @@ vi.mock('./lib/bridge-client', () => ({
     connect: () => Promise.resolve(),
     ping: () => Promise.resolve({ latencyMs: 3, bridgeVersion: '0.2.0', protocolVersion: 2 }),
     onExit: () => () => {},
+    onSettled: () => () => {},
+    isBusy: () => false,
+    stop: () => Promise.resolve(),
     chat(request: { messages: { content: string }[] }, onEvent: (e: BridgeEvent) => void) {
       const id = `req-${Math.random()}`;
       let stopped = false;

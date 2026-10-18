@@ -9,6 +9,12 @@ recorded here. The format follows
 
 ### Added
 
+- **A lite build for your own Mac** (`COMMAND_CENTER_LITE=1`): about 10 MB instead of 365 MB,
+  using the Node.js and Claude Code already installed, with a clear message if either is missing.
+- **Settings > System > "Stop the AI helper when idle"** (default 10 minutes) and
+  **Settings > Performance > "Lighter on battery"** (on by default: Light on battery, Lightest in
+  Low Power Mode).
+
 - **macOS support** (Apple Silicon first): a `.dmg` for each release, native traffic lights over the
   toolbar, the standard menu bar (About, Settings ⌘,, Hide, Quit, Edit and Window), a monochrome
   menu-bar icon, the Dock icon reopening a window kept in the tray, start at login through a
@@ -55,6 +61,10 @@ recorded here. The format follows
 
 ### Changed
 
+- Command Center opens faster and uses less memory: the background bridge starts on the first
+  chat or provider check instead of at launch, the splash no longer waits for it, and it stops
+  after a quiet period. Idle CPU on the lock and onboarding screens is about halved (the backdrop
+  no longer redraws on every display frame), and the release app binary is half the size.
 - The QA checklist panel opens with ⌘⇧Y on macOS (⌘⇧Q is the system's Log Out); it stays Ctrl+Shift+Q
   elsewhere.
 

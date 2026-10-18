@@ -138,8 +138,12 @@ function ProviderCard({ id }: { id: ProviderId }) {
   const watch = useSignInWatch(id);
   const [opening, setOpening] = useState(false);
 
+  const checking = useProviders((s) => s.loading) && !info;
   const state = connectionState(info, hasKey, connection.method);
-  const badge = BADGES[state];
+  // While the first check runs (the bridge may be starting), say so instead of "Not connected".
+  const badge = checking
+    ? { text: 'Checking…', className: 'bg-hover text-fg-muted' }
+    : BADGES[state];
 
   const signIn = async () => {
     setOpening(true);
@@ -199,7 +203,11 @@ function ProviderCard({ id }: { id: ProviderId }) {
               <code className="font-mono text-[11px]">{meta.loginCommand}</code>
             </p>
           ) : (
-            <Button size="sm" onClick={() => void signIn()} disabled={opening || watch.waiting}>
+            <Button
+              size="sm"
+              onClick={() => void signIn()}
+              disabled={opening || watch.waiting || checking}
+            >
               {opening || watch.waiting ? (
                 <Loader2 size={12} className="animate-spin" aria-hidden="true" />
               ) : (

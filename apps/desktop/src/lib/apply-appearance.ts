@@ -5,7 +5,7 @@ import {
   type ResolvedTheme,
   type ThemeChoice,
 } from './appearance';
-import { effectiveMotion, tierFlags, type MotionCap } from './performance';
+import { effectiveMotion, tierFlags, type MotionCap, type TierId } from './performance';
 import type { Prefs } from './prefs';
 
 export interface OsEnvironment {
@@ -18,19 +18,29 @@ export interface AppliedAppearance {
   motion: MotionCap;
   density: Density;
   glass: boolean;
+  /** The tier in effect (the chosen one, possibly capped for battery; see `effectiveTier`). */
+  tier: TierId;
 }
 
 export const resolveTheme = (choice: ThemeChoice, prefersDark: boolean): ResolvedTheme =>
   choice === 'system' ? (prefersDark ? 'dark' : 'light') : choice;
 
-/** What the preferences resolve to right now, given the operating system's settings. */
-export function resolveAppearance(prefs: Prefs, os: OsEnvironment): AppliedAppearance {
-  const flags = tierFlags(prefs.performance.tier);
+/**
+ * What the preferences resolve to right now, given the operating system's settings and the tier
+ * in effect (defaults to the chosen one).
+ */
+export function resolveAppearance(
+  prefs: Prefs,
+  os: OsEnvironment,
+  tier: TierId = prefs.performance.tier,
+): AppliedAppearance {
+  const flags = tierFlags(tier);
   return {
     theme: resolveTheme(prefs.appearance.theme, os.prefersDark),
     motion: effectiveMotion(prefs.appearance.motion, flags.motion, os.prefersReducedMotion),
     density: prefs.appearance.density,
     glass: flags.glass,
+    tier,
   };
 }
 
@@ -44,7 +54,7 @@ export function applyAppearance(root: HTMLElement, prefs: Prefs, applied: Applie
   root.dataset.motion = applied.motion;
   root.dataset.density = applied.density;
   root.dataset.glass = String(applied.glass);
-  root.dataset.tier = prefs.performance.tier;
+  root.dataset.tier = applied.tier;
 
   for (const name of PALETTE_TOKEN_NAMES) root.style.removeProperty(name);
   const tokens = paletteTokens(prefs.appearance.palette, prefs.appearance.accent, applied.theme);

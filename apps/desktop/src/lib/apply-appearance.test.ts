@@ -40,7 +40,46 @@ describe('resolveAppearance', () => {
   });
 });
 
+describe('resolveAppearance with the tier in effect', () => {
+  it('defaults to the chosen tier', () => {
+    const enhanced = withPrefs((p) => {
+      p.performance.tier = 'enhanced';
+    });
+    expect(resolveAppearance(enhanced, os)).toMatchObject({ tier: 'enhanced', glass: true });
+  });
+
+  it("uses the given tier's flags, not the chosen one", () => {
+    const accelerated = withPrefs((p) => {
+      p.performance.tier = 'accelerated';
+    });
+    expect(resolveAppearance(accelerated, os, 'light')).toMatchObject({
+      tier: 'light',
+      glass: false,
+      motion: 'reduced',
+    });
+    expect(resolveAppearance(accelerated, os, 'lightest')).toMatchObject({
+      tier: 'lightest',
+      glass: false,
+      motion: 'off',
+    });
+  });
+});
+
 describe('applyAppearance', () => {
+  it('writes the tier in effect to data-tier, not the chosen one', () => {
+    const root = document.createElement('html');
+    const accelerated = withPrefs((p) => {
+      p.performance.tier = 'accelerated';
+    });
+    applyAppearance(root, accelerated, resolveAppearance(accelerated, os, 'light'));
+    expect(root.dataset.tier).toBe('light');
+    expect(root.dataset.glass).toBe('false');
+    expect(root.dataset.motion).toBe('reduced');
+    applyAppearance(root, accelerated, resolveAppearance(accelerated, os));
+    expect(root.dataset.tier).toBe('accelerated');
+    expect(root.dataset.glass).toBe('true');
+  });
+
   it('writes data attributes and palette tokens, and clears them again', () => {
     const root = document.createElement('html');
     const forest = withPrefs((p) => {

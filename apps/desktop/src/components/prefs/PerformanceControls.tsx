@@ -2,6 +2,9 @@ import { Check, X } from 'lucide-react';
 import { useId } from 'react';
 import { TIER_IDS, TIERS, summarizeTier } from '../../lib/performance';
 import { usePrefs } from '../../stores/prefs';
+import { useEffectiveTier, usePower } from '../../stores/power';
+import { Switch } from '../ui/switch';
+import { Row } from '../settings/parts';
 
 /**
  * The five-tier performance slider with a live summary of what the chosen tier turns on and
@@ -10,6 +13,10 @@ import { usePrefs } from '../../stores/prefs';
 export function PerformanceControls() {
   const tier = usePrefs((s) => s.prefs.performance.tier);
   const setTier = usePrefs((s) => s.setTier);
+  const followPower = usePrefs((s) => s.prefs.performance.followPower);
+  const setFollowPower = usePrefs((s) => s.setFollowPower);
+  const power = usePower((s) => s.power);
+  const inEffect = useEffectiveTier();
   const id = useId();
   const index = TIER_IDS.indexOf(tier);
   const summary = summarizeTier(tier);
@@ -36,7 +43,16 @@ export function PerformanceControls() {
         />
         <div className="mt-1 flex justify-between text-[11px] text-fg-subtle" aria-hidden="true">
           {TIER_IDS.map((t) => (
-            <span key={t} className={t === tier ? 'font-medium text-fg' : undefined}>
+            <span
+              key={t}
+              className={
+                t === tier
+                  ? 'font-medium text-fg'
+                  : t === inEffect
+                    ? 'text-fg-muted underline underline-offset-2'
+                    : undefined
+              }
+            >
               {TIERS[t].label}
             </span>
           ))}
@@ -62,7 +78,27 @@ export function PerformanceControls() {
             </li>
           ))}
         </ul>
+        {power !== null && inEffect !== tier && (
+          <p className="mt-2 text-[11px] text-fg-muted">
+            Running at {TIERS[inEffect].label} now (
+            {power.lowPower ? 'Low Power Mode' : 'on battery'}); {TIERS[tier].label} returns on
+            power.
+          </p>
+        )}
       </div>
+
+      {power !== null && (
+        <Row
+          label="Lighter on battery"
+          hint={
+            followPower
+              ? 'On battery: at most Light. Low Power Mode: Lightest.'
+              : 'Off: the chosen tier applies on battery too.'
+          }
+        >
+          <Switch label="Lighter on battery" checked={followPower} onChange={setFollowPower} />
+        </Row>
+      )}
     </div>
   );
 }

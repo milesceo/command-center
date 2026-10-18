@@ -5,6 +5,11 @@
 //   src-tauri/resources/bridge/main.mjs             the bridge with the Agent SDK bundled in
 //   src-tauri/resources/bridge/claude[.exe]         the SDK's native Claude runtime (same version)
 //
+// `--lite` (or COMMAND_CENTER_LITE=1, which also reaches it through `tauri build`) bundles the
+// bridge only: `node` and `claude` become empty stand-ins plus a `lite` marker, and the app uses the
+// Node and Claude Code installed on the machine instead (`bridge.rs` `lite_launch`), which saves
+// about 350 MB. For a personal machine that has both; releases keep the full bundle.
+//
 // `--placeholder` only creates empty stand-ins so `cargo check`, clippy and `tauri dev` (which use the
 // system Node and the workspace bridge) can compile: tauri-build requires these files to exist.
 //
@@ -70,6 +75,38 @@ export function prepareMacBinary(
   }
 }
 
+/** True for `--lite` or `COMMAND_CENTER_LITE=1` (any value but empty, `0` or `false`). */
+export function isLite(argv, env) {
+  if (argv.includes('--lite')) return true;
+  const value = (env.COMMAND_CENTER_LITE ?? '').trim().toLowerCase();
+  return value !== '' && value !== '0' && value !== 'false';
+}
+
+/**
+ * The lite build relies on finding an installed `claude`; on Windows npm installs a `.cmd` shim
+ * the launcher does not run, so lite is a macOS (and Linux) convenience only. Checked before
+ * anything is built.
+ */
+export function assertLiteSupported(lite, exe) {
+  if (lite && exe)
+    throw new Error('The lite build is not supported on Windows; build the full app.');
+}
+
+/**
+ * The lite layout: the marker the app looks for, and empty files where Tauri requires the external
+ * `node` binary and where the runtime would be (empty files are never run; `bridge.rs` searches the
+ * machine's PATH instead).
+ */
+export function writeLite(resources, binaries, triple, exe) {
+  writeFileSync(
+    join(resources, 'lite'),
+    'This build uses the installed Node.js and Claude Code.\n',
+  );
+  writeFileSync(join(resources, `claude${exe}`), '');
+  mkdirSync(binaries, { recursive: true });
+  writeFileSync(join(binaries, `node-${triple}${exe}`), '');
+}
+
 /** `x86_64-pc-windows-msvc` and friends: Tauri names external binaries by Rust target triple. */
 export function hostTriple() {
   const out = execFileSync('rustc', ['-vV'], { encoding: 'utf8' });
@@ -98,6 +135,8 @@ function main() {
   const triple = process.env.TAURI_ENV_TARGET_TRIPLE ?? hostTriple();
   const exe = triple.includes('windows') ? '.exe' : '';
   if (process.argv.includes('--placeholder')) return placeholders(triple, exe);
+  const lite = isLite(process.argv, process.env);
+  assertLiteSupported(lite, exe);
 
   // 1. The bridge, self-contained.
   execFileSync('pnpm', ['--filter', '@command-center/bridge', 'build:release'], {
@@ -109,6 +148,13 @@ function main() {
   rmSync(resources, { recursive: true, force: true });
   mkdirSync(resources, { recursive: true });
   copyFileSync(join(bridgeDir, 'dist/release/main.mjs'), join(resources, 'main.mjs'));
+
+  if (lite) {
+    writeLite(resources, join(tauriDir, 'binaries'), triple, exe);
+    console.log(`bridge   ${mb(join(resources, 'main.mjs'))}  ${join(resources, 'main.mjs')}`);
+    console.log('lite     node and claude not bundled: the installed ones are used at run time');
+    return;
+  }
 
   // 2. The Claude runtime the SDK would otherwise look for in node_modules.
   const platform = triple.includes('apple-darwin') ? 'darwin' : process.platform;

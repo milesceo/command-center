@@ -58,24 +58,21 @@ describe('Boot', () => {
     expect(screen.getByTestId('app')).toBeTruthy();
   });
 
-  it('waits for the lock state and the bridge before leaving', async () => {
+  it('waits for the lock state but not for the bridge, which starts on first use', async () => {
     useLockStore.setState({ phase: 'checking' });
-    useBridgeStore.setState({ status: 'connecting' });
+    useBridgeStore.setState({ status: 'idle' });
     render(<Boot loadApp={loadApp} />);
     await settle(SPLASH_MIN_MS + 500);
     expect(screen.getByTestId('splash').getAttribute('data-leaving')).toBe('false');
 
     act(() => useLockStore.setState({ phase: 'locked' }));
     await settle(50);
-    expect(screen.getByTestId('splash').getAttribute('data-leaving')).toBe('false');
-
-    act(() => useBridgeStore.setState({ status: 'ready' }));
-    await settle(50);
     expect(screen.getByTestId('splash').getAttribute('data-leaving')).toBe('true');
+    expect(useBridgeStore.getState().status).toBe('idle');
   });
 
-  it('gives up waiting after the cap so a stuck bridge cannot trap the user', async () => {
-    useBridgeStore.setState({ status: 'connecting' });
+  it('gives up waiting after the cap so a stuck lock check cannot trap the user', async () => {
+    useLockStore.setState({ phase: 'checking' });
     render(<Boot loadApp={loadApp} />);
     await settle(SPLASH_MAX_MS - 100);
     expect(screen.getByTestId('splash').getAttribute('data-leaving')).toBe('false');

@@ -8,6 +8,7 @@ import { useChat } from '../../stores/chat';
 import { useActiveSettings, useConversations } from '../../stores/conversations';
 import { usageStore, useUsage } from '../../stores/usage';
 import { isMacPlatform, shortcutLabel } from '../../lib/shortcuts';
+import { DOT, LABEL } from '../../components/shell/BridgeStatus';
 
 /** Window size used for the context-fill estimate; the SDK does not report the real one per model. */
 const CONTEXT_WINDOW = 200_000;
@@ -40,7 +41,6 @@ export function Hud({ className, children }: { className?: string; children?: Re
   const fill = lastTokens ? Math.min(1, used / CONTEXT_WINDOW) : null;
 
   const plan = windows && windows.length > 0 ? headroom(sortWindows(windows)[0]!) : null;
-  const dot = status === 'ready' ? 'bg-success' : status === 'error' ? 'bg-danger' : 'bg-fg-subtle';
 
   return (
     <div
@@ -50,8 +50,8 @@ export function Hud({ className, children }: { className?: string; children?: Re
       )}
       data-testid="hud"
     >
-      <span className="flex items-center gap-1.5" title={`Bridge: ${status}`}>
-        <span className={cn('size-1.5 rounded-full', dot)} />
+      <span className="flex items-center gap-1.5" title={LABEL[status]}>
+        <span className={cn('size-1.5 rounded-full', DOT[status])} />
         {settings.model ?? 'default model'}
       </span>
       <span

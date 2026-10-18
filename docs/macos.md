@@ -23,6 +23,37 @@ To build for Intel on an Apple Silicon Mac, `rustup target add x86_64-apple-darw
 `--target x86_64-apple-darwin`; the bundled Node and Claude runtime must then be x64 too, which
 `scripts/prepare-sidecar.mjs` refuses to fake (it stops with a message naming what is missing).
 
+## The lite build (for your own Mac)
+
+The full app bundles Node (116 MB) and the Claude runtime (230 MB) so it runs anywhere. On a Mac
+that already has Node.js 22.12+ and Claude Code installed, a lite build leaves both out:
+
+```bash
+COMMAND_CENTER_LITE=1 pnpm --filter @command-center/desktop tauri build
+```
+
+(`pnpm sidecar --lite` prepares the same layout without building.) The `.app` drops from about
+365 MB to about 10 MB and the dmg from about 142 MB to under 6 MB. At launch the app finds `node`
+and `claude` the way your login shell would (Homebrew, npm, nvm, volta, fnm, `~/.local/bin`), even
+when opened from the Dock, and tells you what to install if either is missing. The installed
+Claude Code should be close to the version the bundled SDK expects; if chats fail after a Claude
+Code update, use the full build until the app is updated. Releases always ship the full build.
+
+## Lighter at run time
+
+- **Bridge on demand:** the Node bridge starts on the first chat, provider check or usage request,
+  not at launch, and the splash no longer waits for it. It stops after 10 minutes without a
+  request (Settings > System > "Stop the AI helper when idle": Never, 5, 10, 30 or 60 minutes) and
+  starts again on the next request.
+- **Battery and Low Power Mode:** with "Lighter on battery" on (Settings > Performance, the default), the tier is capped at Light on battery and Lightest in Low Power
+  Mode; it is read from `pmset` once a minute.
+- **Animations pause** while the window is hidden, minimized or covered, and the lock-screen
+  backdrop runs on a timer at the tier's frame rate instead of every display frame.
+- **Release binary:** LTO, one codegen unit, stripped symbols and size optimisation (18 MB to 9 MB).
+
+`node scripts/measure-macos.mjs "<Command Center.app>" [dmg]` reports the sizes, cold start, idle
+memory and idle CPU used in the Phase B pull request.
+
 ## First launch of the unsigned app (Gatekeeper)
 
 The release dmg is not signed with a Developer ID, so macOS blocks it the first time:
