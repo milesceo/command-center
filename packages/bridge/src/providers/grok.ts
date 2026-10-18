@@ -1,7 +1,8 @@
 import { tmpdir } from 'node:os';
-import type { BridgeError, ChatRequest, ProviderModel } from '@command-center/protocol';
+import type { ChatRequest, ProviderModel } from '@command-center/protocol';
 import { DEFAULT_SYSTEM_PROMPT } from '../options';
-import { buildPrompt, renderMessage } from '../prompt';
+import { buildPrompt } from '../prompt';
+import { streamCompatChat } from './openai-compat';
 import { openTerminal } from './claude';
 import { resolveCommand, runProcess, type ResolvedCommand } from './process';
 import type { ChatHandle, Provider, ProviderAuth, ProviderContext } from './types';
@@ -28,187 +29,29 @@ export function findGrok(ctx: ProviderContext): ResolvedCommand | null {
   return resolveCommand('grok', ctx.env, ctx.platform, undefined, ctx.gui);
 }
 
-// ------------------------------------------------------------------- SSE
-
-export interface SseDelta {
-  text?: string;
-  usage?: { prompt_tokens?: number; completion_tokens?: number };
-  done?: boolean;
-  error?: string;
-}
-
-/** Incremental parser for an OpenAI-style `text/event-stream` body. */
-export class SseParser {
-  private buffer = '';
-
-  push(chunk: string): SseDelta[] {
-    this.buffer += chunk;
-    const out: SseDelta[] = [];
-    let index: number;
-    while ((index = this.buffer.search(/\r?\n\r?\n/)) >= 0) {
-      const block = this.buffer.slice(0, index);
-      this.buffer = this.buffer.slice(index).replace(/^\r?\n\r?\n/, '');
-      const delta = this.parseBlock(block);
-      if (delta) out.push(delta);
-    }
-    return out;
-  }
-
-  private parseBlock(block: string): SseDelta | null {
-    const data = block
-      .split(/\r?\n/)
-      .filter((l) => l.startsWith('data:'))
-      .map((l) => l.slice(5).trimStart())
-      .join('\n');
-    if (data === '') return null;
-    if (data === '[DONE]') return { done: true };
-    try {
-      const json = JSON.parse(data) as {
-        choices?: Array<{ delta?: { content?: string | null } }>;
-        usage?: SseDelta['usage'];
-        error?: { message?: string } | string;
-      };
-      if (json.error) {
-        const message = typeof json.error === 'string' ? json.error : json.error.message;
-        return { error: message ?? 'The provider reported an error.' };
-      }
-      const text = json.choices?.[0]?.delta?.content ?? undefined;
-      const delta: SseDelta = {};
-      if (text) delta.text = text;
-      if (json.usage) delta.usage = json.usage;
-      return Object.keys(delta).length > 0 ? delta : null;
-    } catch {
-      return null;
-    }
-  }
-}
-
-function fromHttpStatus(status: number, body: string): BridgeError {
-  const detail = body.slice(0, 300);
-  if (status === 401 || status === 403) {
-    return {
-      code: 'auth_required',
-      message: `xAI rejected the API key (HTTP ${status}). ${detail}`.trim(),
-    };
-  }
-  if (status === 404) return { code: 'model_not_found', message: `Model not found. ${detail}` };
-  if (status === 429) return { code: 'rate_limited', message: `Rate limited by xAI. ${detail}` };
-  if (status === 402) return { code: 'account', message: `xAI billing problem. ${detail}` };
-  if (status === 400 || status === 422) {
-    return { code: 'invalid_request', message: `xAI rejected the request. ${detail}` };
-  }
-  if (status >= 500) return { code: 'overloaded', message: `xAI is unavailable (HTTP ${status}).` };
-  return { code: 'internal', message: `xAI returned HTTP ${status}. ${detail}` };
-}
+// SSE parsing and the streaming loop live in `openai-compat.ts` (shared with Hugging Face and
+// the local servers). Re-exported so existing imports keep working.
+export { SseParser, type SseDelta } from './openai-compat';
 
 // ------------------------------------------------------------------- chat
 
 function chatViaApi(request: ChatRequest, ctx: ProviderContext): ChatHandle {
-  const controller = new AbortController();
-  const { id } = request;
-  const started = Date.now();
-
-  const done = (async () => {
-    const model = request.model && request.model !== 'default' ? request.model : 'grok-4.7';
-    if (!MODEL_PATTERN.test(model)) {
-      ctx.emit({
-        type: 'error',
-        id,
-        error: { code: 'invalid_request', message: 'That model id is not valid.' },
-      });
-      return;
-    }
-    const messages = [
-      { role: 'system', content: request.systemPrompt?.trim() || DEFAULT_SYSTEM_PROMPT },
-      ...request.messages.map((m) => ({ role: m.role, content: renderMessage(m) })),
-    ];
-    try {
-      const response = await ctx.fetch(XAI_CHAT_URL, {
-        method: 'POST',
-        signal: controller.signal,
-        headers: {
-          'content-type': 'application/json',
-          authorization: `Bearer ${request.apiKey ?? ''}`,
-        },
-        body: JSON.stringify({
-          model,
-          messages,
-          stream: true,
-          stream_options: { include_usage: true },
-        }),
-      });
-      if (!response.ok) {
-        ctx.emit({
-          type: 'error',
-          id,
-          error: fromHttpStatus(response.status, await response.text().catch(() => '')),
-        });
-        return;
-      }
-      if (!response.body) {
-        ctx.emit({
-          type: 'error',
-          id,
-          error: { code: 'internal', message: 'xAI returned an empty response.' },
-        });
-        return;
-      }
-      const parser = new SseParser();
-      const decoder = new TextDecoder();
-      let usage: SseDelta['usage'];
-      let failed = false;
-      const reader = response.body.getReader();
-      for (;;) {
-        const { value, done: finished } = await reader.read();
-        if (finished) break;
-        for (const delta of parser.push(decoder.decode(value, { stream: true }))) {
-          if (delta.error) {
-            ctx.emit({
-              type: 'error',
-              id,
-              error: { code: 'internal', message: delta.error },
-            });
-            failed = true;
-            controller.abort();
-            break;
-          }
-          if (delta.text) ctx.emit({ type: 'chat.text', id, text: delta.text });
-          if (delta.usage) usage = delta.usage;
-        }
-        if (failed) break;
-      }
-      if (failed) return;
-      const counts = {
-        inputTokens: usage?.prompt_tokens ?? 0,
-        outputTokens: usage?.completion_tokens ?? 0,
-        cacheReadTokens: 0,
-        cacheCreationTokens: 0,
-      };
-      ctx.emit({
-        type: 'chat.done',
-        id,
-        status: 'completed',
-        model,
-        ...(usage ? { usage: { ...counts, models: [{ model, ...counts }] } } : {}),
-        durationMs: Date.now() - started,
-      });
-    } catch (err) {
-      if (controller.signal.aborted) {
-        ctx.emit({ type: 'chat.done', id, status: 'cancelled' });
-      } else {
-        ctx.emit({
-          type: 'error',
-          id,
-          error: {
-            code: 'internal',
-            message: `Could not reach xAI: ${err instanceof Error ? err.message : String(err)}`,
-          },
-        });
-      }
-    }
-  })();
-
-  return { done, cancel: () => controller.abort() };
+  const model = request.model && request.model !== 'default' ? request.model : 'grok-4.7';
+  if (!MODEL_PATTERN.test(model)) {
+    ctx.emit({
+      type: 'error',
+      id: request.id,
+      error: { code: 'invalid_request', message: 'That model id is not valid.' },
+    });
+    return { done: Promise.resolve(), cancel: () => undefined };
+  }
+  return streamCompatChat(request, ctx, {
+    service: 'xAI',
+    credential: 'API key',
+    url: XAI_CHAT_URL,
+    headers: { authorization: `Bearer ${request.apiKey ?? ''}` },
+    model,
+  });
 }
 
 function chatViaCli(

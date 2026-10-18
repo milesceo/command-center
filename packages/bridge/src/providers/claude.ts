@@ -1,6 +1,11 @@
 import { createRequire } from 'node:module';
 import { existsSync } from 'node:fs';
-import { MODEL_OPTIONS, type ChatRequest, type ProviderModel } from '@command-center/protocol';
+import {
+  MODEL_OPTIONS,
+  shellQuote,
+  type ChatRequest,
+  type ProviderModel,
+} from '@command-center/protocol';
 import { runChat } from '../chat';
 import { runUsage } from '../usage-report';
 import { claudeExecutable } from '../sdk';
@@ -127,9 +132,7 @@ export const claudeProvider: Provider = {
   },
 };
 
-/** POSIX single-quoting: safe for any characters, including quotes, spaces and unicode. */
-export const shellQuote = (arg: string): string =>
-  /^[A-Za-z0-9_./:@%+=,-]+$/.test(arg) ? arg : `'${arg.replace(/'/g, `'\\''`)}'`;
+export { shellQuote } from '@command-center/protocol';
 
 /** An AppleScript string literal (backslashes and double quotes escaped). */
 export const appleScriptString = (text: string): string =>
@@ -169,22 +172,7 @@ export async function openTerminal(
     new Error(`Run \`${[command.file, ...args].join(' ')}\` in a terminal to sign in.`);
   if (ctx.platform === 'darwin') {
     const line = [command.file, ...args].map(shellQuote).join(' ');
-    const script = macTerminalScript(line, ctx.env);
-    // Waits for osascript: if macOS refuses (Automation permission denied, Terminal missing),
-    // the card shows the command to run instead of silently doing nothing.
-    const ok = await new Promise<boolean>((resolve) => {
-      const child = ctx.spawn(
-        '/usr/bin/osascript',
-        script.flatMap((l) => ['-e', l]),
-        {
-          stdio: 'ignore',
-          env: ctx.env,
-        },
-      );
-      child.on('error', () => resolve(false));
-      child.on('close', (code) => resolve(code === 0));
-    });
-    if (!ok) throw instructions();
+    await openTerminalLine(ctx, line, instructions);
     return;
   }
   if (ctx.platform !== 'win32') throw instructions();
@@ -196,4 +184,31 @@ export async function openTerminal(
     { detached: true, stdio: 'ignore', env: ctx.env },
   );
   child.on('error', () => undefined);
+}
+
+/**
+ * macOS: opens Terminal (or iTerm) running `line`, a shell command line the caller built with
+ * `shellQuote` from validated parts, and waits for `osascript`: when macOS refuses (Automation
+ * permission denied, Terminal missing) it throws `fail()`, so the UI shows the command to run
+ * instead of silently doing nothing.
+ */
+export async function openTerminalLine(
+  ctx: ProviderContext,
+  line: string,
+  fail: () => Error,
+): Promise<void> {
+  const script = macTerminalScript(line, ctx.env);
+  const ok = await new Promise<boolean>((resolve) => {
+    const child = ctx.spawn(
+      '/usr/bin/osascript',
+      script.flatMap((l) => ['-e', l]),
+      {
+        stdio: 'ignore',
+        env: ctx.env,
+      },
+    );
+    child.on('error', () => resolve(false));
+    child.on('close', (code) => resolve(code === 0));
+  });
+  if (!ok) throw fail();
 }

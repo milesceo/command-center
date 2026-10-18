@@ -2,11 +2,20 @@ import { DEFAULT_PROVIDER, type ProviderId, type ProviderInfo } from '@command-c
 import { claudeProvider } from './claude';
 import { codexProvider } from './codex';
 import { grokProvider } from './grok';
+import { huggingfaceProvider } from './huggingface';
+import { localProvider } from './local';
 import type { Provider, ProviderContext } from './types';
 
 /** Every provider the bridge knows, keyed by id. Add new adapters here. */
 export function createRegistry(extra: readonly Provider[] = []): ReadonlyMap<ProviderId, Provider> {
-  const all: Provider[] = [claudeProvider, codexProvider, grokProvider, ...extra];
+  const all: Provider[] = [
+    claudeProvider,
+    codexProvider,
+    grokProvider,
+    huggingfaceProvider,
+    localProvider,
+    ...extra,
+  ];
   return new Map(all.map((p) => [p.id, p]));
 }
 
@@ -41,6 +50,7 @@ export async function describeProviders(
         ...(auth.via ? { authVia: auth.via } : {}),
         models: provider.models(),
         note: provider.note,
+        ...(auth.runtimes ? { runtimes: auth.runtimes } : {}),
       };
     }),
   );

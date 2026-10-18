@@ -5,6 +5,7 @@ import {
   type BridgeRequest,
   type ChatRequest,
   type ProviderId,
+  type LocalRunRequest,
 } from '@command-center/protocol';
 import { fromThrown } from './errors';
 import {
@@ -115,6 +116,10 @@ export class Bridge {
         await this.guiReady;
         await this.login(request.id, request.provider);
         return;
+      case 'local.run':
+        await this.guiReady;
+        await this.runLocal(request);
+        return;
     }
   }
 
@@ -129,6 +134,23 @@ export class Bridge {
       return;
     }
     await provider.usage(id, this.ctx);
+  }
+
+  /** Opens a terminal serving a local model, then answers with a fresh report. */
+  private async runLocal(request: LocalRunRequest): Promise<void> {
+    const provider = providerFor(this.registry, 'local');
+    try {
+      if (!provider.run) throw new Error('Local models are not available.');
+      await provider.run(request, this.ctx);
+    } catch (err) {
+      this.deps.emit({
+        type: 'error',
+        id: request.id,
+        error: { ...fromThrown(err), code: 'invalid_request' },
+      });
+      return;
+    }
+    await this.report(request.id);
   }
 
   private async report(id: string, hasKey?: readonly ProviderId[]): Promise<void> {

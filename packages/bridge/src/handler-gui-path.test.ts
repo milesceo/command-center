@@ -55,6 +55,8 @@ function bridge(over: { platform?: NodeJS.Platform; gui?: GuiPathDeps } = {}) {
     env,
     platform: over.platform ?? 'darwin',
     ...(over.gui ? { gui: over.gui } : {}),
+    // Offline: the real `local` provider probes localhost ports, which must not depend on this machine.
+    fetch: () => Promise.reject(new Error('offline in tests')),
     providers: fakeProviders(),
   });
   return { b, out, env };

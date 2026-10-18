@@ -1,6 +1,8 @@
 import type {
   BridgeEvent,
   ChatRequest,
+  LocalRunRequest,
+  RuntimeStatus,
   ProviderAuthMethod,
   ProviderAuthState,
   ProviderId,
@@ -35,6 +37,8 @@ export interface ProviderAuth {
   via?: ProviderAuthMethod | undefined;
   /** Short technical detail for logs/UI ("Logged in using ChatGPT"). Never a secret. */
   detail?: string | undefined;
+  /** The `local` provider: each runtime's state. */
+  runtimes?: RuntimeStatus[];
 }
 
 /**
@@ -61,4 +65,6 @@ export interface Provider {
   login?(ctx: ProviderContext): Promise<void>;
   /** Plan/usage reporting, for providers that expose it. Emits one `usage.report` or `error`. */
   usage?(id: string, ctx: ProviderContext): Promise<void>;
+  /** The `local` provider: opens a terminal that downloads (if needed) and serves a model. */
+  run?(request: LocalRunRequest, ctx: ProviderContext): Promise<void>;
 }

@@ -7,6 +7,7 @@ import {
   parseRequest,
   type BridgeEvent,
   type BridgeRequest,
+  PROVIDER_IDS,
 } from './index';
 
 const roundTripRequest = (r: BridgeRequest) => parseRequest(encodeMessage(r));
@@ -271,5 +272,116 @@ describe('providers (protocol v4)', () => {
     expect(parseEvent('{"type":"providers.report","id":"p1","providers":[{"id":"zzz"}]}').ok).toBe(
       false,
     );
+  });
+});
+
+describe('protocol 5: custom models', () => {
+  const chat = (extra: Record<string, unknown>) =>
+    parseRequest(
+      JSON.stringify({
+        type: 'chat',
+        id: 'c1',
+        tools: 'off',
+        messages: [{ role: 'user', content: 'hi' }],
+        ...extra,
+      }),
+    );
+
+  it('is version 5 and knows the two new providers', () => {
+    expect(PROTOCOL_VERSION).toBe(5);
+    expect(PROVIDER_IDS).toEqual(['claude', 'openai', 'xai', 'huggingface', 'local']);
+  });
+
+  it('still parses a version-4 chat unchanged', () => {
+    expect(chat({ provider: 'xai', apiKey: 'k', model: 'grok-4.7' })).toEqual({
+      ok: true,
+      value: {
+        type: 'chat',
+        id: 'c1',
+        tools: 'off',
+        messages: [{ role: 'user', content: 'hi' }],
+        provider: 'xai',
+        apiKey: 'k',
+        model: 'grok-4.7',
+      },
+    });
+  });
+
+  it('accepts validated params and a loopback base URL', () => {
+    const parsed = chat({
+      provider: 'local',
+      model: 'llama3.2:1b',
+      baseUrl: 'http://127.0.0.1:11434/v1',
+      params: { temperature: 0.2, maxTokens: 256, stop: ['</s>'] },
+    });
+    expect(parsed).toMatchObject({
+      ok: true,
+      value: { baseUrl: 'http://127.0.0.1:11434/v1', params: { temperature: 0.2, maxTokens: 256 } },
+    });
+  });
+
+  it('refuses bad params and a remote base URL unless remote servers are allowed', () => {
+    expect(chat({ params: { temperature: 9 } }).ok).toBe(false);
+    expect(chat({ baseUrl: 'http://192.168.1.5:11434/v1' }).ok).toBe(false);
+    expect(chat({ baseUrl: 'http://192.168.1.5:11434/v1', allowRemote: true }).ok).toBe(true);
+    expect(chat({ baseUrl: 'ftp://x', allowRemote: true }).ok).toBe(false);
+    expect(chat({ baseUrl: 'http://u:p@127.0.0.1:1/v1' }).ok).toBe(false);
+    expect(chat({ allowRemote: 'yes' }).ok).toBe(false);
+  });
+
+  it('parses local.run requests', () => {
+    expect(
+      parseRequest(
+        JSON.stringify({
+          type: 'local.run',
+          id: 'r1',
+          runtime: 'ollama',
+          source: { kind: 'hf', repo: 'bartowski/Llama-3.2-1B-Instruct-GGUF', quant: 'Q4_K_M' },
+        }),
+      ),
+    ).toMatchObject({ ok: true, value: { type: 'local.run', runtime: 'ollama' } });
+    expect(
+      parseRequest(JSON.stringify({ type: 'local.run', id: 'r1', runtime: 'ollama', source: {} }))
+        .ok,
+    ).toBe(false);
+  });
+
+  it('carries runtime statuses in a providers report and drops bad ones', () => {
+    const line = JSON.stringify({
+      type: 'providers.report',
+      id: 'p1',
+      providers: [
+        {
+          id: 'local',
+          name: 'On this Mac',
+          authMethods: [],
+          auth: 'signed_in',
+          models: [],
+          note: '',
+          runtimes: [
+            {
+              id: 'ollama',
+              installed: true,
+              running: false,
+              baseUrl: 'http://127.0.0.1:11434/v1',
+              models: [],
+            },
+            { id: 'bogus' },
+          ],
+        },
+      ],
+    });
+    const parsed = parseEvent(line);
+    expect(
+      parsed.ok && parsed.value.type === 'providers.report' && parsed.value.providers[0]?.runtimes,
+    ).toEqual([
+      {
+        id: 'ollama',
+        installed: true,
+        running: false,
+        baseUrl: 'http://127.0.0.1:11434/v1',
+        models: [],
+      },
+    ]);
   });
 });
