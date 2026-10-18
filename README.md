@@ -35,6 +35,7 @@ macOS on Apple Silicon and Windows 11 on x64 are the supported targets. Linux bu
 - **Code blocks** highlighted with Shiki (the theme follows light and dark), with line numbers, collapse, wrap, copy, save as file and open in preview.
 - **Diffs** in replies as side-by-side or inline views with changed words marked, plus comparison of any two code blocks.
 - **Live preview** for HTML, SVG, Mermaid and Markdown. Previewed code is sandboxed (no access to the app, your files or the network) and updates while a reply streams.
+- **Your own models** in the Model Lab: search Hugging Face, paste a link or pick a `.gguf` file or MLX folder, then chat in the Hugging Face cloud or on your Mac through Ollama, llama.cpp, MLX-LM or LM Studio, and compare models side by side. See [docs/providers.md](docs/providers.md).
 - **Usage** from the numbers the SDK reports: tokens per reply, totals in the chat header, daily and weekly charts, per-model and per-conversation breakdowns, and plan headroom when your login exposes it. Cost is shown as "API-equivalent cost": informational on a subscription, not a bill.
 - **Prompt library** with `{{variables}}`, `/` to insert from the message box, JSON import and export, and **projects** that group conversations and carry a default system prompt.
 - **Command palette** (`⌘K` on macOS, `Ctrl+K` on Windows) and **settings** (theme, interface and code font size, defaults for new chats, data location, export and clear).

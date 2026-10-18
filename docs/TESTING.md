@@ -16,7 +16,7 @@ item has a one-click setup, Pass / Fail / Skip, and a button that opens a prefil
 4. A fix references the issue. Items whose question changed get a new `rev`, which clears the old
    answer. **Copy results** puts a Markdown report on the clipboard.
 
-Checklist version 1, 46 items.
+Checklist version 1, 54 items.
 
 ## Splash and Home
 
@@ -489,3 +489,83 @@ Needs the Mac desktop app.
 2. Minimize Command Center, then cover it fully with another window.
 
 **Expected:** CPU for Command Center and its WebContent process drops to near zero while minimized or covered and the animation resumes when it is visible again.
+
+## Model Lab
+
+### MODEL-01: Hugging Face token and a cloud model
+
+Needs a network connection. Panel setup: `open-settings-agents`.
+
+1. Create a fine-grained token with "Make calls to Inference Providers" at huggingface.co/settings/tokens.
+2. Settings > AI agents > Hugging Face: paste it and Save key (never paste it into a chat).
+3. Model Lab > Add a model > Paste a link: openai/gpt-oss-20b:fastest, choose Hugging Face cloud, Add.
+4. Click the chat icon on the new model and send "Say hi in five words".
+
+**Expected:** Keychain Access lists the token under "command-center"; the reply streams in; the Usage view counts its tokens and shows the cost as a dash, not a price.
+
+### MODEL-02: Search Hugging Face and add a GGUF model for this Mac
+
+Needs a network connection. Panel setup: `open-model-lab`.
+
+1. Model Lab > Add a model, type "qwen 0.5b" with the GGUF filter.
+2. Pick Qwen/Qwen2.5-0.5B-Instruct-GGUF; leave On this Mac, Ollama and Q4_K_M.
+3. Read the command shown, press Copy command and paste it into a text editor.
+
+**Expected:** Results show downloads, likes and a Gated badge where it applies; the details show the license; the pasted command is exactly the one shown (ollama run hf.co/Qwen/Qwen2.5-0.5B-Instruct-GGUF:Q4_K_M).
+
+### MODEL-03: Run in Terminal starts the model with your runtime
+
+Needs the Mac desktop app. Panel setup: `open-model-lab`.
+
+1. With Ollama installed, in the add dialog (or on a saved local model) press Run in Terminal.
+2. Allow Command Center to control Terminal if macOS asks.
+3. Wait for the download to finish, then press Check runtimes in the Model Lab.
+
+**Expected:** A Terminal window opens running the command; the model card says Running; Settings > AI agents > On this computer lists Ollama as Running with the model counted.
+
+### MODEL-04: A model too big for this Mac is flagged
+
+Needs the Mac desktop app. Panel setup: `open-model-lab`.
+
+1. Add a model, search "llama 70b gguf" and pick a 70B GGUF repo.
+2. Choose its largest quant.
+
+**Expected:** An amber warning says the file is larger than this computer can comfortably run, before anything is saved or downloaded.
+
+### MODEL-05: Add a model file you already have
+
+Needs the Mac desktop app. Panel setup: `open-model-lab`.
+
+1. Add a model > From a file > Choose a .gguf file, and pick one on this Mac.
+2. Choose llama.cpp, press Run in Terminal, then Add model.
+3. Chat with it.
+
+**Expected:** The file is used where it is (nothing is copied or uploaded); llama-server starts on port 8080; the chat replies.
+
+### MODEL-06: Side-by-side test and Save to conversation
+
+Needs the Mac desktop app. Panel setup: `open-model-lab`.
+
+1. In the Model Lab tick two models, type a prompt and press Run (or Cmd+Enter).
+2. When both finish, press Save to conversation on one.
+
+**Expected:** Both replies stream at once with first-text time, tokens per second and tokens (a dash when a server reports none); saving opens a normal chat holding the prompt and that reply, which can be continued.
+
+### MODEL-07: Remote model servers stay off unless you allow them
+
+Needs the Mac desktop app.
+
+1. Edit a local model and set its server address to http://192.168.1.50:11434/v1, then chat with it.
+2. Settings > AI agents > On this computer: switch on Allow remote model servers, and chat again.
+
+**Expected:** The first chat is refused with a message about remote servers; after allowing them it tries that address.
+
+### MODEL-08: Presets per model and per chat
+
+Needs the Mac desktop app. Panel setup: `open-settings-agents`.
+
+1. Settings > AI agents > Model presets: Edit presets on a local model, press Precise, Save.
+2. Start a chat with that model, open Chat settings and set Temperature to 1.2 under Presets for this chat; click elsewhere.
+3. Send a message, then press "Use the model’s presets" and send another.
+
+**Expected:** The field placeholders show the model’s own values; the first reply uses temperature 1.2, the second the model’s 0.2 (visible in the runtime’s request log, e.g. llama-server’s terminal); other chats with the same model are unaffected.
