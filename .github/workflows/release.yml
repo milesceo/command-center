@@ -93,6 +93,10 @@ jobs:
 
       - name: Launch the installed app and check it starts its bridge
         shell: pwsh
+        # The bridge normally starts on first use; this asks the app to start it at launch so the
+        # installed layout (bundled node + main.mjs) is exercised without a click.
+        env:
+          COMMAND_CENTER_START_BRIDGE: '1'
         run: |
           $app = Join-Path $env:INSTALL_DIR 'command-center.exe'
           if (-not (Test-Path $app)) { throw "command-center.exe is not in $env:INSTALL_DIR" }
@@ -112,7 +116,7 @@ jobs:
             Write-Host '--- stdout ---'; if (Test-Path $out) { Get-Content $out -Tail 40 }
             Write-Host '--- stderr ---'; if (Test-Path $err) { Get-Content $err -Tail 40 }
           }
-          # The app starts its bridge when its window loads; wait for the bundled node to appear as its child.
+          # With COMMAND_CENTER_START_BRIDGE the app starts its bridge at launch; wait for the bundled node.
           $bridge = $null
           for ($i = 0; $i -lt 60 -and -not $bridge; $i++) {
             Start-Sleep -Milliseconds 500
@@ -206,6 +210,9 @@ jobs:
         run: node scripts/smoke-installed.mjs "$APP"
 
       - name: Launch the installed app and check it starts its bridge
+        # See the Windows job: start the bridge at launch so the bundled one is exercised.
+        env:
+          COMMAND_CENTER_START_BRIDGE: '1'
         run: |
           exe="$APP/Contents/MacOS/command-center"
           test -x "$exe" || { echo "command-center is not in $APP/Contents/MacOS"; exit 1; }

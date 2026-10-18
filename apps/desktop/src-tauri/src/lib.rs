@@ -170,6 +170,7 @@ pub fn run() {
                 let handle = app.handle().clone();
                 std::thread::spawn(move || migrate_legacy_keys(&handle));
             }
+            bridge::start_at_launch_if_asked(app.handle());
             Ok(())
         })
         .on_window_event(system::on_window_event)

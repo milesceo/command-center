@@ -224,6 +224,26 @@ fn spawn_bridge(app: &AppHandle) -> Result<Child, String> {
 /// login shell's PATH here (`lite_search_path`), and the window must stay responsive meanwhile.
 #[tauri::command]
 pub async fn bridge_start(app: AppHandle, state: State<'_, BridgeState>) -> Result<u64, String> {
+    start(app, &state)
+}
+
+/// Starts the bridge as soon as the app opens when `COMMAND_CENTER_START_BRIDGE` is set (normally
+/// it starts on first use). The release workflow's smoke test sets it to check that an installed
+/// app finds and runs its bundled Node and bridge without anyone clicking anything.
+pub fn start_at_launch_if_asked(app: &AppHandle) {
+    if crate::env::app_env("START_BRIDGE", |k| std::env::var(k).ok()).is_none() {
+        return;
+    }
+    let handle = app.clone();
+    thread::spawn(move || {
+        let state = handle.state::<BridgeState>();
+        if let Err(e) = start(handle.clone(), &state) {
+            eprintln!("[command-center] could not start the bridge at launch: {e}");
+        }
+    });
+}
+
+fn start(app: AppHandle, state: &BridgeState) -> Result<u64, String> {
     let mut guard = state.running.lock().map_err(|_| "bridge state poisoned")?;
 
     // A crashed sidecar must be restartable, so check liveness instead of trusting the Option.
