@@ -330,7 +330,7 @@ describe('local adapter: runtimes', () => {
     expect(nameFromFile('/a/.gguf')).toBe('model');
   });
 
-  it('says when the runtime is missing, and shows the command off macOS', async () => {
+  it('says when the runtime is missing', async () => {
     const request: LocalRunRequest = {
       type: 'local.run',
       id: 'r',
@@ -342,7 +342,16 @@ describe('local adapter: runtimes', () => {
     await expect(localProvider.run!(request, missing)).rejects.toThrow(
       /llama\.cpp is not installed/,
     );
+  });
 
+  // The stand-in runtime is a POSIX script; Windows looks for an .exe instead.
+  it.skipIf(process.platform === 'win32')('shows the command off macOS', async () => {
+    const request: LocalRunRequest = {
+      type: 'local.run',
+      id: 'r',
+      runtime: 'llama.cpp',
+      source: { kind: 'hf', repo: 'a/b' },
+    };
     const dir = mkdtempSync(join(tmpdir(), 'cc-runtime-'));
     writeFileSync(join(dir, 'llama-server'), '#!/bin/sh\n');
     chmodSync(join(dir, 'llama-server'), 0o755);
