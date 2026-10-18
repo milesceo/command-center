@@ -5,7 +5,7 @@ import { usePrefs } from './prefs';
 export type Theme = 'dark' | 'light';
 export type DiffMode = 'inline' | 'split';
 /** `landing` is Home: the logo and the launch message. It is where every launch starts. */
-export type View = 'landing' | 'chat' | 'usage' | 'prompts' | 'settings';
+export type View = 'landing' | 'chat' | 'usage' | 'prompts' | 'models' | 'settings';
 /** `ide` is the editor-style shell; `classic` is the original sidebar-and-column chat layout. */
 export type Layout = 'ide' | 'classic';
 
@@ -25,6 +25,8 @@ interface UiState {
   /** Transient (not persisted). */
   shortcutsOpen: boolean;
   paletteOpen: boolean;
+  /** The Model Lab's Add a model dialog (the palette opens it too). Transient. */
+  addModelOpen: boolean;
   view: View;
 
   toggleTheme: () => void;
@@ -38,6 +40,7 @@ interface UiState {
   toggleDiffMode: () => void;
   setShortcutsOpen: (open: boolean) => void;
   setPaletteOpen: (open: boolean) => void;
+  setAddModelOpen: (open: boolean) => void;
   setView: (view: View) => void;
 }
 
@@ -57,6 +60,7 @@ export const useUiStore = create<UiState>()(
       diffMode: 'split',
       shortcutsOpen: false,
       paletteOpen: false,
+      addModelOpen: false,
       view: 'landing',
 
       // The theme is a preference (stores/prefs.ts, which also offers "system"); this store keeps
@@ -72,12 +76,19 @@ export const useUiStore = create<UiState>()(
       toggleDiffMode: () => set((s) => ({ diffMode: s.diffMode === 'split' ? 'inline' : 'split' })),
       setShortcutsOpen: (shortcutsOpen) => set({ shortcutsOpen }),
       setPaletteOpen: (paletteOpen) => set({ paletteOpen }),
+      setAddModelOpen: (addModelOpen) => set({ addModelOpen }),
       setView: (view) => set({ view }),
     }),
     {
       name: 'command-center-ui',
       // The shortcuts dialog should never reopen on its own after a restart.
-      partialize: ({ shortcutsOpen: _a, view: _b, paletteOpen: _c, ...persisted }) => persisted,
+      partialize: ({
+        shortcutsOpen: _a,
+        view: _b,
+        paletteOpen: _c,
+        addModelOpen: _d,
+        ...persisted
+      }) => persisted,
     },
   ),
 );

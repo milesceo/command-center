@@ -9,6 +9,7 @@ import {
   type PongEvent,
   type ProviderId,
   type ProviderInfo,
+  type LocalRunRequest,
   type ProviderLoginRequest,
   type ProvidersRequest,
   type UsageReportEvent,
@@ -158,6 +159,17 @@ export class BridgeClient {
       provider,
     };
     const event = await this.request(request.id, encodeMessage(request), PROVIDERS_TIMEOUT_MS);
+    if (event.type !== 'providers.report') throw new Error(`Unexpected reply: ${event.type}`);
+    return event.providers;
+  }
+
+  /**
+   * Opens a terminal that downloads (if needed) and serves a local model with the user's runtime;
+   * resolves with a fresh providers report.
+   */
+  async localRun(request: Omit<LocalRunRequest, 'type' | 'id'>): Promise<ProviderInfo[]> {
+    const full: LocalRunRequest = { ...request, type: 'local.run', id: crypto.randomUUID() };
+    const event = await this.request(full.id, encodeMessage(full), PROVIDERS_TIMEOUT_MS);
     if (event.type !== 'providers.report') throw new Error(`Unexpected reply: ${event.type}`);
     return event.providers;
   }

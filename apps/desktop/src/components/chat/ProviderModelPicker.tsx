@@ -6,6 +6,7 @@ import { mergeModels } from '../../lib/status-feed';
 import { usePrefs } from '../../stores/prefs';
 import { useProviders } from '../../stores/providers';
 import { useStatus } from '../../stores/status';
+import { customModelId, customModelRef, useCustomModels } from '../../stores/custom-models';
 import { StatusDot } from '../status/StatusDot';
 
 const selectClass =
@@ -21,23 +22,32 @@ export function ProviderModelPicker() {
   const connections = usePrefs((s) => s.prefs.providers.connections);
   const infos = useProviders((s) => s.infos);
   const announced = useStatus((s) => s.added);
+  const custom = useCustomModels((s) => s.models);
 
   const providers = useMemo(
     () => PROVIDER_IDS.filter((id) => connections[id].enabled || id === settings.provider),
     [connections, settings.provider],
   );
   const models = useMemo(() => {
+    // Hugging Face and local models are the ones the user added in the Model Lab.
+    if (settings.provider === 'huggingface' || settings.provider === 'local') {
+      const mine = custom
+        .filter((m) => m.provider === settings.provider)
+        .map((m) => ({ id: customModelRef(m.id), label: m.displayName }));
+      const hint = mine.length > 0 ? 'Choose a model' : 'Add one in the Model Lab';
+      return [{ id: 'default', label: hint, disabled: true }, ...mine];
+    }
     const live = infos[settings.provider]?.models;
     const base = live && live.length > 0 ? live : fallbackModels(settings.provider);
     // Models the status feed announced for this provider are offered too.
     return mergeModels(base, announced[settings.provider]);
-  }, [infos, announced, settings.provider]);
+  }, [infos, announced, custom, settings.provider]);
 
   const update = conversationsStore.getState().updateSettings;
 
   return (
     <span className="flex items-center gap-0.5" data-testid="provider-model-picker">
-      <StatusDot provider={settings.provider} align="right" />
+      {settings.provider !== 'local' && <StatusDot provider={settings.provider} align="right" />}
       {providers.length > 1 && (
         <select
           aria-label="Provider"
@@ -61,13 +71,18 @@ export function ProviderModelPicker() {
         className={selectClass}
       >
         {models.map((m) => (
-          <option key={m.id} value={m.id} className="bg-elevated">
+          <option
+            key={m.id}
+            value={m.id}
+            disabled={'disabled' in m && m.disabled}
+            className="bg-elevated"
+          >
             {m.label}
           </option>
         ))}
         {settings.model && !models.some((m) => m.id === settings.model) && (
           <option value={settings.model} className="bg-elevated">
-            {settings.model}
+            {customModelId(settings.model) ? 'Removed model' : settings.model}
           </option>
         )}
       </select>

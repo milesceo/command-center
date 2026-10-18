@@ -1,4 +1,10 @@
-import type { Attachment, BridgeError, ProviderId, ToolsMode } from '@command-center/protocol';
+import type {
+  Attachment,
+  BridgeError,
+  ChatParams,
+  ProviderId,
+  ToolsMode,
+} from '@command-center/protocol';
 
 /** Per-conversation knobs; also used for the not-yet-created "new chat" draft. */
 export interface ConversationSettings {
@@ -16,6 +22,8 @@ export interface ConversationSettings {
   /** Working directory for read-only tools. */
   cwd: string | null;
   projectId: string | null;
+  /** This chat's overrides of its Model Lab model's presets; null uses the model's own. */
+  modelParams: ChatParams | null;
 }
 
 export interface Conversation extends ConversationSettings {
@@ -82,4 +90,5 @@ export const DEFAULT_SETTINGS: ConversationSettings = {
   toolsMode: 'off',
   cwd: null,
   projectId: null,
+  modelParams: null,
 };

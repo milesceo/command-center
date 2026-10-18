@@ -17,4 +17,6 @@ export const platformCopy = {
   tray: (): string => (isMacPlatform() ? 'menu bar' : 'tray'),
   /** The operating system whose settings "System" follows. */
   os: (): string => (isMacPlatform() ? 'macOS' : 'Windows'),
+  /** The computer local models run on. */
+  thisComputer: (): string => (isMacPlatform() ? 'this Mac' : 'this computer'),
 };

@@ -1,8 +1,10 @@
 import {
   DEFAULT_PROVIDER,
   PROVIDER_IDS,
+  parseChatParams,
   type Attachment,
   type BridgeError,
+  type ChatParams,
   type ProviderId,
 } from '@command-center/protocol';
 import type { Db } from './db';
@@ -32,6 +34,7 @@ interface ConversationRow {
   project_id: string | null;
   system_prompt_id: string | null;
   system_prompt_vars: string | null;
+  model_params?: string | null;
   created_at: number;
   updated_at: number;
   title_match?: number;
@@ -54,6 +57,16 @@ interface MessageRow {
   created_at: number;
 }
 
+/** A stored override, or null when absent, empty or no longer valid. */
+function paramsFrom(text: string | null | undefined): ChatParams | null {
+  if (!text) return null;
+  const parsed = parseChatParams(parseJson<unknown>(text, null));
+  return parsed.ok && Object.keys(parsed.value).length > 0 ? parsed.value : null;
+}
+
+const paramsJson = (params: ChatParams | null): string | null =>
+  params && Object.keys(params).length > 0 ? JSON.stringify(params) : null;
+
 function toConversation(row: ConversationRow): Conversation {
   const conversation: Conversation = {
     id: row.id,
@@ -67,6 +80,7 @@ function toConversation(row: ConversationRow): Conversation {
     toolsMode: row.tools_mode,
     cwd: row.cwd,
     projectId: row.project_id,
+    modelParams: paramsFrom(row.model_params),
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   };
@@ -157,8 +171,8 @@ export async function createConversation(
   const id = crypto.randomUUID();
   await db.execute(
     `INSERT INTO conversations
-       (id, title, created_at, updated_at, provider, model, system_prompt, system_prompt_id, system_prompt_vars, tools_mode, cwd, project_id)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+       (id, title, created_at, updated_at, provider, model, system_prompt, system_prompt_id, system_prompt_vars, tools_mode, cwd, project_id, model_params)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     [
       id,
       DEFAULT_TITLE,
@@ -172,6 +186,7 @@ export async function createConversation(
       settings.toolsMode,
       settings.cwd,
       settings.projectId,
+      paramsJson(settings.modelParams),
     ],
   );
   return {
@@ -200,7 +215,7 @@ export async function updateSettings(
   await db.execute(
     `UPDATE conversations
         SET provider = ?, model = ?, system_prompt = ?, system_prompt_id = ?, system_prompt_vars = ?,
-            tools_mode = ?, cwd = ?, project_id = ?
+            tools_mode = ?, cwd = ?, project_id = ?, model_params = ?
       WHERE id = ?`,
     [
       settings.provider,
@@ -211,6 +226,7 @@ export async function updateSettings(
       settings.toolsMode,
       settings.cwd,
       settings.projectId,
+      paramsJson(settings.modelParams),
       id,
     ],
   );

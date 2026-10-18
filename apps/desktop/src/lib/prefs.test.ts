@@ -145,8 +145,9 @@ describe('bridge idle setting (version 2)', () => {
   it('migrates a version-1 document, keeping its other system choices', () => {
     const out = runMigrations({ version: 1, system: { autostart: true, closeBehavior: 'tray' } });
     expect(out).toMatchObject({
-      version: 2,
+      version: 3,
       system: { autostart: true, closeBehavior: 'tray', bridgeIdleMinutes: 10 },
+      models: { allowRemoteServers: false },
     });
   });
 });

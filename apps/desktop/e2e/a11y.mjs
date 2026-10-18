@@ -8,6 +8,25 @@ const axePath = require.resolve('axe-core/axe.min.js');
 const h = await startHarness({ real: false });
 let failures = 0;
 
+// The Model Lab reads the public Hugging Face API from the page; stub it so no network is used.
+const HUB_REPO = 'a11y-org/Tiny-GGUF';
+const stubHub = (context) =>
+  context.route('https://huggingface.co/**', (route) => {
+    const path = new URL(route.request().url()).pathname;
+    const body =
+      path === `/api/models/${HUB_REPO}/tree/main`
+        ? [{ type: 'file', path: 'tiny-q4_k_m.gguf', size: 1, lfs: { size: 300_000_000 } }]
+        : path === `/api/models/${HUB_REPO}`
+          ? { id: HUB_REPO, pipeline_tag: 'text-generation', tags: ['gguf'] }
+          : [];
+    return route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      headers: { 'access-control-allow-origin': '*' },
+      body: JSON.stringify(body),
+    });
+  });
+
 async function audit(page, label) {
   await page.addScriptTag({ path: axePath });
   const result = await page.evaluate(() =>
@@ -28,7 +47,9 @@ async function audit(page, label) {
 }
 
 for (const theme of ['dark', 'light']) {
-  const app = await h.launch({ theme });
+  // Each theme starts with no Model Lab models (the database is shared between launches).
+  h.db.exec('DELETE FROM custom_models');
+  const app = await h.launch({ theme, setup: stubHub });
   const { page } = app;
   const nav = (name) =>
     page.getByRole('navigation', { name: 'Library' }).getByRole('button', { name });
@@ -50,6 +71,24 @@ for (const theme of ['dark', 'light']) {
   await page.getByRole('button', { name: 'New prompt' }).click();
   await audit(page, `${theme}: prompt editor`);
   await page.keyboard.press('Escape');
+
+  await nav('Model Lab').click();
+  await page.getByTestId('model-lab').waitFor();
+  await page.getByText('No models yet').waitFor();
+  await audit(page, `${theme}: models (empty)`);
+  await page.getByRole('button', { name: 'Add a model' }).first().click();
+  const addDialog = page.getByRole('dialog', { name: 'Add a model' });
+  await addDialog.waitFor();
+  await audit(page, `${theme}: add model dialog`);
+  await addDialog.getByRole('button', { name: 'Paste a link' }).click();
+  await addDialog.getByLabel('Model id or link').fill(HUB_REPO);
+  await addDialog.getByRole('button', { name: 'Look up' }).click();
+  await addDialog.getByRole('region', { name: 'Model details' }).waitFor();
+  await audit(page, `${theme}: add model details`);
+  await addDialog.getByRole('button', { name: /^Add / }).click();
+  await addDialog.waitFor({ state: 'detached' });
+  await page.getByRole('list', { name: 'Your models' }).waitFor();
+  await audit(page, `${theme}: models (list)`);
 
   await nav('Settings').click();
   await page.getByTestId('settings-view').waitFor();

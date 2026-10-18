@@ -11,6 +11,7 @@ import * as repo from '../../lib/repo';
 import { DEFAULT_SETTINGS } from '../../lib/types';
 import { useComposerStore } from '../../stores/composer';
 import { conversationsStore } from '../../stores/conversations';
+import { customModelRef, useCustomModels } from '../../stores/custom-models';
 import { promptsStore } from '../../stores/prompts';
 import { useUiStore } from '../../stores/ui';
 import { CommandPalette } from './CommandPalette';
@@ -21,6 +22,7 @@ beforeEach(async () => {
   conversationsStore.setState({ activeId: null, draft: { ...DEFAULT_SETTINGS } });
   useComposerStore.setState({ pending: null });
   useUiStore.setState({ paletteOpen: false, view: 'chat', sidebarOpen: true });
+  useCustomModels.setState({ models: [], loaded: true, error: null });
 });
 afterEach(cleanup);
 
@@ -108,6 +110,50 @@ describe('CommandPalette', () => {
     fireEvent.change(field, { target: { value: 'Go' } });
     fireEvent.click(screen.getByRole('button', { name: 'Insert' }));
     expect(useComposerStore.getState().pending?.text).toBe('Review Go');
+  });
+
+  it('offers "Chat with <name>" for every Model Lab model and starts that chat', async () => {
+    const base = {
+      hfRepo: null,
+      runtime: 'ollama' as const,
+      baseUrl: 'http://127.0.0.1:11434/v1',
+      quant: null,
+      filePath: null,
+      adapterPath: null,
+      systemPrompt: null,
+      params: {},
+      tags: [],
+    };
+    await act(async () => {
+      await useCustomModels
+        .getState()
+        .add({ ...base, provider: 'local', model: 'qwen2.5:0.5b', displayName: 'Tiny Qwen' });
+    });
+    const cloud = await useCustomModels.getState().add({
+      ...base,
+      runtime: null,
+      baseUrl: null,
+      provider: 'huggingface',
+      model: 'openai/gpt-oss-20b',
+      displayName: 'GPT OSS',
+    });
+    useUiStore.setState({ view: 'models' });
+    const box = await open();
+    fireEvent.change(box, { target: { value: 'chat with' } });
+    const titles = screen.getAllByRole('option').map((o) => o.textContent ?? '');
+    expect(titles.some((t) => t.includes('Chat with Tiny Qwen'))).toBe(true);
+    expect(titles.some((t) => t.includes('Chat with GPT OSS'))).toBe(true);
+
+    fireEvent.change(box, { target: { value: 'chat with gpt oss' } });
+    expect(screen.getAllByRole('option')[0]?.textContent).toContain('Chat with GPT OSS');
+    fireEvent.keyDown(box, { key: 'Enter' });
+    await waitFor(() =>
+      expect(conversationsStore.getState().draft).toMatchObject({
+        provider: 'huggingface',
+        model: customModelRef(cloud.id),
+      }),
+    );
+    expect(useUiStore.getState().view).toBe('chat');
   });
 
   it('keeps Tab inside the palette', async () => {

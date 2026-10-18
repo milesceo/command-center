@@ -55,6 +55,29 @@ export const PROVIDER_META: Readonly<Record<ProviderId, ProviderMeta>> = {
     supportsSubscription: true,
     keyHint: 'Create a key at console.x.ai.',
   },
+  huggingface: {
+    id: 'huggingface',
+    name: 'Hugging Face',
+    summary: 'Chat with open models in the cloud through Hugging Face Inference Providers.',
+    limit:
+      'Needs a Hugging Face access token (billed to your Hugging Face account). Add models from the Model Lab.',
+    loginCommand: null,
+    supportsApiKey: true,
+    supportsSubscription: false,
+    keyHint:
+      'Create a fine-grained token with "Make calls to Inference Providers" at huggingface.co/settings/tokens.',
+  },
+  local: {
+    id: 'local',
+    name: 'On this computer',
+    summary: 'Chat with models you run yourself with Ollama, llama.cpp, MLX-LM or LM Studio.',
+    limit:
+      'Nothing leaves this computer unless you allow remote servers. Install a runtime, then add models from the Model Lab.',
+    loginCommand: null,
+    supportsApiKey: false,
+    supportsSubscription: false,
+    keyHint: null,
+  },
 };
 
 export const providerName = (id: ProviderId): string => PROVIDER_META[id].name;
@@ -68,6 +91,7 @@ export function fallbackModels(id: ProviderId): { id: string; label: string }[] 
       { id: 'grok-4.7', label: 'Grok 4.7' },
     ];
   }
+  if (id === 'huggingface' || id === 'local') return [];
   return [{ id: 'default', label: 'Codex default' }];
 }
 

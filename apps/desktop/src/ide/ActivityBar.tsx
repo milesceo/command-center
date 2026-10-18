@@ -1,4 +1,4 @@
-import { BarChart3, BookText, Files, Home, Settings, type LucideIcon } from 'lucide-react';
+import { BarChart3, BookText, Boxes, Files, Home, Settings, type LucideIcon } from 'lucide-react';
 import { cn } from '../lib/cn';
 import { useUiStore, type View } from '../stores/ui';
 
@@ -12,6 +12,7 @@ const TOP: Item[] = [
   { id: 'landing', label: 'Home', icon: Home },
   { id: 'explorer', label: 'Explorer', icon: Files },
   { id: 'prompts', label: 'Prompt library', icon: BookText },
+  { id: 'models', label: 'Model Lab', icon: Boxes },
   { id: 'usage', label: 'Usage', icon: BarChart3 },
 ];
 const BOTTOM: Item[] = [{ id: 'settings', label: 'Settings', icon: Settings }];

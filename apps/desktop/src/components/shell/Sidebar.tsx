@@ -1,4 +1,4 @@
-import { BarChart3, BookText, Command, Keyboard, Plus, Settings } from 'lucide-react';
+import { BarChart3, BookText, Boxes, Command, Keyboard, Plus, Settings } from 'lucide-react';
 import { conversationsStore } from '../../stores/conversations';
 import { useUiStore } from '../../stores/ui';
 import { Button } from '../ui/button';
@@ -38,6 +38,7 @@ export function Sidebar() {
         {(
           [
             ['prompts', 'Prompts', BookText],
+            ['models', 'Model Lab', Boxes],
             ['usage', 'Usage', BarChart3],
             ['settings', 'Settings', Settings],
           ] as const

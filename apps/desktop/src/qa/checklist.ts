@@ -17,6 +17,7 @@ export const QA_AREAS = [
   'migration',
   'macos',
   'performance',
+  'models',
 ] as const;
 export type QaArea = (typeof QA_AREAS)[number];
 
@@ -31,6 +32,7 @@ export const AREA_LABELS: Record<QaArea, string> = {
   migration: 'Rename and data migration',
   macos: 'macOS',
   performance: 'Lighter runtime',
+  models: 'Model Lab',
 };
 
 /** What a scenario button in the panel can do for you (see `scenarios.ts`). */
@@ -39,6 +41,7 @@ export const SCENARIO_IDS = [
   'restart-onboarding',
   'open-settings-security',
   'open-settings-agents',
+  'open-model-lab',
   'open-settings-system',
   'open-settings-appearance',
   'tier-lightest',
@@ -739,6 +742,123 @@ export const QA_ITEMS: readonly QaItem[] = [
     expected:
       'CPU for Command Center and its WebContent process drops to near zero while minimized or covered and the animation resumes when it is visible again.',
     needs: 'mac-desktop',
+    rev: 1,
+  },
+  {
+    id: 'MODEL-01',
+    area: 'models',
+    title: 'Hugging Face token and a cloud model',
+    steps: [
+      'Create a fine-grained token with "Make calls to Inference Providers" at huggingface.co/settings/tokens.',
+      'Settings > AI agents > Hugging Face: paste it and Save key (never paste it into a chat).',
+      'Model Lab > Add a model > Paste a link: openai/gpt-oss-20b:fastest, choose Hugging Face cloud, Add.',
+      'Click the chat icon on the new model and send "Say hi in five words".',
+    ],
+    expected:
+      'Keychain Access lists the token under "command-center"; the reply streams in; the Usage view counts its tokens and shows the cost as a dash, not a price.',
+    needs: 'network',
+    setup: 'open-settings-agents',
+    rev: 1,
+  },
+  {
+    id: 'MODEL-02',
+    area: 'models',
+    title: 'Search Hugging Face and add a GGUF model for this Mac',
+    steps: [
+      'Model Lab > Add a model, type "qwen 0.5b" with the GGUF filter.',
+      'Pick Qwen/Qwen2.5-0.5B-Instruct-GGUF; leave On this Mac, Ollama and Q4_K_M.',
+      'Read the command shown, press Copy command and paste it into a text editor.',
+    ],
+    expected:
+      'Results show downloads, likes and a Gated badge where it applies; the details show the license; the pasted command is exactly the one shown (ollama run hf.co/Qwen/Qwen2.5-0.5B-Instruct-GGUF:Q4_K_M).',
+    needs: 'network',
+    setup: 'open-model-lab',
+    rev: 1,
+  },
+  {
+    id: 'MODEL-03',
+    area: 'models',
+    title: 'Run in Terminal starts the model with your runtime',
+    steps: [
+      'With Ollama installed, in the add dialog (or on a saved local model) press Run in Terminal.',
+      'Allow Command Center to control Terminal if macOS asks.',
+      'Wait for the download to finish, then press Check runtimes in the Model Lab.',
+    ],
+    expected:
+      'A Terminal window opens running the command; the model card says Running; Settings > AI agents > On this computer lists Ollama as Running with the model counted.',
+    needs: 'mac-desktop',
+    setup: 'open-model-lab',
+    rev: 1,
+  },
+  {
+    id: 'MODEL-04',
+    area: 'models',
+    title: 'A model too big for this Mac is flagged',
+    steps: [
+      'Add a model, search "llama 70b gguf" and pick a 70B GGUF repo.',
+      'Choose its largest quant.',
+    ],
+    expected:
+      'An amber warning says the file is larger than this computer can comfortably run, before anything is saved or downloaded.',
+    needs: 'mac-desktop',
+    setup: 'open-model-lab',
+    rev: 1,
+  },
+  {
+    id: 'MODEL-05',
+    area: 'models',
+    title: 'Add a model file you already have',
+    steps: [
+      'Add a model > From a file > Choose a .gguf file, and pick one on this Mac.',
+      'Choose llama.cpp, press Run in Terminal, then Add model.',
+      'Chat with it.',
+    ],
+    expected:
+      'The file is used where it is (nothing is copied or uploaded); llama-server starts on port 8080; the chat replies.',
+    needs: 'mac-desktop',
+    setup: 'open-model-lab',
+    rev: 1,
+  },
+  {
+    id: 'MODEL-06',
+    area: 'models',
+    title: 'Side-by-side test and Save to conversation',
+    steps: [
+      'In the Model Lab tick two models, type a prompt and press Run (or Cmd+Enter).',
+      'When both finish, press Save to conversation on one.',
+    ],
+    expected:
+      'Both replies stream at once with first-text time, tokens per second and tokens (a dash when a server reports none); saving opens a normal chat holding the prompt and that reply, which can be continued.',
+    needs: 'mac-desktop',
+    setup: 'open-model-lab',
+    rev: 1,
+  },
+  {
+    id: 'MODEL-07',
+    area: 'models',
+    title: 'Remote model servers stay off unless you allow them',
+    steps: [
+      'Edit a local model and set its server address to http://192.168.1.50:11434/v1, then chat with it.',
+      'Settings > AI agents > On this computer: switch on Allow remote model servers, and chat again.',
+    ],
+    expected:
+      'The first chat is refused with a message about remote servers; after allowing them it tries that address.',
+    needs: 'mac-desktop',
+    rev: 1,
+  },
+  {
+    id: 'MODEL-08',
+    area: 'models',
+    title: 'Presets per model and per chat',
+    steps: [
+      'Settings > AI agents > Model presets: Edit presets on a local model, press Precise, Save.',
+      'Start a chat with that model, open Chat settings and set Temperature to 1.2 under Presets for this chat; click elsewhere.',
+      'Send a message, then press "Use the model\u2019s presets" and send another.',
+    ],
+    expected:
+      'The field placeholders show the model\u2019s own values; the first reply uses temperature 1.2, the second the model\u2019s 0.2 (visible in the runtime\u2019s request log, e.g. llama-server\u2019s terminal); other chats with the same model are unaffected.',
+    needs: 'mac-desktop',
+    setup: 'open-settings-agents',
     rev: 1,
   },
 ];

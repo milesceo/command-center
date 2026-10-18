@@ -24,7 +24,7 @@ import {
 } from './appearance';
 import { DEFAULT_TIER, isTierId, type MotionSetting, type TierId } from './performance';
 
-export const PREFS_VERSION = 2;
+export const PREFS_VERSION = 3;
 
 /** Minutes of inactivity before locking; 0 turns the idle lock off. */
 export const AUTO_LOCK_CHOICES = [0, 1, 5, 15, 30, 60] as const;
@@ -82,6 +82,11 @@ export interface Prefs {
     default: ProviderId;
     connections: Record<ProviderId, ProviderConnection>;
   };
+  /** Custom models (Model Lab). */
+  models: {
+    /** Let local models use a server on another computer (off: only this computer). */
+    allowRemoteServers: boolean;
+  };
 }
 
 export function defaultPrefs(): Prefs {
@@ -107,6 +112,7 @@ export function defaultPrefs(): Prefs {
       fontScale: DEFAULT_FONT_SCALE,
     },
     providers: { default: DEFAULT_PROVIDER, connections },
+    models: { allowRemoteServers: false },
   };
 }
 
@@ -147,6 +153,7 @@ export function normalizePrefs(raw: unknown): Prefs {
   const performance = isObject(raw.performance) ? raw.performance : {};
   const appearance = isObject(raw.appearance) ? raw.appearance : {};
   const providers = isObject(raw.providers) ? raw.providers : {};
+  const models = isObject(raw.models) ? raw.models : {};
   const connections = isObject(providers.connections) ? providers.connections : {};
 
   const name = typeof profile.name === 'string' ? profile.name.trim() : '';
@@ -209,6 +216,7 @@ export function normalizePrefs(raw: unknown): Prefs {
       default: oneOf(providers.default, PROVIDER_IDS, DEFAULT_PROVIDER),
       connections: nextConnections,
     },
+    models: { allowRemoteServers: bool(models.allowRemoteServers, false) },
   };
 }
 
@@ -239,6 +247,8 @@ export const MIGRATIONS: readonly Migration[] = [
       performance: { ...performance, followPower: true },
     };
   },
+  // 2 -> 3: custom models (Phase C); remote model servers stay off until the user allows them.
+  (prefs) => ({ ...prefs, models: { allowRemoteServers: false } }),
 ];
 
 /** Applies every migration from the document's version up to `target`. Exported for tests. */

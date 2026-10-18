@@ -1,4 +1,4 @@
-import { PROVIDER_IDS, type ProviderId } from '@command-center/protocol';
+import { LOCAL_RUNTIME_INFO, PROVIDER_IDS, type ProviderId } from '@command-center/protocol';
 import { Check, KeyRound, Loader2, Plus, RefreshCw, Terminal } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { cn } from '../../lib/cn';
@@ -19,6 +19,63 @@ const BADGES: Record<ConnectionState, { text: string; className: string }> = {
   unknown: { text: 'Not checked', className: 'bg-hover text-fg-muted' },
   off: { text: 'Not connected', className: 'bg-hover text-fg-muted' },
 };
+
+/** "On this computer" has runtimes, not a sign-in, so its badge says whether one is serving. */
+const LOCAL_BADGES: Record<ConnectionState, { text: string; className: string }> = {
+  connected: { text: 'Server running', className: 'bg-success/15 text-fg' },
+  needs_signin: { text: 'Not running', className: 'bg-hover text-fg-muted' },
+  not_installed: { text: 'No runtime installed', className: 'bg-hover text-fg-muted' },
+  unknown: { text: 'Not checked', className: 'bg-hover text-fg-muted' },
+  off: { text: 'Not checked', className: 'bg-hover text-fg-muted' },
+};
+
+/** Which local runtimes are installed and serving, and whether other computers may be used. */
+function LocalRuntimes() {
+  const runtimes = useProviders((s) => s.infos.local?.runtimes);
+  const allowRemote = usePrefs((s) => s.prefs.models.allowRemoteServers);
+  const setAllowRemote = usePrefs((s) => s.setAllowRemoteServers);
+  return (
+    <div className="flex flex-col gap-2">
+      {runtimes && (
+        <ul aria-label="Local runtimes" className="flex flex-col gap-1 text-[12px]">
+          {runtimes.map((r) => (
+            <li key={r.id} className="flex items-center gap-2">
+              <span
+                aria-hidden="true"
+                className={cn(
+                  'size-1.5 rounded-full',
+                  r.running ? 'bg-success' : r.installed ? 'bg-warning' : 'bg-fg-subtle',
+                )}
+              />
+              <span className="min-w-20">{LOCAL_RUNTIME_INFO[r.id].label}</span>
+              <span className="text-fg-muted">
+                {r.running
+                  ? `Running · ${r.models.length} model${r.models.length === 1 ? '' : 's'}`
+                  : r.installed
+                    ? 'Installed, not running'
+                    : 'Not installed'}
+              </span>
+            </li>
+          ))}
+        </ul>
+      )}
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <p className="text-[12px] text-fg-muted">Allow remote model servers</p>
+          <p id="allow-remote-hint" className="text-[11px] text-fg-subtle">
+            Off: only this computer (localhost) is used, and chats never leave it.
+          </p>
+        </div>
+        <Switch
+          label="Allow remote model servers"
+          describedBy="allow-remote-hint"
+          checked={allowRemote}
+          onChange={setAllowRemote}
+        />
+      </div>
+    </div>
+  );
+}
 
 /** Polls the providers while the user completes a sign-in in the terminal window. */
 function useSignInWatch(id: ProviderId) {
@@ -143,7 +200,7 @@ function ProviderCard({ id }: { id: ProviderId }) {
   // While the first check runs (the bridge may be starting), say so instead of "Not connected".
   const badge = checking
     ? { text: 'Checking…', className: 'bg-hover text-fg-muted' }
-    : BADGES[state];
+    : (id === 'local' ? LOCAL_BADGES : BADGES)[state];
 
   const signIn = async () => {
     setOpening(true);
@@ -181,9 +238,12 @@ function ProviderCard({ id }: { id: ProviderId }) {
               {badge.text}
             </span>
           </p>
-          <div className="mt-0.5">
-            <StatusDot provider={id} withLabel />
-          </div>
+          {/* A local server has no public service status. */}
+          {id !== 'local' && (
+            <div className="mt-0.5">
+              <StatusDot provider={id} withLabel />
+            </div>
+          )}
           <p className="mt-0.5 text-[12px] text-fg-muted">{meta.summary}</p>
         </div>
         <Switch
@@ -224,7 +284,9 @@ function ProviderCard({ id }: { id: ProviderId }) {
         </div>
       )}
 
-      {state === 'connected' && (
+      {id === 'local' && <LocalRuntimes />}
+
+      {state === 'connected' && id !== 'local' && (
         <p className="flex items-center gap-1.5 text-[12px] text-fg-muted">
           <Check size={12} className="text-success" aria-hidden="true" />
           {info?.authVia === 'apiKey' || connection.method === 'apiKey'

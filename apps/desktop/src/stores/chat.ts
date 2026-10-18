@@ -14,6 +14,7 @@ import { conversationsStore, titleFrom } from './conversations';
 import { usageStore } from './usage';
 import { secrets } from '../lib/secrets';
 import { usePrefs } from './prefs';
+import { customModelId, resolveCustomModel } from './custom-models';
 
 export interface ToolActivity {
   toolUseId: string;
@@ -240,17 +241,43 @@ export function createChatStore(deps: Partial<ChatDeps> = {}) {
       // request only and handed straight to the bridge; it is never kept in state.
       const connection = usePrefs.getState().prefs.providers.connections[conversation.provider];
       let apiKey: string | null = null;
-      if (conversation.provider !== 'claude' && connection.method !== 'subscription') {
+      if (
+        conversation.provider !== 'claude' &&
+        conversation.provider !== 'local' &&
+        connection.method !== 'subscription'
+      ) {
         apiKey = await secrets.get(conversation.provider).catch(() => null);
       }
+
+      // A Model Lab model (`cm:<id>`): the name its server knows, its presets, its server and its
+      // default system prompt (the chat's own system prompt still wins).
+      const custom = await resolveCustomModel(conversation.model);
+      if (customModelId(conversation.model) && !custom) {
+        setError(conversationId, {
+          code: 'model_not_found',
+          message:
+            'This chat uses a model that was removed from the Model Lab. Pick another model.',
+        });
+        return;
+      }
+      const model = custom ? custom.model : conversation.model;
+      const system = systemPrompt || custom?.systemPrompt;
+      const allowRemote =
+        conversation.provider === 'local' && usePrefs.getState().prefs.models.allowRemoteServers;
 
       const request: Omit<ChatRequest, 'type' | 'id'> = {
         messages,
         tools: conversation.toolsMode,
         ...(conversation.provider !== 'claude' ? { provider: conversation.provider } : {}),
         ...(apiKey ? { apiKey } : {}),
-        ...(conversation.model ? { model: conversation.model } : {}),
-        ...(systemPrompt ? { systemPrompt } : {}),
+        ...(model ? { model } : {}),
+        ...(system ? { systemPrompt: system } : {}),
+        // The chat's own overrides win over the model's presets, key by key.
+        ...(custom && (custom.params || conversation.modelParams)
+          ? { params: { ...custom.params, ...conversation.modelParams } }
+          : {}),
+        ...(custom?.baseUrl ? { baseUrl: custom.baseUrl } : {}),
+        ...(allowRemote ? { allowRemote } : {}),
         ...(conversation.toolsMode === 'readonly' && conversation.cwd
           ? { cwd: conversation.cwd }
           : {}),

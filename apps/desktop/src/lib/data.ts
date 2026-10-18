@@ -8,6 +8,7 @@ const TABLES = [
   'usage_windows',
   'prompts',
   'projects',
+  'custom_models',
 ] as const;
 export type Table = (typeof TABLES)[number];
 
