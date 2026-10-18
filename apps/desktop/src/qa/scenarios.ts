@@ -76,6 +76,13 @@ export const SCENARIOS: Record<ScenarioId, Scenario> = {
   },
   'open-settings-security': { label: 'Open Security', run: () => openSettings('Security') },
   'open-settings-agents': { label: 'Open AI agents', run: () => openSettings('AI agents') },
+  'open-model-lab': {
+    label: 'Open Model Lab',
+    run: () => {
+      useUiStore.getState().setView('models');
+      return 'Opened the Model Lab.';
+    },
+  },
   'open-settings-system': { label: 'Open System', run: () => openSettings('System') },
   'open-settings-appearance': {
     label: 'Open Appearance',

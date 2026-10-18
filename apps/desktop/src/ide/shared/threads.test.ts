@@ -16,6 +16,7 @@ const conv = (id: string, projectId: string | null, updatedAt: number): Conversa
   toolsMode: 'off',
   cwd: null,
   projectId,
+  modelParams: null,
 });
 
 const project = (id: string, name: string): Project => ({

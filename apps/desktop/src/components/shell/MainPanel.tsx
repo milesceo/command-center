@@ -16,6 +16,7 @@ const UsageView = lazy(() => import('../usage/UsageView').then((m) => ({ default
 const PromptsView = lazy(() =>
   import('../prompts/PromptsView').then((m) => ({ default: m.PromptsView })),
 );
+const ModelLab = lazy(() => import('../models/ModelLab').then((m) => ({ default: m.ModelLab })));
 const SettingsView = lazy(() =>
   import('../settings/SettingsView').then((m) => ({ default: m.SettingsView })),
 );
@@ -24,6 +25,7 @@ const VIEW_TITLES = {
   landing: 'Home',
   usage: 'Usage',
   prompts: 'Prompt library',
+  models: 'Model Lab',
   settings: 'Settings',
 } as const;
 
@@ -69,6 +71,10 @@ export function MainPanel() {
       ) : view === 'prompts' ? (
         <Suspense fallback={<ViewSkeleton label="prompts" />}>
           <PromptsView />
+        </Suspense>
+      ) : view === 'models' ? (
+        <Suspense fallback={<ViewSkeleton label="models" />}>
+          <ModelLab />
         </Suspense>
       ) : view === 'settings' ? (
         <Suspense fallback={<ViewSkeleton label="settings" />}>

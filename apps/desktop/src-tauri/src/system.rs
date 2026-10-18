@@ -253,6 +253,41 @@ pub async fn system_power_state() -> PowerState {
     }
 }
 
+/// Total physical memory in bytes (Apple Silicon shares it between CPU and GPU, so it bounds
+/// the size of a local model). `None` where it cannot be read.
+#[tauri::command]
+pub fn system_memory() -> Option<u64> {
+    total_memory()
+}
+
+#[cfg(target_os = "macos")]
+fn total_memory() -> Option<u64> {
+    let out = std::process::Command::new("/usr/sbin/sysctl")
+        .args(["-n", "hw.memsize"])
+        .output()
+        .ok()?;
+    String::from_utf8_lossy(&out.stdout).trim().parse().ok()
+}
+
+#[cfg(target_os = "linux")]
+fn total_memory() -> Option<u64> {
+    let text = std::fs::read_to_string("/proc/meminfo").ok()?;
+    mem_total_from_meminfo(&text)
+}
+
+#[cfg(not(any(target_os = "macos", target_os = "linux")))]
+fn total_memory() -> Option<u64> {
+    None
+}
+
+/// `MemTotal:       16314508 kB` → bytes.
+#[cfg_attr(not(target_os = "linux"), allow(dead_code))]
+fn mem_total_from_meminfo(text: &str) -> Option<u64> {
+    let line = text.lines().find(|l| l.starts_with("MemTotal:"))?;
+    let kb: u64 = line.split_whitespace().nth(1)?.parse().ok()?;
+    Some(kb * 1024)
+}
+
 /// App-level events. On macOS, clicking the Dock icon while the window is hidden (closed to the
 /// tray) shows it again, as Mac apps do.
 pub fn on_run_event(app: &AppHandle, event: tauri::RunEvent) {
@@ -323,6 +358,21 @@ mod tests {
         );
         assert!(!on_battery_from_pmset("Now drawing from 'UPS Power'\n"));
         assert!(!low_power_from_pmset(" lowpowermode 10\n"));
+    }
+
+    #[test]
+    fn reads_total_memory_from_meminfo() {
+        assert_eq!(
+            mem_total_from_meminfo("MemTotal:       16314508 kB\nMemFree: 1 kB\n"),
+            Some(16314508 * 1024)
+        );
+        assert_eq!(mem_total_from_meminfo("nothing"), None);
+    }
+
+    #[cfg(target_os = "macos")]
+    #[test]
+    fn this_mac_reports_its_memory() {
+        assert!(total_memory().is_some_and(|b| b > 1 << 30));
     }
 
     #[test]

@@ -49,6 +49,7 @@ export function settingsOf(c: Conversation): ConversationSettings {
     toolsMode: c.toolsMode,
     cwd: c.cwd,
     projectId: c.projectId,
+    modelParams: c.modelParams,
   };
 }
 

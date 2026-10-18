@@ -18,6 +18,7 @@ import { useLockStore } from './stores/lock';
 import { usePrefs } from './stores/prefs';
 import { projectsStore } from './stores/projects';
 import { promptsStore } from './stores/prompts';
+import { useCustomModels } from './stores/custom-models';
 import { usageStore } from './stores/usage';
 import { applyDisplaySettings, useSettings } from './stores/settings';
 import { useUiStore } from './stores/ui';
@@ -85,6 +86,7 @@ export function App() {
   useEffect(() => {
     void conversationsStore.getState().load();
     void promptsStore.getState().load();
+    void useCustomModels.getState().load();
     void projectsStore.getState().load();
   }, []);
 

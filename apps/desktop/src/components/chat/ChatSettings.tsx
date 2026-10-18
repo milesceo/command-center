@@ -12,6 +12,7 @@ import { useProjects } from '../../stores/projects';
 import { usePrompts } from '../../stores/prompts';
 import { VariablesForm } from '../prompts/VariablesForm';
 import { Button } from '../ui/button';
+import { ChatPresets } from './ChatPresets';
 
 async function pickFolder(): Promise<string | null> {
   if (!isTauri()) return window.prompt('Folder path for read-only file access:');
@@ -73,7 +74,7 @@ export function ChatSettings() {
         <div
           role="dialog"
           aria-label="Chat settings"
-          className="absolute bottom-9 left-0 z-20 w-80 rounded-panel border border-border-strong bg-elevated p-3 shadow-xl"
+          className="absolute bottom-9 left-0 z-20 max-h-[70vh] w-80 overflow-y-auto rounded-panel border border-border-strong bg-elevated p-3 shadow-xl"
         >
           <label className="block text-xs font-medium text-fg-muted" htmlFor="chat-project">
             Project
@@ -146,6 +147,8 @@ export function ChatSettings() {
             onBlur={saveWhenDone}
             className="selectable mt-1 w-full resize-none rounded-control border border-border bg-surface p-2 font-mono text-xs outline-none focus:border-border-strong"
           />
+
+          <ChatPresets key={`${activeId ?? 'draft'}:${settings.model ?? ''}`} />
 
           <fieldset className="mt-3">
             <legend className="text-xs font-medium text-fg-muted">File access</legend>

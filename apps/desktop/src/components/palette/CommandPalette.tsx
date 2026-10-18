@@ -14,6 +14,8 @@ import { useIdeStore } from '../../stores/ide';
 import { useLockStore } from '../../stores/lock';
 import { useQa } from '../../stores/qa';
 import { usePrompts } from '../../stores/prompts';
+import { useCustomModels } from '../../stores/custom-models';
+import { startChatWith } from '../models/start-chat';
 import { toast } from '../../stores/toast';
 import { useUiStore, type View } from '../../stores/ui';
 import { usePromptActions } from '../prompts/usePromptActions';
@@ -25,6 +27,7 @@ function useCommands(conversations: Conversation[]): {
   dialog: React.ReactNode;
 } {
   const prompts = usePrompts((s) => s.prompts);
+  const customModels = useCustomModels((s) => s.models);
   const actions = usePromptActions();
 
   const commands = useMemo(() => {
@@ -60,6 +63,23 @@ function useCommands(conversations: Conversation[]): {
         group: 'Actions',
         keywords: 'prompts snippets',
         run: goto('prompts'),
+      },
+      {
+        id: 'open-models',
+        title: 'Open Model Lab',
+        group: 'Actions',
+        keywords: 'models hugging face huggingface local ollama llama mlx lm studio gguf',
+        run: goto('models'),
+      },
+      {
+        id: 'add-model',
+        title: 'Add a model',
+        group: 'Actions',
+        keywords: 'hugging face huggingface gguf mlx local download',
+        run: () => {
+          goto('models')();
+          ui().setAddModelOpen(true);
+        },
       },
       { id: 'open-chat', title: 'Back to chat', group: 'Actions', run: goto('chat') },
       {
@@ -196,11 +216,18 @@ function useCommands(conversations: Conversation[]): {
               },
             },
       ),
+      ...customModels.map<Command>((m) => ({
+        id: `custom-model-${m.id}`,
+        title: `Chat with ${m.displayName}`,
+        group: 'Model',
+        keywords: `${m.model} ${m.tags.join(' ')} model lab`,
+        run: () => void startChatWith(m),
+      })),
     ];
     return list;
     // `actions` is rebuilt every render but only closes over setState, which is stable.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [conversations, prompts]);
+  }, [conversations, prompts, customModels]);
 
   return { commands, dialog: actions.dialog };
 }

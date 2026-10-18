@@ -44,6 +44,12 @@ fn migrations() -> Vec<Migration> {
             sql: include_str!("../migrations/0004_providers.sql"),
             kind: MigrationKind::Up,
         },
+        Migration {
+            version: 5,
+            description: "custom models (Model Lab)",
+            sql: include_str!("../migrations/0005_custom_models.sql"),
+            kind: MigrationKind::Up,
+        },
     ]
 }
 
@@ -192,7 +198,8 @@ pub fn run() {
             secrets::secret_delete,
             secrets::secret_wipe,
             system::system_set_close_behavior,
-            system::system_power_state
+            system::system_power_state,
+            system::system_memory
         ])
         .build(tauri::generate_context!())
         .expect("error while building Command Center")

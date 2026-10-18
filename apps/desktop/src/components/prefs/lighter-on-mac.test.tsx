@@ -36,7 +36,7 @@ beforeEach(() => {
   usePower.setState({ power: null });
   useProviders.setState({
     infos: {},
-    hasKey: { claude: false, openai: false, xai: false },
+    hasKey: { claude: false, openai: false, xai: false, huggingface: false, local: false },
     loading: false,
     error: null,
     refresh: () => Promise.resolve(),

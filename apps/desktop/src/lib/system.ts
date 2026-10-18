@@ -30,6 +30,12 @@ export const system = {
     return plugin.isEnabled();
   },
 
+  /** Total memory in bytes (Apple Silicon shares it with the GPU), or null when unknown. */
+  async memory(): Promise<number | null> {
+    if (!isTauri()) return null;
+    return invoke<number | null>('system_memory').catch(() => null);
+  },
+
   async setCloseBehavior(behavior: CloseBehavior): Promise<void> {
     if (!isTauri()) return;
     await invoke('system_set_close_behavior', { behavior });

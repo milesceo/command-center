@@ -1,7 +1,7 @@
 # AI providers
 
 How Command Center talks to each provider, what was researched, what is implemented and where the limits
-are. Researched 2026-10-15 from the providers' own documentation. Re-check before relying on
+are. Researched 2026-10-15 from the providers' own documentation (Hugging Face and local runtimes 2026-10-17). Re-check before relying on
 anything marked **unverified**; both vendors' CLIs are changing quickly.
 
 ## The rule
@@ -16,7 +16,7 @@ Mechanically:
 
 - `packages/bridge/src/providers/types.ts` defines the `Provider` interface (id, display name,
   auth methods, models, `authStatus`, streaming `chat` with a cancellable handle, optional `login`
-  and `usage`).
+  and `usage`, and `run` for the local provider's `local.run`).
 - `registry.ts` lists the adapters; the bridge routes `ChatRequest.provider` to one.
 - A provider's `login` only **opens the provider's own sign-in in a terminal window** (for example
   `codex login`); the user completes it there. Command Center polls `authStatus` while the card is open.
@@ -105,6 +105,66 @@ route has no such limit); `.cmd` shims are refused for the CLI route because a p
 passed through a shell safely.
 
 Sources: xAI developer docs (`docs.x.ai`: overview, Build CLI reference, headless scripting).
+
+## Hugging Face (cloud)
+
+Researched 2026-10-17 from Hugging Face's Inference Providers documentation and checked live where
+noted.
+
+- **Route:** the OpenAI-compatible router `POST https://router.huggingface.co/v1/chat/completions`
+  with `Authorization: Bearer <token>` and SSE streaming (`stream: true`,
+  `stream_options.include_usage`). The model is a Hub repo id; a suffix picks who serves it:
+  `:fastest`, `:cheapest` or a provider name (`openai/gpt-oss-20b:groq`). Without one the router
+  chooses.
+- **Token:** a fine-grained user access token with "Make calls to Inference Providers"
+  (huggingface.co/settings/tokens). It is an official route, so Command Center takes it as an API
+  key: stored in the OS credential store under `api-key:huggingface`, read for one request at a
+  time. Billing is the user's Hugging Face account (free accounts get a small monthly credit).
+- **Errors:** 401/403 → token problem, 402 → billing, 404 → no provider serves the model, 429 →
+  rate limited, 5xx → provider down. The mapping is shared with Grok (`openai-compat.ts`); the
+  exact codes the router returns for each case are **unverified** (no token was used here).
+- **Parameters:** temperature, top_p, max_tokens and up to 4 stop sequences are sent. top_k,
+  repetition penalty and context length are not part of the router's OpenAI schema and are not sent.
+- **The Hub API** (`GET /api/models?search=&filter=gguf|mlx&pipeline_tag=text-generation`,
+  `/api/models/{id}`, `/api/models/{id}/tree/main`) is read anonymously from the webview to search
+  and inspect models; it answers with CORS headers (checked live 2026-10-17). CSP `connect-src`
+  allows `https://huggingface.co` for this. Every field is validated and shown only as text.
+
+|             |                                                                        |
+| ----------- | ---------------------------------------------------------------------- |
+| Implemented | `providers/huggingface.ts`, `apps/desktop/src/lib/hf-hub.ts`           |
+| Auth status | Key present → signed in via API key; otherwise not connected           |
+| Models      | None built in; the user adds them in the Model Lab (`cm:<id>`)         |
+| Cost        | Not reported by the router; the Usage view shows a dash, never a price |
+
+## On this computer (local runtimes)
+
+Command Center never downloads or runs model weights itself. It drives the runtime the user
+installed through that runtime's own command and OpenAI-compatible server, and talks only to
+loopback addresses unless Settings > AI agents > "Allow remote model servers" is on (checked by the
+protocol parser and again by the adapter).
+
+| Runtime   | Command it runs (shown before it runs)                                                            | Server               | Status                                                                                                                                                                                                         |
+| --------- | ------------------------------------------------------------------------------------------------- | -------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Ollama    | `ollama run hf.co/<repo>[:<quant>]`; a file: a temporary Modelfile, `ollama create`, `ollama run` | `127.0.0.1:11434/v1` | **Verified 2026-10-18** with Ollama 0.40.4: pulled `Qwen/Qwen2.5-0.5B-Instruct-GGUF:Q4_K_M`, listed as `hf.co/…:Q4_K_M`, chat streamed with usage                                                              |
+| llama.cpp | `llama-server -hf <repo>[:<quant>] --port 8080`; a file: `-m <path> --alias <name>`               | `127.0.0.1:8080/v1`  | **Verified 2026-10-18** with Homebrew llama-server: the file route served and chatted (top_k and repetition_penalty accepted). The default port is changing to 9931 upstream, so the port is passed explicitly |
+| MLX-LM    | `mlx_lm.server --model <repo or folder> --port 8081 [--adapter-path <dir>]`                       | `127.0.0.1:8081/v1`  | **Unverified** (not installed here): flags from its README; `default_model` as the chat model for a folder is an assumption                                                                                    |
+| LM Studio | `lms get <repo>` or `lms import <path>`, then `lms server start`                                  | `127.0.0.1:1234/v1`  | **Unverified** (not installed here); the model identifier LM Studio assigns is guessed and can be edited in the model's settings                                                                               |
+
+- **Run in Terminal** (`local.run`) builds the line from validated parts only (repo ids, quant tags,
+  absolute paths, the runtime's resolved path), POSIX-quotes every part (`shellQuote`, shared from
+  `packages/protocol`, so the Model Lab shows the same line, with the bare program name where the
+  bridge uses its full path) and opens Terminal or iTerm, which prints the line and runs it only
+  when you press Enter there. Off macOS it returns the line to run by hand. The Ollama file route
+  runs its script through `/bin/sh -c`, so it works in any login shell (fish included).
+- **No redirects:** chat requests and status probes to local servers refuse HTTP redirects unless
+  remote servers are allowed, so a loopback port cannot bounce a chat to another computer.
+- **Status:** `GET <server>/models` with a 1 s timeout for each runtime, plus whether its command is
+  installed.
+- **Parameters:** temperature, top_p, top_k, max_tokens, stop and repetition_penalty are sent.
+  Context length is stored but not sent per chat (runtimes set it when they start).
+- **Memory:** the add dialog compares the chosen file's size with total memory (`system_memory`):
+  over 75 % warns, over 50 % notes it. Model files picked from disk have no size check yet.
 
 ## Adding a provider
 

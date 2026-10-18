@@ -38,7 +38,7 @@ beforeEach(() => {
   // The cards refresh on mount; keep that off the bridge.
   useProviders.setState({
     infos: {},
-    hasKey: { claude: false, openai: false, xai: false },
+    hasKey: { claude: false, openai: false, xai: false, huggingface: false, local: false },
     loading: false,
     error: null,
     refresh: () => Promise.resolve(),
@@ -91,7 +91,9 @@ describe('ProviderCards wording', () => {
     setPlatform('Win32');
     render(<ProviderCards />);
     expect(
-      cards().getByText(/API keys are stored in the Windows Credential Manager, so adding one/),
+      cards().getAllByText(
+        /API keys are stored in the Windows Credential Manager, so adding one/,
+      )[0],
     ).toBeTruthy();
   });
 
@@ -99,7 +101,7 @@ describe('ProviderCards wording', () => {
     setPlatform('MacIntel');
     render(<ProviderCards />);
     expect(
-      cards().getByText(/API keys are stored in the macOS Keychain, so adding one/),
+      cards().getAllByText(/API keys are stored in the macOS Keychain, so adding one/)[0],
     ).toBeTruthy();
     expect(screen.getByTestId('provider-cards').textContent).not.toContain('Credential Manager');
   });
@@ -108,17 +110,19 @@ describe('ProviderCards wording', () => {
     hoisted.secretsAvailable.current = true;
     setPlatform('MacIntel');
     render(<ProviderCards />);
-    expect(cards().getByText(/Stored only in the macOS Keychain, never in/)).toBeTruthy();
+    expect(cards().getAllByText(/Stored only in the macOS Keychain, never in/)[0]).toBeTruthy();
     cleanup();
 
     setPlatform('Win32');
     render(<ProviderCards />);
     expect(
-      cards().getByText(/Stored only in the Windows Credential Manager, never in/),
+      cards().getAllByText(/Stored only in the Windows Credential Manager, never in/)[0],
     ).toBeTruthy();
     cleanup();
 
-    useProviders.setState({ hasKey: { claude: false, openai: false, xai: true } });
+    useProviders.setState({
+      hasKey: { claude: false, openai: false, xai: true, huggingface: false, local: false },
+    });
     setPlatform('MacIntel');
     render(<ProviderCards />);
     expect(cards().getByText('API key saved in macOS Keychain.')).toBeTruthy();

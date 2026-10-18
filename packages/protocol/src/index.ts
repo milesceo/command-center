@@ -10,11 +10,28 @@
  * event: `chat.done` (completed or cancelled) or `error`.
  */
 
-/** Bumped on any breaking wire change so a stale sidecar can be detected. */
-export const PROTOCOL_VERSION = 4;
+import {
+  isHttpUrl,
+  isLoopbackUrl,
+  parseChatParams,
+  parseLocalRunRequest,
+  parseRuntimeStatuses,
+  type ChatParams,
+  type LocalRunRequest,
+  type RuntimeStatus,
+} from './models';
 
-/** Providers Command Center can talk to. `claude` is the original and the default. */
-export const PROVIDER_IDS = ['claude', 'openai', 'xai'] as const;
+export * from './models';
+
+/** Bumped on any breaking wire change so a stale sidecar can be detected. */
+export const PROTOCOL_VERSION = 5;
+
+/**
+ * Providers Command Center can talk to. `claude` is the original and the default. `huggingface`
+ * (Inference Providers, with the user's HF token) and `local` (a model server on this computer)
+ * were added in protocol 5.
+ */
+export const PROVIDER_IDS = ['claude', 'openai', 'xai', 'huggingface', 'local'] as const;
 export type ProviderId = (typeof PROVIDER_IDS)[number];
 export const DEFAULT_PROVIDER: ProviderId = 'claude';
 
@@ -41,7 +58,8 @@ export type BridgeRequest =
   | CancelRequest
   | UsageRequest
   | ProvidersRequest
-  | ProviderLoginRequest;
+  | ProviderLoginRequest
+  | LocalRunRequest;
 
 export interface PingRequest {
   type: 'ping';
@@ -83,6 +101,14 @@ export interface ChatRequest {
    * only. The bridge never logs, stores or echoes it.
    */
   apiKey?: string;
+  /** Sampling and length settings (custom models; protocol 5). Validated on both sides. */
+  params?: ChatParams;
+  /**
+   * The OpenAI-compatible server for the `local` provider. Must be on this computer unless
+   * `allowRemote` is set (the user's explicit Settings choice).
+   */
+  baseUrl?: string;
+  allowRemote?: boolean;
 }
 
 /** Stops the chat started by the request whose id is `targetId`. */
@@ -157,6 +183,8 @@ export interface ProviderInfo {
   models: ProviderModel[];
   /** Plain-language limits for the UI (what works, what does not). */
   note: string;
+  /** The `local` provider: each runtime's install and server state (protocol 5). */
+  runtimes?: RuntimeStatus[];
 }
 
 export interface ProvidersReportEvent {
@@ -407,6 +435,28 @@ function parseChatRequest(id: string, v: Json): ParseResult<ChatRequest> {
     if (!isString(v.apiKey)) return fail('invalid_message', '`apiKey` must be a string.');
     request.apiKey = v.apiKey;
   }
+  if (v.params !== undefined) {
+    const params = parseChatParams(v.params);
+    if (!params.ok) return fail('invalid_message', params.message);
+    request.params = params.value;
+  }
+  if (v.allowRemote !== undefined) {
+    if (typeof v.allowRemote !== 'boolean')
+      return fail('invalid_message', '`allowRemote` must be a boolean.');
+    request.allowRemote = v.allowRemote;
+  }
+  if (v.baseUrl !== undefined) {
+    const ok = request.allowRemote ? isHttpUrl(v.baseUrl) : isLoopbackUrl(v.baseUrl);
+    if (!ok) {
+      return fail(
+        'invalid_message',
+        request.allowRemote
+          ? '`baseUrl` must be an http(s) URL without credentials.'
+          : '`baseUrl` must be on this computer (localhost) unless remote servers are allowed.',
+      );
+    }
+    request.baseUrl = v.baseUrl as string;
+  }
   if (request.tools === 'readonly' && !request.cwd) {
     return fail('invalid_message', 'Read-only tools need a working directory (`cwd`).');
   }
@@ -443,6 +493,10 @@ export function parseRequest(line: string): ParseResult<BridgeRequest> {
     case 'provider.login':
       if (!isProviderId(v.provider)) return fail('invalid_message', 'Unknown `provider`.');
       return { ok: true, value: { type: 'provider.login', id: v.id, provider: v.provider } };
+    case 'local.run': {
+      const parsedRun = parseLocalRunRequest(v.id, v);
+      return parsedRun.ok ? parsedRun : fail('invalid_message', parsedRun.message);
+    }
     case 'cancel':
       if (!isString(v.targetId)) return fail('invalid_message', 'Cancel needs a `targetId`.');
       return { ok: true, value: { type: 'cancel', id: v.id, targetId: v.targetId } };
@@ -548,6 +602,8 @@ function parseProviders(raw: unknown): ProviderInfo[] | null {
       note: item.note,
     };
     if (item.authVia === 'subscription' || item.authVia === 'apiKey') info.authVia = item.authVia;
+    const runtimes = parseRuntimeStatuses(item.runtimes);
+    if (runtimes) info.runtimes = runtimes;
     out.push(info);
   }
   return out;

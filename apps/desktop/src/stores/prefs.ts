@@ -68,6 +68,7 @@ interface PrefsState {
   setAutostart: (enabled: boolean) => void;
   setCloseBehavior: (behavior: CloseBehavior) => void;
   setBridgeIdle: (minutes: BridgeIdleMinutes) => void;
+  setAllowRemoteServers: (allow: boolean) => void;
   setTier: (tier: TierId) => void;
   setFollowPower: (follow: boolean) => void;
   setAppearance: (patch: Partial<Prefs['appearance']>) => void;
@@ -110,6 +111,8 @@ export const usePrefs = create<PrefsState>()((set, get) => {
       patch((p) => ({ ...p, system: { ...p.system, closeBehavior } })),
     setBridgeIdle: (bridgeIdleMinutes) =>
       patch((p) => ({ ...p, system: { ...p.system, bridgeIdleMinutes } })),
+    setAllowRemoteServers: (allowRemoteServers) =>
+      patch((p) => ({ ...p, models: { allowRemoteServers } })),
     setTier: (tier) => patch((p) => ({ ...p, performance: { ...p.performance, tier } })),
     setFollowPower: (followPower) =>
       patch((p) => ({ ...p, performance: { ...p.performance, followPower } })),

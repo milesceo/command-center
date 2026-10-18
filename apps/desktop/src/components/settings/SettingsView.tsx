@@ -31,6 +31,7 @@ import { PerformanceControls } from '../prefs/PerformanceControls';
 import { ProviderCards } from '../prefs/ProviderCards';
 import { SystemControls } from '../prefs/SystemControls';
 import { StatusFeedRow } from '../status/StatusFeedRow';
+import { ModelPresetsSettings } from '../models/ModelPresetsSettings';
 import { AppLockSection } from './AppLockSection';
 import { Row, Section } from './parts';
 import { platformCopy } from '../../lib/platform-copy';
@@ -196,6 +197,7 @@ export function SettingsView() {
           hint={`Connect the providers you use. Subscription sign-in always goes through the provider's own official CLI; API keys live in the ${platformCopy.credentialStore()}.`}
         >
           <ProviderCards />
+          <ModelPresetsSettings />
           <StatusFeedRow />
           <Row
             label="Provider for new chats"

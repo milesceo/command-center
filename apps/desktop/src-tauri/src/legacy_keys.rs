@@ -395,7 +395,7 @@ mod tests {
         assert!(migrate_legacy_keys_once(&dir, &DeniedStore, true).is_err());
         let marker = std::fs::read_to_string(dir.join(LEGACY_MARKER)).unwrap();
         assert!(
-            marker.contains("\"skipped\":[\"claude\",\"openai\",\"xai\"]"),
+            marker.contains("\"skipped\":[\"claude\",\"openai\",\"xai\",\"huggingface\"]"),
             "{marker}"
         );
         assert_eq!(

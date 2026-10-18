@@ -1,4 +1,4 @@
-import type { BridgeError } from '@command-center/protocol';
+import type { BridgeError, ProviderId } from '@command-center/protocol';
 
 /** User-facing copy for a bridge error. The raw message is kept for a "details" disclosure. */
 export interface FriendlyError {
@@ -41,7 +41,15 @@ export function formatReset(resetsAt: number, now = Date.now()): string {
   return remaining > 0 ? `${day}${time} (in ${formatDuration(remaining)})` : `${day}${time}`;
 }
 
-export function describeError(error: BridgeError, now = Date.now()): FriendlyError {
+export function describeError(
+  error: BridgeError,
+  now = Date.now(),
+  provider?: ProviderId,
+): FriendlyError {
+  if (provider === 'huggingface' || provider === 'local') {
+    const own = describeModelLabError(error, provider);
+    if (own) return own;
+  }
   switch (error.code) {
     case 'auth_required':
       return {
@@ -94,6 +102,77 @@ export function describeError(error: BridgeError, now = Date.now()): FriendlyErr
         body: 'The request failed unexpectedly.',
         details: error.message,
       };
+  }
+}
+
+/**
+ * Copy for Hugging Face and local models, whose errors are not about a Claude login or plan.
+ * Null falls back to the shared wording (requests rejected, busy, unexpected).
+ */
+function describeModelLabError(
+  error: BridgeError,
+  provider: 'huggingface' | 'local',
+): FriendlyError | null {
+  const hf = provider === 'huggingface';
+  switch (error.code) {
+    case 'auth_required':
+      return hf
+        ? {
+            title: 'Hugging Face token needed',
+            body: 'Add a fine-grained token with "Make calls to Inference Providers" in Settings > AI agents, then retry.',
+            details: error.message,
+          }
+        : {
+            title: 'The model server refused the request',
+            body: 'It asked for credentials. Check the server address in the Model Lab.',
+            details: error.message,
+          };
+    case 'rate_limited':
+      return {
+        title: 'Slow down a little',
+        body: hf
+          ? 'Hugging Face is rate limiting requests. Try again in a moment.'
+          : 'The model server is busy. Try again in a moment.',
+      };
+    case 'overloaded':
+      return {
+        title: hf ? 'The provider is unavailable' : 'The model server had a problem',
+        body: hf
+          ? 'The Hugging Face provider serving this model is down or busy. Retry, or pick another provider suffix in the Model Lab.'
+          : 'Check its terminal window for errors, then retry.',
+        details: error.message,
+      };
+    case 'account':
+      return {
+        title: 'Hugging Face billing problem',
+        body: 'Your included credits may be used up. Check your Hugging Face billing page.',
+        details: error.message,
+      };
+    case 'model_not_found':
+      return {
+        title: 'Model unavailable',
+        body: hf
+          ? 'No Inference Provider serves this model right now. Try it on this computer instead, or pick another model.'
+          : 'The server does not have this model. Run it from the Model Lab, or fix the model name in its settings.',
+        details: error.message,
+      };
+    case 'internal':
+      if (/^Could not reach/.test(error.message)) {
+        return hf
+          ? {
+              title: "Couldn't reach Hugging Face",
+              body: 'Check your internet connection and retry.',
+              details: error.message,
+            }
+          : {
+              title: 'The model server is not running',
+              body: 'Start it from the Model Lab (Run in Terminal), wait until it says it is listening, then retry.',
+              details: error.message,
+            };
+      }
+      return null;
+    default:
+      return null;
   }
 }
 

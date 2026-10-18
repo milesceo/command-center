@@ -9,6 +9,21 @@ recorded here. The format follows
 
 ### Added
 
+- **Model Lab** (rail icon, or "Open Model Lab" in the palette): add models from Hugging Face by
+  searching the Hub, pasting a link, or picking a `.gguf` file or MLX folder already on your Mac,
+  then run them in the **Hugging Face cloud** (Inference Providers, with your own token kept in the
+  Keychain) or **on this computer** with Ollama, llama.cpp, MLX-LM or LM Studio. Local models show
+  the exact command with Copy and Run in Terminal; Command Center never downloads or runs weights
+  itself. Warnings for gated, non-chat and too-large models; per-model presets (temperature, top P,
+  top K, max tokens, stop, repetition penalty), a default system prompt and an MLX adapter folder; a
+  side-by-side test showing time to first text, tokens per second and tokens, with Save to
+  conversation.
+- Per-chat presets: Chat settings > Presets for this chat overrides a Model Lab model's temperature,
+  top P and max tokens for one conversation; Settings > AI agents > Model presets edits each model's
+  presets.
+- Settings > AI agents: a Hugging Face card for the token and an "On this computer" card showing
+  each runtime as installed or running, with "Allow remote model servers" (off: localhost only).
+
 - **A lite build for your own Mac** (`COMMAND_CENTER_LITE=1`): about 10 MB instead of 365 MB,
   using the Node.js and Claude Code already installed, with a clear message if either is missing.
 - **Settings > System > "Stop the AI helper when idle"** (default 10 minutes) and

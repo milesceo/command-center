@@ -343,6 +343,26 @@ describe('grok adapter (API key route)', () => {
     }
   });
 
+  it('keeps the original xAI wording in error details', async () => {
+    const messages: string[] = [];
+    for (const status of [401, 429, 402, 400, 503, 418]) {
+      const { ctx, events } = context({
+        fetch: async () => new Response('nope', { status }),
+      });
+      await grokProvider.chat(request({ apiKey: 'k' }), ctx).done;
+      const event = events[0];
+      messages.push(event?.type === 'error' ? event.error.message : '');
+    }
+    expect(messages).toEqual([
+      'xAI rejected the API key (HTTP 401). nope',
+      'Rate limited by xAI. nope',
+      'xAI billing problem. nope',
+      'xAI rejected the request. nope',
+      'xAI is unavailable (HTTP 503).',
+      'xAI returned HTTP 418. nope',
+    ]);
+  });
+
   it('turns an abort into a cancelled done', async () => {
     const { ctx, events } = context({
       fetch: (_url, init) =>
@@ -403,20 +423,40 @@ describe('grok adapter (official CLI route)', () => {
 // ---------------------------------------------------------------- registry and bridge
 
 describe('registry', () => {
-  it('registers Claude, ChatGPT and Grok with their official routes', async () => {
+  it('registers Claude, ChatGPT, Grok, Hugging Face and local models with their official routes', async () => {
     const registry = createRegistry();
-    expect([...registry.keys()].sort()).toEqual(['claude', 'openai', 'xai']);
+    expect([...registry.keys()].sort()).toEqual([
+      'claude',
+      'huggingface',
+      'local',
+      'openai',
+      'xai',
+    ]);
+    expect(registry.get('huggingface')!.authMethods).toEqual(['apiKey']);
+    expect(registry.get('local')!.authMethods).toEqual([]);
     expect(registry.get('claude')!.authMethods).toEqual(['subscription']);
     expect(registry.get('openai')!.authMethods).toEqual(['subscription']);
     expect(registry.get('xai')!.authMethods).toEqual(['apiKey', 'subscription']);
 
-    const { ctx } = context({ env: { PATH: '/nowhere' } });
+    // Linux: no macOS PATH extension, so nothing installed on the test machine is found.
+    const { ctx } = context({ env: { PATH: '/nowhere' }, platform: 'linux' });
     const infos = await describeProviders(registry, ctx, ['xai']);
     const xai = infos.find((p) => p.id === 'xai')!;
     expect(xai.auth).toBe('signed_in');
     expect(xai.authVia).toBe('apiKey');
     expect(infos.find((p) => p.id === 'openai')!.auth).toBe('not_installed');
-    for (const info of infos) expect(info.models.length).toBeGreaterThan(0);
+    // The original three ship models; Hugging Face and local models are the user's own.
+    for (const info of infos.filter((p) => ['claude', 'openai', 'xai'].includes(p.id))) {
+      expect(info.models.length).toBeGreaterThan(0);
+    }
+    expect(infos.find((p) => p.id === 'huggingface')).toMatchObject({
+      auth: 'signed_out',
+      models: [],
+    });
+    const local = infos.find((p) => p.id === 'local')!;
+    expect(local.runtimes?.map((r) => r.id)).toEqual(['ollama', 'llama.cpp', 'mlx', 'lmstudio']);
+    expect(local.runtimes?.every((r) => !r.running && !r.installed)).toBe(true);
+    expect(local.auth).toBe('not_installed');
   });
 });
 

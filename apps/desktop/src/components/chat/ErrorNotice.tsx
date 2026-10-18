@@ -1,6 +1,7 @@
 import type { BridgeError } from '@command-center/protocol';
 import { RefreshCw, TriangleAlert, X } from 'lucide-react';
 import { describeError } from '../../lib/errors';
+import { useActiveSettings } from '../../stores/conversations';
 import { Button } from '../ui/button';
 
 interface Props {
@@ -11,7 +12,9 @@ interface Props {
 
 /** Friendly failure message with an optional retry; technical text is tucked into "Details". */
 export function ErrorNotice({ error, onRetry, onDismiss }: Props) {
-  const friendly = describeError(error);
+  // Hugging Face and local models get their own wording; every other provider is unchanged.
+  const provider = useActiveSettings().provider;
+  const friendly = describeError(error, undefined, provider);
   return (
     <div
       role="alert"
