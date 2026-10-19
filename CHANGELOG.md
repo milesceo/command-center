@@ -84,6 +84,9 @@ recorded here. The format follows
 
 ### Changed
 
+- When a local model's engine crashes (for example Ollama running out of memory), the chat now
+  says so and tells you to restart Ollama from the menu bar, instead of pointing at a terminal
+  window.
 - Command Center opens faster and uses less memory: the background bridge starts on the first
   chat or provider check instead of at launch, the splash no longer waits for it, and it stops
   after a quiet period. Idle CPU on the lock and onboarding screens is about halved (the backdrop
