@@ -63,3 +63,18 @@ describe('describeUsageWarning', () => {
     expect(describeUsageWarning({})).toBe('Usage is getting high');
   });
 });
+
+describe('local model errors', () => {
+  it('tells the owner to restart Ollama when the engine crashes', () => {
+    const friendly = describeError(
+      { code: 'overloaded', message: 'the local model server is unavailable (HTTP 500).' },
+      undefined,
+      'local',
+    );
+    expect(friendly.title).toBe('The local model engine crashed');
+    expect(friendly.body).toMatch(/quit Ollama from the menu bar and open it again/);
+    expect(friendly.details).toMatch(/HTTP 500/);
+    // Other providers keep their own wording.
+    expect(describeError({ code: 'overloaded', message: 'x' }).title).toBe('Claude is overloaded');
+  });
+});

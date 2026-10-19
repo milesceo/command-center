@@ -136,10 +136,11 @@ function describeModelLabError(
       };
     case 'overloaded':
       return {
-        title: hf ? 'The provider is unavailable' : 'The model server had a problem',
+        title: hf ? 'The provider is unavailable' : 'The local model engine crashed',
+        // A crashed engine (often out of memory) refuses every request until it is restarted.
         body: hf
           ? 'The Hugging Face provider serving this model is down or busy. Retry, or pick another provider suffix in the Model Lab.'
-          : 'Check its terminal window for errors, then retry.',
+          : 'Restart it, then retry: for Ollama, quit Ollama from the menu bar and open it again. If it keeps happening, close other apps or pick a smaller model.',
         details: error.message,
       };
     case 'account':
