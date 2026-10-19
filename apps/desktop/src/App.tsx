@@ -19,6 +19,7 @@ import { usePrefs } from './stores/prefs';
 import { projectsStore } from './stores/projects';
 import { promptsStore } from './stores/prompts';
 import { useCustomModels } from './stores/custom-models';
+import { restorePlanFullWidth } from './lib/plan-full-width';
 import { usageStore } from './stores/usage';
 import { applyDisplaySettings, useSettings } from './stores/settings';
 import { useUiStore } from './stores/ui';
@@ -46,6 +47,9 @@ export function App() {
   // Tell Rust what closing the window should do (it applies before the webview loads on later
   // launches, but the saved preference is the source of truth), and listen to the tray menu.
   const closeBehavior = prefs.system.closeBehavior;
+  // A restart with full-width plan reading on: put the hidden panels back (the view is closed).
+  useEffect(() => restorePlanFullWidth(), []);
+
   useEffect(() => {
     void system.setCloseBehavior(closeBehavior).catch(() => undefined);
   }, [closeBehavior]);

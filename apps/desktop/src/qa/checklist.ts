@@ -894,4 +894,19 @@ export const QA_ITEMS: readonly QaItem[] = [
     setup: 'open-business-plans',
     rev: 1,
   },
+  {
+    id: 'PLAN-03',
+    area: 'plans',
+    title: 'Read a plan full width',
+    steps: [
+      'Open Business plans and press the panel button left of the plan title to hide the list; quit and reopen the app.',
+      'Press Read full width (the expand arrows), then press it again.',
+      'Press Read full width, then open another view from the rail and come back.',
+    ],
+    expected:
+      'The list stays hidden after reopening until you show it again. Full width gives the plan the whole window (no list, explorer or assistant) and its pages reflow to the wider layout; pressing it again, or leaving the view, puts back exactly what was open before.',
+    needs: 'mac-desktop',
+    setup: 'open-business-plans',
+    rev: 1,
+  },
 ];

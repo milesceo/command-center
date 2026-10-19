@@ -9,6 +9,14 @@ export type View = 'landing' | 'chat' | 'usage' | 'prompts' | 'models' | 'plans'
 /** `ide` is the editor-style shell; `classic` is the original sidebar-and-column chat layout. */
 export type Layout = 'ide' | 'classic';
 
+/** The panels full-width plan reading closed, so leaving it reopens exactly those. */
+export interface PlanFullWidth {
+  list: boolean;
+  sidebar: boolean;
+  assistant: boolean;
+  preview: boolean;
+}
+
 export const RIGHT_PANEL_MIN = 320;
 export const RIGHT_PANEL_MAX = 960;
 export const RIGHT_PANEL_DEFAULT = 480;
@@ -17,6 +25,10 @@ interface UiState {
   theme: Theme;
   layout: Layout;
   sidebarOpen: boolean;
+  /** The list beside a business plan; hidden to give the plan the full width. */
+  planListOpen: boolean;
+  /** What full-width plan reading hid (lib/plan-full-width.ts); null when it is off. */
+  planFullWidth: PlanFullWidth | null;
   rightPanelOpen: boolean;
   rightPanelWidth: number;
   /** Soft-wrap long lines in code blocks and diffs instead of scrolling horizontally. */
@@ -32,6 +44,7 @@ interface UiState {
   toggleTheme: () => void;
   setLayout: (layout: Layout) => void;
   toggleSidebar: () => void;
+  setPlanListOpen: (open: boolean) => void;
   toggleRightPanel: () => void;
   setRightPanelOpen: (open: boolean) => void;
   setRightPanelWidth: (width: number) => void;
@@ -54,6 +67,8 @@ export const useUiStore = create<UiState>()(
       theme: 'dark',
       layout: 'ide',
       sidebarOpen: true,
+      planListOpen: true,
+      planFullWidth: null,
       rightPanelOpen: false,
       rightPanelWidth: RIGHT_PANEL_DEFAULT,
       wrapCode: false,
@@ -68,6 +83,7 @@ export const useUiStore = create<UiState>()(
       toggleTheme: () => usePrefs.getState().setTheme(get().theme === 'dark' ? 'light' : 'dark'),
       setLayout: (layout) => set({ layout }),
       toggleSidebar: () => set((s) => ({ sidebarOpen: !s.sidebarOpen })),
+      setPlanListOpen: (planListOpen) => set({ planListOpen }),
       toggleRightPanel: () => set((s) => ({ rightPanelOpen: !s.rightPanelOpen })),
       setRightPanelOpen: (rightPanelOpen) => set({ rightPanelOpen }),
       setRightPanelWidth: (width) => set({ rightPanelWidth: clampPanelWidth(width) }),
