@@ -16,7 +16,7 @@ item has a one-click setup, Pass / Fail / Skip, and a button that opens a prefil
 4. A fix references the issue. Items whose question changed get a new `rev`, which clears the old
    answer. **Copy results** puts a Markdown report on the clipboard.
 
-Checklist version 1, 54 items.
+Checklist version 1, 56 items.
 
 ## Splash and Home
 
@@ -569,3 +569,25 @@ Needs the Mac desktop app. Panel setup: `open-settings-agents`.
 3. Send a message, then press "Use the model’s presets" and send another.
 
 **Expected:** The field placeholders show the model’s own values; the first reply uses temperature 1.2, the second the model’s 0.2 (visible in the runtime’s request log, e.g. llama-server’s terminal); other chats with the same model are unaffected.
+
+## Business plans
+
+### PLAN-01: Read the Short-Let Launch Plan in Command Center
+
+Needs the Mac desktop app. Panel setup: `open-business-plans`.
+
+1. If the Short-Let Launch Plan is not listed (a new computer), Add a plan and pick its downloaded HTML file.
+2. Click Business plans (the briefcase) in the left rail.
+3. Scroll the plan and use whatever it has: change a number in a calculator, tick a checklist box, press a Copy button.
+4. Switch to another view and back, then quit and reopen Command Center.
+
+**Expected:** Short-Let Launch Plan is first in the list and opens on its own; it looks like the artifact; the calculator updates; the plan is still there after reopening. Ticks are not kept (the sandbox has no storage), and Copy may select the text instead of copying it.
+
+### PLAN-02: Add, rename, reorder and remove a plan
+
+Needs the Mac desktop app. Panel setup: `open-business-plans`.
+
+1. Business plans > Add a plan, pick any .html file.
+2. Rename it, press Move to the top, then remove it.
+
+**Expected:** The new plan opens straight away; renaming and moving show at once; removing asks first and the Short-Let Launch Plan is first again.

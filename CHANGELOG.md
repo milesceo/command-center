@@ -9,6 +9,11 @@ recorded here. The format follows
 
 ### Added
 
+- **Business plans** (the briefcase in the left rail, or "Open business plans" in the palette): read
+  your own plans, such as the Short-Let Launch Plan artifact, inside Command Center. Add one from an
+  HTML file; plans stay in the local database on your computer, open in the same sandbox as code
+  previews (their calculators and in-page links work; external links do not open), and can be
+  renamed, reordered and removed.
 - **Model Lab** (rail icon, or "Open Model Lab" in the palette): add models from Hugging Face by
   searching the Hub, pasting a link, or picking a `.gguf` file or MLX folder already on your Mac,
   then run them in the **Hugging Face cloud** (Inference Providers, with your own token kept in the
