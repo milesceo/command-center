@@ -9,6 +9,9 @@ recorded here. The format follows
 
 ### Added
 
+- Business plans can be read wide: hide the plan list (remembered), or press **Read full width** to
+  hide the list, the explorer, the assistant and the preview panel at once; pressing it again or leaving the view puts
+  them back.
 - **Business plans** (the briefcase in the left rail, or "Open business plans" in the palette): read
   your own plans, such as the Short-Let Launch Plan artifact, inside Command Center. Add one from an
   HTML file; plans stay in the local database on your computer, open in the same sandbox as code

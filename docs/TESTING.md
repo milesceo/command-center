@@ -16,7 +16,7 @@ item has a one-click setup, Pass / Fail / Skip, and a button that opens a prefil
 4. A fix references the issue. Items whose question changed get a new `rev`, which clears the old
    answer. **Copy results** puts a Markdown report on the clipboard.
 
-Checklist version 1, 56 items.
+Checklist version 1, 57 items.
 
 ## Splash and Home
 
@@ -591,3 +591,13 @@ Needs the Mac desktop app. Panel setup: `open-business-plans`.
 2. Rename it, press Move to the top, then remove it.
 
 **Expected:** The new plan opens straight away; renaming and moving show at once; removing asks first and the Short-Let Launch Plan is first again.
+
+### PLAN-03: Read a plan full width
+
+Needs the Mac desktop app. Panel setup: `open-business-plans`.
+
+1. Open Business plans and press the panel button left of the plan title to hide the list; quit and reopen the app.
+2. Press Read full width (the expand arrows), then press it again.
+3. Press Read full width, then open another view from the rail and come back.
+
+**Expected:** The list stays hidden after reopening until you show it again. Full width gives the plan the whole window (no list, explorer or assistant) and its pages reflow to the wider layout; pressing it again, or leaving the view, puts back exactly what was open before.
