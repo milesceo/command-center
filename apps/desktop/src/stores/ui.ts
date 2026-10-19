@@ -5,7 +5,7 @@ import { usePrefs } from './prefs';
 export type Theme = 'dark' | 'light';
 export type DiffMode = 'inline' | 'split';
 /** `landing` is Home: the logo and the launch message. It is where every launch starts. */
-export type View = 'landing' | 'chat' | 'usage' | 'prompts' | 'models' | 'settings';
+export type View = 'landing' | 'chat' | 'usage' | 'prompts' | 'models' | 'plans' | 'settings';
 /** `ide` is the editor-style shell; `classic` is the original sidebar-and-column chat layout. */
 export type Layout = 'ide' | 'classic';
 

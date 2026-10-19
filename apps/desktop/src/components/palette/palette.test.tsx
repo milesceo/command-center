@@ -63,6 +63,15 @@ describe('CommandPalette', () => {
     expect(options[0]?.getAttribute('aria-selected')).toBe('true');
   });
 
+  it('has Open business plans, which opens the plans view', async () => {
+    const box = await open();
+    fireEvent.change(box, { target: { value: 'business plans' } });
+    expect(screen.getAllByRole('option')[0]?.textContent).toContain('Open business plans');
+    fireEvent.keyDown(box, { key: 'Enter' });
+    await waitFor(() => expect(useUiStore.getState().view).toBe('plans'));
+    expect(useUiStore.getState().paletteOpen).toBe(false);
+  });
+
   it('Escape closes it', async () => {
     const box = await open();
     fireEvent.keyDown(box, { key: 'Escape' });

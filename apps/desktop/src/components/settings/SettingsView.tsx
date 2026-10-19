@@ -23,6 +23,8 @@ import { useQa } from '../../stores/qa';
 import { Switch } from '../ui/switch';
 import { useUiStore } from '../../stores/ui';
 import { usageStore } from '../../stores/usage';
+import { usePlans } from '../../stores/plans';
+import { useCustomModels } from '../../stores/custom-models';
 import { Button } from '../ui/button';
 import { ConfirmDialog } from '../ui/dialog';
 import { Segmented } from '../ui/segmented';
@@ -51,7 +53,7 @@ const CLEAR_COPY: Record<ClearScope, { button: string; title: string; body: stri
   everything: {
     button: 'Clear all data',
     title: 'Delete everything?',
-    body: 'All conversations, messages, prompts, projects and usage history are deleted from this computer. Export first if you want a copy. This cannot be undone.',
+    body: 'All conversations, messages, prompts, projects, business plans, Model Lab models and usage history are deleted from this computer. Export first if you want a copy. This cannot be undone.',
   },
 };
 
@@ -111,6 +113,8 @@ export function SettingsView() {
         promptsStore.getState().load(),
         projectsStore.getState().load(),
         usageStore.getState().load(),
+        usePlans.getState().load(),
+        useCustomModels.getState().load(),
         refreshCounts(),
       ]);
       usageStore.setState({ conversationTotals: {} });
@@ -283,7 +287,7 @@ export function SettingsView() {
           </Row>
           <p className="text-xs text-fg-muted" data-testid="data-counts">
             {counts
-              ? `${counts.conversations} conversations, ${counts.messages} messages, ${counts.prompts} prompts, ${counts.projects} projects, ${counts.usageRows} usage records`
+              ? `${counts.conversations} conversations, ${counts.messages} messages, ${counts.prompts} prompts, ${counts.projects} projects, ${counts.plans} business plans, ${counts.usageRows} usage records`
               : error
                 ? `Could not read the database: ${error}`
                 : 'Counting…'}

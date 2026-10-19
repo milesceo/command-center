@@ -5,7 +5,7 @@ import { isTauri } from '../../lib/tauri';
 import { previewStore, VIEWPORT_WIDTHS, usePreview, type PreviewTab } from '../../stores/preview';
 import { useUiStore } from '../../stores/ui';
 
-interface Frame {
+export interface Frame {
   /** Unique per build; the page tags its console messages with it and stale ones are dropped. */
   id: string;
   src?: string;
@@ -19,7 +19,7 @@ let builds = 0;
  * Rust side and loaded from the isolated `preview:` scheme; in a plain browser
  * (web preview, tests) it falls back to `srcdoc`.
  */
-async function publish(id: string, html: string): Promise<Frame> {
+export async function publishPreview(id: string, html: string): Promise<Frame> {
   if (isTauri()) {
     const { invoke, convertFileSrc } = await import('@tauri-apps/api/core');
     await invoke('preview_set', { id, html });
@@ -56,7 +56,7 @@ export function PreviewFrame({ tab }: { tab: PreviewTab }) {
         } else {
           html = buildSvgDocument(await renderMermaid(tab.source, theme), id, theme);
         }
-        const next = await publish(id, html);
+        const next = await publishPreview(id, html);
         if (current) {
           setError(null);
           setFrame(next);
