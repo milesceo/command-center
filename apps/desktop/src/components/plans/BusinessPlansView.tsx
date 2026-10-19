@@ -1,6 +1,17 @@
-import { ArrowUpToLine, FileText, Pencil, Plus, Trash2 } from 'lucide-react';
+import {
+  ArrowUpToLine,
+  FileText,
+  Maximize2,
+  Minimize2,
+  PanelLeftClose,
+  PanelLeftOpen,
+  Pencil,
+  Plus,
+  Trash2,
+} from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { getDb } from '../../lib/db';
+import { enterPlanFullWidth, restorePlanFullWidth } from '../../lib/plan-full-width';
 import { buildHtmlDocument } from '../../lib/preview-doc';
 import {
   getPlan,
@@ -12,6 +23,7 @@ import {
 } from '../../lib/repo-plans';
 import { cn } from '../../lib/cn';
 import { usePlans } from '../../stores/plans';
+import { useUiStore } from '../../stores/ui';
 import { toast } from '../../stores/toast';
 import { publishPreview, type Frame } from '../preview/PreviewFrame';
 import { Button } from '../ui/button';
@@ -100,6 +112,8 @@ export function BusinessPlansView() {
   const selectedId = usePlans((s) => s.selectedId);
   const fileInput = useRef<HTMLInputElement>(null);
   const renameButton = useRef<HTMLButtonElement>(null);
+  const listOpen = useUiStore((s) => s.planListOpen);
+  const fullWidth = useUiStore((s) => s.planFullWidth !== null);
   const [renaming, setRenaming] = useState<PlanSummary | null>(null);
   const [removing, setRemoving] = useState<PlanSummary | null>(null);
 
@@ -107,7 +121,15 @@ export function BusinessPlansView() {
     if (!loaded) void usePlans.getState().load();
   }, [loaded]);
 
+  // Leaving Business plans puts the layout back.
+  useEffect(() => () => restorePlanFullWidth(), []);
+
   const selected = plans.find((p) => p.id === selectedId) ?? plans[0] ?? null;
+
+  // The full-width button lives in the reader; with no plan left, nothing could turn it off.
+  useEffect(() => {
+    if (loaded && !selected) restorePlanFullWidth();
+  }, [loaded, selected]);
 
   const importFile = async (file: File | undefined) => {
     if (!file) return;
@@ -174,31 +196,45 @@ export function BusinessPlansView() {
         </div>
       ) : (
         <div className="flex min-h-0 flex-1">
-          <nav
-            aria-label="Plans"
-            className="flex w-44 shrink-0 flex-col gap-0.5 overflow-y-auto border-r border-border p-2"
-          >
-            {plans.map((p) => (
-              <button
-                key={p.id}
-                type="button"
-                aria-current={selected?.id === p.id ? 'page' : undefined}
-                onClick={() => usePlans.getState().select(p.id)}
-                className={cn(
-                  'flex items-start gap-2 rounded-control px-2 py-1.5 text-left text-xs hover:bg-hover',
-                  selected?.id === p.id ? 'bg-hover text-fg' : 'text-fg-muted',
-                )}
-              >
-                <FileText size={13} aria-hidden className="mt-0.5 shrink-0" />
-                <span className="min-w-0 break-words">{p.title}</span>
-              </button>
-            ))}
-          </nav>
+          {listOpen && (
+            <nav
+              id="plan-list"
+              aria-label="Plans"
+              className="flex w-44 shrink-0 flex-col gap-0.5 overflow-y-auto border-r border-border p-2"
+            >
+              {plans.map((p) => (
+                <button
+                  key={p.id}
+                  type="button"
+                  aria-current={selected?.id === p.id ? 'page' : undefined}
+                  onClick={() => usePlans.getState().select(p.id)}
+                  className={cn(
+                    'flex items-start gap-2 rounded-control px-2 py-1.5 text-left text-xs hover:bg-hover',
+                    selected?.id === p.id ? 'bg-hover text-fg' : 'text-fg-muted',
+                  )}
+                >
+                  <FileText size={13} aria-hidden className="mt-0.5 shrink-0" />
+                  <span className="min-w-0 break-words">{p.title}</span>
+                </button>
+              ))}
+            </nav>
+          )}
           {selected && (
             <section aria-label="Plan reader" className="flex min-w-0 flex-1 flex-col">
               <div className="flex shrink-0 items-center justify-between gap-2 border-b border-border px-3 py-1.5">
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  aria-label={listOpen ? 'Hide the plan list' : 'Show the plan list'}
+                  aria-expanded={listOpen}
+                  aria-controls={listOpen ? 'plan-list' : undefined}
+                  title={listOpen ? 'Hide the plan list' : 'Show the plan list'}
+                  onClick={() => useUiStore.getState().setPlanListOpen(!listOpen)}
+                >
+                  {listOpen ? <PanelLeftClose size={14} /> : <PanelLeftOpen size={14} />}
+                </Button>
                 <p
-                  className="min-w-0 truncate text-xs text-fg-muted"
+                  className="min-w-0 flex-1 truncate text-xs text-fg-muted"
                   title={
                     selected.source ? `${selected.title} (${selected.source})` : selected.title
                   }
@@ -206,6 +242,16 @@ export function BusinessPlansView() {
                   {selected.title}
                 </p>
                 <div className="flex shrink-0 items-center gap-0.5">
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    aria-pressed={fullWidth}
+                    aria-label="Read full width"
+                    title="Read full width"
+                    onClick={fullWidth ? restorePlanFullWidth : enterPlanFullWidth}
+                  >
+                    {fullWidth ? <Minimize2 size={14} /> : <Maximize2 size={14} />}
+                  </Button>
                   {plans[0]?.id !== selected.id && (
                     <Button
                       variant="ghost"

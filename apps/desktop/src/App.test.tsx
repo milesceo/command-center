@@ -321,3 +321,20 @@ describe('tray and app menu', () => {
     expect(useUiStore.getState().view).toBe('chat');
   });
 });
+
+describe('full-width plan reading', () => {
+  it('a launch after quitting with full width on puts the hidden panels back', () => {
+    // As saved by a session that quit while reading a plan full width.
+    useUiStore.setState({
+      planListOpen: false,
+      sidebarOpen: false,
+      planFullWidth: { list: true, sidebar: true, assistant: false, preview: false },
+    });
+    render(<App />);
+    expect(useUiStore.getState()).toMatchObject({
+      planFullWidth: null,
+      planListOpen: true,
+      sidebarOpen: true,
+    });
+  });
+});
