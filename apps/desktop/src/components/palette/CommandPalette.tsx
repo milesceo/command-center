@@ -65,6 +65,13 @@ function useCommands(conversations: Conversation[]): {
         run: goto('prompts'),
       },
       {
+        id: 'open-plans',
+        title: 'Open business plans',
+        group: 'Actions',
+        keywords: 'business plan short let launch documents',
+        run: goto('plans'),
+      },
+      {
         id: 'open-models',
         title: 'Open Model Lab',
         group: 'Actions',

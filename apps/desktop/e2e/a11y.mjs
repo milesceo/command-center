@@ -27,14 +27,37 @@ const stubHub = (context) =>
     });
   });
 
-async function audit(page, label) {
+const insertPlan = h.db.prepare(
+  `INSERT INTO business_plans (id, title, html, source, position, created_at, updated_at)
+   VALUES (?, ?, ?, ?, ?, ?, ?)`,
+);
+const seedPlan = () => {
+  const now = Date.now();
+  insertPlan.run(
+    'a11y-plan',
+    'A11y test plan',
+    '<!doctype html><html lang="en"><head><title>A11y test plan</title></head>' +
+      '<body><main><h1>Test plan</h1><p>Fixture text for the accessibility audit.</p></main></body></html>',
+    'a11y-test-plan.html',
+    0,
+    now,
+    now,
+  );
+};
+
+// `iframes: false` audits the app around a sandboxed document without descending into it: a
+// plan's own markup is the owner's, and axe cannot be injected into the opaque-origin frame.
+async function audit(page, label, { iframes = true } = {}) {
   await page.addScriptTag({ path: axePath });
-  const result = await page.evaluate(() =>
-    // eslint-disable-next-line no-undef
-    axe.run(document, {
-      resultTypes: ['violations'],
-      runOnly: ['wcag2a', 'wcag2aa', 'best-practice'],
-    }),
+  const result = await page.evaluate(
+    (iframes) =>
+      // eslint-disable-next-line no-undef
+      axe.run(document, {
+        iframes,
+        resultTypes: ['violations'],
+        runOnly: ['wcag2a', 'wcag2aa', 'best-practice'],
+      }),
+    iframes,
   );
   for (const v of result.violations) {
     const bad = v.impact === 'serious' || v.impact === 'critical';
@@ -47,8 +70,10 @@ async function audit(page, label) {
 }
 
 for (const theme of ['dark', 'light']) {
-  // Each theme starts with no Model Lab models (the database is shared between launches).
+  // Each theme starts with no Model Lab models and no business plans (the database is shared
+  // between launches).
   h.db.exec('DELETE FROM custom_models');
+  h.db.exec('DELETE FROM business_plans');
   const app = await h.launch({ theme, setup: stubHub });
   const { page } = app;
   const nav = (name) =>
@@ -89,6 +114,23 @@ for (const theme of ['dark', 'light']) {
   await addDialog.waitFor({ state: 'detached' });
   await page.getByRole('list', { name: 'Your models' }).waitFor();
   await audit(page, `${theme}: models (list)`);
+
+  await nav('Business plans').click();
+  await page.getByTestId('business-plans').waitFor();
+  await page.getByText('No plans yet').waitFor();
+  await audit(page, `${theme}: business plans (empty)`);
+  // A harmless test plan (the repository is public: never a real plan), seeded through the
+  // harness database. The plans store keeps its list in memory, so reload to read it.
+  seedPlan();
+  await page.reload();
+  await nav('Business plans').waitFor();
+  await nav('Business plans').click();
+  await page.getByRole('navigation', { name: 'Plans' }).waitFor();
+  await page
+    .frameLocator('iframe[title="A11y test plan"]')
+    .getByRole('heading', { name: 'Test plan' })
+    .waitFor();
+  await audit(page, `${theme}: business plans (one plan)`, { iframes: false });
 
   await nav('Settings').click();
   await page.getByTestId('settings-view').waitFor();

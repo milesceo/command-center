@@ -22,6 +22,9 @@ const PromptsView = lazy(() =>
 const ModelLab = lazy(() =>
   import('../components/models/ModelLab').then((m) => ({ default: m.ModelLab })),
 );
+const BusinessPlansView = lazy(() =>
+  import('../components/plans/BusinessPlansView').then((m) => ({ default: m.BusinessPlansView })),
+);
 const SettingsView = lazy(() =>
   import('../components/settings/SettingsView').then((m) => ({ default: m.SettingsView })),
 );
@@ -30,6 +33,7 @@ const VIEW_TITLES: Record<Exclude<View, 'chat' | 'landing'>, string> = {
   usage: 'Usage',
   prompts: 'Prompt library',
   models: 'Model Lab',
+  plans: 'Business plans',
   settings: 'Settings',
 };
 
@@ -76,6 +80,8 @@ function ViewPane({ view }: { view: Exclude<View, 'chat' | 'landing'> }) {
             <PromptsView />
           ) : view === 'models' ? (
             <ModelLab />
+          ) : view === 'plans' ? (
+            <BusinessPlansView />
           ) : (
             <SettingsView />
           )}

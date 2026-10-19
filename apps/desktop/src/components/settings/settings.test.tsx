@@ -17,8 +17,11 @@ vi.mock('../../lib/save-file', () => ({
 }));
 
 import * as repo from '../../lib/repo';
+import * as plans from '../../lib/repo-plans';
 import * as prompts from '../../lib/repo-prompts';
 import { DEFAULT_SETTINGS } from '../../lib/types';
+import { useCustomModels } from '../../stores/custom-models';
+import { usePlans } from '../../stores/plans';
 import { useSettings } from '../../stores/settings';
 import { usePrefs } from '../../stores/prefs';
 import { SettingsView } from './SettingsView';
@@ -107,6 +110,61 @@ describe('SettingsView', () => {
     await waitFor(() =>
       expect(screen.getByTestId('data-counts').textContent).toContain('0 conversations'),
     );
+  });
+});
+
+describe('SettingsView and business plans', () => {
+  beforeEach(async () => {
+    // Harmless fixture only: the repository is public.
+    await plans.createPlan(hoisted.db, {
+      title: 'Test plan',
+      html: '<p>fixture</p>',
+      source: null,
+    });
+    await usePlans.getState().load();
+    useCustomModels.setState({ models: [], loaded: false, error: null });
+  });
+
+  it('counts business plans', async () => {
+    render(<SettingsView />);
+    await waitFor(() =>
+      expect(screen.getByTestId('data-counts').textContent).toContain('1 business plans'),
+    );
+  });
+
+  it('names business plans in the Clear all data confirmation', () => {
+    render(<SettingsView />);
+    fireEvent.click(screen.getByRole('button', { name: 'Clear all data' }));
+    expect(screen.getByRole('alertdialog').textContent).toContain('business plans');
+  });
+
+  it('Clear all data empties the Business plans list and reloads Model Lab models', async () => {
+    expect(usePlans.getState().plans).toHaveLength(1);
+    render(<SettingsView />);
+    fireEvent.click(screen.getByRole('button', { name: 'Clear all data' }));
+    fireEvent.click(
+      within(screen.getByRole('alertdialog')).getByRole('button', { name: 'Delete' }),
+    );
+    await waitFor(() =>
+      expect(screen.getByTestId('data-counts').textContent).toContain('0 business plans'),
+    );
+    expect(await plans.listPlans(hoisted.db)).toEqual([]);
+    expect(usePlans.getState().plans).toEqual([]);
+    expect(usePlans.getState().selectedId).toBeNull();
+    expect(useCustomModels.getState().loaded).toBe(true);
+  });
+
+  it('clearing prompts and projects keeps business plans', async () => {
+    render(<SettingsView />);
+    fireEvent.click(screen.getByRole('button', { name: 'Clear prompts and projects' }));
+    fireEvent.click(
+      within(screen.getByRole('alertdialog')).getByRole('button', { name: 'Delete' }),
+    );
+    await waitFor(() =>
+      expect(screen.getByTestId('data-counts').textContent).toContain('0 prompts'),
+    );
+    expect(screen.getByTestId('data-counts').textContent).toContain('1 business plans');
+    expect(usePlans.getState().plans.map((p) => p.title)).toEqual(['Test plan']);
   });
 });
 

@@ -18,6 +18,7 @@ export const QA_AREAS = [
   'macos',
   'performance',
   'models',
+  'plans',
 ] as const;
 export type QaArea = (typeof QA_AREAS)[number];
 
@@ -33,6 +34,7 @@ export const AREA_LABELS: Record<QaArea, string> = {
   macos: 'macOS',
   performance: 'Lighter runtime',
   models: 'Model Lab',
+  plans: 'Business plans',
 };
 
 /** What a scenario button in the panel can do for you (see `scenarios.ts`). */
@@ -42,6 +44,7 @@ export const SCENARIO_IDS = [
   'open-settings-security',
   'open-settings-agents',
   'open-model-lab',
+  'open-business-plans',
   'open-settings-system',
   'open-settings-appearance',
   'tier-lightest',
@@ -859,6 +862,36 @@ export const QA_ITEMS: readonly QaItem[] = [
       'The field placeholders show the model\u2019s own values; the first reply uses temperature 1.2, the second the model\u2019s 0.2 (visible in the runtime\u2019s request log, e.g. llama-server\u2019s terminal); other chats with the same model are unaffected.',
     needs: 'mac-desktop',
     setup: 'open-settings-agents',
+    rev: 1,
+  },
+  {
+    id: 'PLAN-01',
+    area: 'plans',
+    title: 'Read the Short-Let Launch Plan in Command Center',
+    steps: [
+      'If the Short-Let Launch Plan is not listed (a new computer), Add a plan and pick its downloaded HTML file.',
+      'Click Business plans (the briefcase) in the left rail.',
+      'Scroll the plan and use whatever it has: change a number in a calculator, tick a checklist box, press a Copy button.',
+      'Switch to another view and back, then quit and reopen Command Center.',
+    ],
+    expected:
+      'Short-Let Launch Plan is first in the list and opens on its own; it looks like the artifact; the calculator updates; the plan is still there after reopening. Ticks are not kept (the sandbox has no storage), and Copy may select the text instead of copying it.',
+    needs: 'mac-desktop',
+    setup: 'open-business-plans',
+    rev: 1,
+  },
+  {
+    id: 'PLAN-02',
+    area: 'plans',
+    title: 'Add, rename, reorder and remove a plan',
+    steps: [
+      'Business plans > Add a plan, pick any .html file.',
+      'Rename it, press Move to the top, then remove it.',
+    ],
+    expected:
+      'The new plan opens straight away; renaming and moving show at once; removing asks first and the Short-Let Launch Plan is first again.',
+    needs: 'mac-desktop',
+    setup: 'open-business-plans',
     rev: 1,
   },
 ];

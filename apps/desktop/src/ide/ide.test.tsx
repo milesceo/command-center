@@ -108,6 +108,43 @@ describe('editor shell', () => {
     await waitFor(() => expect(screen.getByLabelText('Welcome')).toBeTruthy());
   });
 
+  it('shows Business plans in the activity bar and toggles its view', async () => {
+    const { usePlans } = await import('../stores/plans');
+    usePlans.setState({ plans: [], loaded: false, error: null, selectedId: null });
+    render(<App />);
+    const rail = screen.getByRole('navigation', { name: 'Activity' });
+    const labels = within(rail)
+      .getAllByRole('button')
+      .map((b) => b.getAttribute('aria-label'));
+    // Right after Home and Explorer.
+    expect(labels.slice(0, 3)).toEqual(['Home', 'Explorer', 'Business plans']);
+    const button = within(rail).getByRole('button', { name: 'Business plans' });
+    expect(button.getAttribute('aria-pressed')).toBe('false');
+
+    fireEvent.click(button);
+    expect(await screen.findByRole('heading', { name: 'Business plans' })).toBeTruthy();
+    expect(await screen.findByText('No plans yet')).toBeTruthy();
+    expect(useUiStore.getState().view).toBe('plans');
+    expect(button.getAttribute('aria-pressed')).toBe('true');
+
+    fireEvent.click(button);
+    await waitFor(() => expect(screen.getByLabelText('Welcome')).toBeTruthy());
+    expect(useUiStore.getState().view).toBe('chat');
+  });
+
+  it('opens Business plans from the classic Library list', async () => {
+    act(() => useUiStore.getState().setLayout('classic'));
+    render(<App />);
+    const library = screen.getByRole('navigation', { name: 'Library' });
+    const names = within(library)
+      .getAllByRole('button')
+      .map((b) => b.textContent?.trim());
+    expect(names[0]).toBe('Business plans');
+    fireEvent.click(within(library).getByRole('button', { name: 'Business plans' }));
+    expect(await screen.findByTestId('business-plans')).toBeTruthy();
+    expect(useUiStore.getState().view).toBe('plans');
+  });
+
   it('switches to the classic layout and back from the layout flag', () => {
     render(<App />);
     act(() => useUiStore.getState().setLayout('classic'));

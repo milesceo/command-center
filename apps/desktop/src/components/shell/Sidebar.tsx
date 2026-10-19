@@ -1,4 +1,13 @@
-import { BarChart3, BookText, Boxes, Command, Keyboard, Plus, Settings } from 'lucide-react';
+import {
+  BarChart3,
+  BookText,
+  Boxes,
+  Briefcase,
+  Command,
+  Keyboard,
+  Plus,
+  Settings,
+} from 'lucide-react';
 import { conversationsStore } from '../../stores/conversations';
 import { useUiStore } from '../../stores/ui';
 import { Button } from '../ui/button';
@@ -37,6 +46,7 @@ export function Sidebar() {
       <nav aria-label="Library" className="flex flex-col gap-0.5 border-t border-border p-2">
         {(
           [
+            ['plans', 'Business plans', Briefcase],
             ['prompts', 'Prompts', BookText],
             ['models', 'Model Lab', Boxes],
             ['usage', 'Usage', BarChart3],

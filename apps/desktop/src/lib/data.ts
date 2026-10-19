@@ -9,6 +9,7 @@ const TABLES = [
   'prompts',
   'projects',
   'custom_models',
+  'business_plans',
 ] as const;
 export type Table = (typeof TABLES)[number];
 
@@ -56,6 +57,7 @@ export interface DataCounts {
   messages: number;
   prompts: number;
   projects: number;
+  plans: number;
   usageRows: number;
 }
 
@@ -67,6 +69,7 @@ export async function countData(db: Db): Promise<DataCounts> {
     messages: await count('messages'),
     prompts: await count('prompts'),
     projects: await count('projects'),
+    plans: await count('business_plans'),
     usageRows: await count('usage_log'),
   };
 }

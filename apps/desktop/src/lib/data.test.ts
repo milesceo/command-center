@@ -69,6 +69,7 @@ describe('data export and clear', () => {
       messages: 1,
       prompts: 1,
       projects: 1,
+      plans: 0,
       usageRows: 1,
     });
   });
@@ -81,6 +82,7 @@ describe('data export and clear', () => {
       messages: 1,
       prompts: 1,
       projects: 1,
+      plans: 0,
       usageRows: 0,
     });
   });
@@ -94,6 +96,7 @@ describe('data export and clear', () => {
       conversations: 1,
       prompts: 0,
       projects: 0,
+      plans: 0,
       usageRows: 1,
     });
   });
@@ -106,6 +109,7 @@ describe('data export and clear', () => {
       messages: 0,
       prompts: 0,
       projects: 0,
+      plans: 0,
       usageRows: 0,
     });
   });
