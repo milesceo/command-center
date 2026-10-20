@@ -9,6 +9,8 @@ recorded here. The format follows
 
 ### Added
 
+- **Delete a model's chats** from the Model Lab: the new button on each model card deletes every
+  chat set to that model (it shows how many and asks first); the model itself stays.
 - Delete a chat from the Explorer in the editor layout: hover a chat and press the bin icon, then
   confirm. (The classic layout already had this.)
 - Business plans can be read wide: hide the plan list (remembered), or press **Read full width** to
