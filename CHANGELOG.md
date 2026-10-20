@@ -9,6 +9,8 @@ recorded here. The format follows
 
 ### Added
 
+- Delete a chat from the Explorer in the editor layout: hover a chat and press the bin icon, then
+  confirm. (The classic layout already had this.)
 - Business plans can be read wide: hide the plan list (remembered), or press **Read full width** to
   hide the list, the explorer, the assistant and the preview panel at once; pressing it again or leaving the view puts
   them back.

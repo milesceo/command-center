@@ -16,7 +16,7 @@ item has a one-click setup, Pass / Fail / Skip, and a button that opens a prefil
 4. A fix references the issue. Items whose question changed get a new `rev`, which clears the old
    answer. **Copy results** puts a Markdown report on the clipboard.
 
-Checklist version 1, 57 items.
+Checklist version 1, 58 items.
 
 ## Splash and Home
 
@@ -181,6 +181,15 @@ Needs the Windows desktop app. Panel setup: `open-settings-system`.
 4. Turn the setting off again and check Task Manager.
 
 **Expected:** Command Center appears in Startup apps when on and starts after signing in; it is gone from the list when off.
+
+### SHELL-03: Delete a chat from the Explorer
+
+Needs the Mac desktop app.
+
+1. In the editor layout, hover a chat in the Explorer and press the bin icon; press Cancel.
+2. Press the bin again and Delete. Then press Tab to a chat row and Tab once more to its bin, and press Enter.
+
+**Expected:** Cancel keeps the chat; Delete removes it and its messages; the bin shows when the row is hovered or has keyboard focus, and after deleting, focus is in the Explorer filter box. In both themes the bin turns red on hover and the open chat row keeps its highlight.
 
 ## Appearance and performance
 
