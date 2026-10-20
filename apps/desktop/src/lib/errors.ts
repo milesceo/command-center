@@ -1,4 +1,5 @@
 import type { BridgeError, ProviderId } from '@command-center/protocol';
+import { platformCopy } from './platform-copy';
 
 /** User-facing copy for a bridge error. The raw message is kept for a "details" disclosure. */
 export interface FriendlyError {
@@ -136,10 +137,12 @@ function describeModelLabError(
       };
     case 'overloaded':
       return {
-        title: hf ? 'The provider is unavailable' : 'The model server had a problem',
+        title: hf ? 'The provider is unavailable' : "The local model engine isn't working",
+        // Any 5xx from a local server: a crashed engine (often out of memory) refuses every request
+        // until it is restarted; a server still loading a model answers 5xx too.
         body: hf
           ? 'The Hugging Face provider serving this model is down or busy. Retry, or pick another provider suffix in the Model Lab.'
-          : 'Check its terminal window for errors, then retry.',
+          : `If it just started, wait for the model to load and retry. Otherwise restart it: Ollama from the ${platformCopy.tray()}, llama.cpp or MLX-LM in its terminal, LM Studio in the app. Still failing? Close other apps or pick a smaller model.`,
         details: error.message,
       };
     case 'account':

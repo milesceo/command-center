@@ -1,5 +1,9 @@
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { describeError, describeUsageWarning, formatDuration, formatReset } from './errors';
+
+afterEach(() => {
+  vi.unstubAllGlobals();
+});
 
 describe('formatDuration', () => {
   it('shows the two most significant units', () => {
@@ -61,5 +65,41 @@ describe('describeUsageWarning', () => {
       ),
     ).toMatch(/^5-hour usage at 90% · resets .*\(in 1h 0m\)$/);
     expect(describeUsageWarning({})).toBe('Usage is getting high');
+  });
+});
+
+describe('local model errors', () => {
+  it('tells the owner to restart Ollama when the engine crashes', () => {
+    const friendly = describeError(
+      { code: 'overloaded', message: 'the local model server is unavailable (HTTP 500).' },
+      undefined,
+      'local',
+    );
+    expect(friendly.title).toBe("The local model engine isn't working");
+    expect(friendly.body).toMatch(/wait for the model to load/);
+    expect(friendly.body).toMatch(
+      /Ollama from the (menu bar|tray), llama\.cpp or MLX-LM in its terminal, LM Studio in the app/,
+    );
+    expect(friendly.details).toMatch(/HTTP 500/);
+    // Other providers keep their own wording.
+    expect(describeError({ code: 'overloaded', message: 'x' }).title).toBe('Claude is overloaded');
+  });
+
+  it('names the menu bar on macOS and the tray elsewhere', () => {
+    const body = (platform: string) => {
+      vi.stubGlobal('navigator', { platform });
+      return describeError({ code: 'overloaded', message: 'x' }, undefined, 'local').body;
+    };
+    expect(body('MacIntel')).toMatch(/Ollama from the menu bar,/);
+    expect(body('Win32')).toMatch(/Ollama from the tray,/);
+    expect(body('Linux x86_64')).not.toMatch(/menu bar/);
+  });
+
+  it('keeps the Hugging Face wording for an unavailable provider', () => {
+    expect(describeError({ code: 'overloaded', message: 'x' }, undefined, 'huggingface')).toEqual({
+      title: 'The provider is unavailable',
+      body: 'The Hugging Face provider serving this model is down or busy. Retry, or pick another provider suffix in the Model Lab.',
+      details: 'x',
+    });
   });
 });
