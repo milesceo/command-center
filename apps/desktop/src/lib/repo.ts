@@ -241,6 +241,14 @@ export async function deleteConversation(db: Db, id: string): Promise<void> {
   await db.execute('DELETE FROM conversations WHERE id = ?', [id]);
 }
 
+/** Ids of every chat currently set to `model` (a model value such as `cm:<id>`). */
+export async function conversationIdsWithModel(db: Db, model: string): Promise<string[]> {
+  const rows = await db.select<{ id: string }>('SELECT id FROM conversations WHERE model = ?', [
+    model,
+  ]);
+  return rows.map((r) => r.id);
+}
+
 export async function listMessages(db: Db, conversationId: string): Promise<Message[]> {
   const rows = await db.select<MessageRow>(
     // rowid breaks created_at ties so two messages in the same millisecond keep insert order.

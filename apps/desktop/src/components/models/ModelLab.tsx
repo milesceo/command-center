@@ -5,8 +5,12 @@ import { platformCopy } from '../../lib/platform-copy';
 import { isMacPlatform } from '../../lib/shortcuts';
 import { previewCommand, runRequest, storedSource } from '../../lib/model-draft';
 import type { CustomModel } from '../../lib/repo-models';
+import { getDb } from '../../lib/db';
+import { conversationIdsWithModel } from '../../lib/repo';
 import { ensureBridge } from '../../stores/bridge';
-import { useCustomModels } from '../../stores/custom-models';
+import { chatStore } from '../../stores/chat';
+import { conversationsStore } from '../../stores/conversations';
+import { customModelRef, useCustomModels } from '../../stores/custom-models';
 import { useProviders } from '../../stores/providers';
 import { toast } from '../../stores/toast';
 import { useUiStore } from '../../stores/ui';
@@ -36,6 +40,8 @@ export function ModelLab() {
   const openAdd = useUiStore((s) => s.addModelOpen);
   const [editing, setEditing] = useState<CustomModel | null>(null);
   const [removing, setRemoving] = useState<CustomModel | null>(null);
+  // The model whose chats are about to be deleted, with their ids (counted when asked).
+  const [clearing, setClearing] = useState<{ model: CustomModel; ids: string[] } | null>(null);
   const [picked, setPicked] = useState<string[]>([]);
   const [running, setRunning] = useState<CustomModel | null>(null);
   const [starting, setStarting] = useState(false);
@@ -86,6 +92,16 @@ export function ModelLab() {
     } finally {
       setStarting(false);
       setRunning(null);
+    }
+  };
+
+  const askToClear = async (m: CustomModel) => {
+    try {
+      const ids = await conversationIdsWithModel(await getDb(), customModelRef(m.id));
+      if (ids.length === 0) toast(`No chats with ${m.displayName}`);
+      else setClearing({ model: m, ids });
+    } catch (err) {
+      toast(`Could not read the chats: ${err instanceof Error ? err.message : String(err)}`);
     }
   };
 
@@ -153,6 +169,7 @@ export function ModelLab() {
                 onChat={() => void startChatWith(m)}
                 onEdit={() => setEditing(m)}
                 onDelete={() => setRemoving(m)}
+                onDeleteChats={() => void askToClear(m)}
                 {...(storedSource(m) && isMacPlatform() ? { onRun: () => setRunning(m) } : {})}
               />
             ))}
@@ -199,6 +216,33 @@ export function ModelLab() {
             <CopyButton text={commandFor(running) ?? ''} label="Copy command" />
           </div>
         )}
+      </ConfirmDialog>
+      <ConfirmDialog
+        open={clearing !== null}
+        title={`Delete ${clearing?.ids.length ?? 0} chat${clearing?.ids.length === 1 ? '' : 's'} with ${clearing?.model.displayName ?? 'this model'}?`}
+        confirmLabel="Delete chats"
+        destructive
+        onCancel={() => setClearing(null)}
+        onConfirm={() => {
+          const target = clearing;
+          setClearing(null);
+          if (!target) return;
+          // A reply still streaming into one of them is stopped first, as for a single delete.
+          for (const id of target.ids) chatStore.getState().stop(id);
+          void conversationsStore
+            .getState()
+            .removeMany(target.ids)
+            .then(
+              () => toast(`Deleted ${target.ids.length} chat${target.ids.length === 1 ? '' : 's'}`),
+              (err: unknown) =>
+                toast(
+                  `Could not delete the chats: ${err instanceof Error ? err.message : String(err)}`,
+                ),
+            );
+        }}
+      >
+        Every chat set to this model, and all their messages, are permanently deleted from this
+        computer. The model stays in the Model Lab.
       </ConfirmDialog>
       <ConfirmDialog
         open={removing !== null}

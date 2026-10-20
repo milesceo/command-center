@@ -1,5 +1,13 @@
 import { LOCAL_RUNTIME_INFO } from '@command-center/protocol';
-import { Cloud, Laptop, MessageSquare, Pencil, SquareTerminal, Trash2 } from 'lucide-react';
+import {
+  Cloud,
+  Laptop,
+  MessageSquare,
+  MessageSquareX,
+  Pencil,
+  SquareTerminal,
+  Trash2,
+} from 'lucide-react';
 import type { CustomModel } from '../../lib/repo-models';
 import { Button } from '../ui/button';
 
@@ -13,6 +21,8 @@ interface Props {
   onChat: () => void;
   onEdit: () => void;
   onDelete: () => void;
+  /** Deletes every chat that used this model (the model stays). */
+  onDeleteChats: () => void;
   /** Present for local models that can be started from here. */
   onRun?: () => void;
 }
@@ -26,6 +36,7 @@ export function ModelCard({
   onChat,
   onEdit,
   onDelete,
+  onDeleteChats,
   onRun,
 }: Props) {
   const local = model.provider === 'local';
@@ -105,6 +116,15 @@ export function ModelCard({
           onClick={onEdit}
         >
           <Pencil size={14} />
+        </Button>
+        <Button
+          variant="ghost"
+          size="icon"
+          aria-label={`Delete chats with ${model.displayName}`}
+          title="Delete chats with this model"
+          onClick={onDeleteChats}
+        >
+          <MessageSquareX size={14} />
         </Button>
         <Button
           variant="ghost"

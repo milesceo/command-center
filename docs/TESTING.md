@@ -16,7 +16,7 @@ item has a one-click setup, Pass / Fail / Skip, and a button that opens a prefil
 4. A fix references the issue. Items whose question changed get a new `rev`, which clears the old
    answer. **Copy results** puts a Markdown report on the clipboard.
 
-Checklist version 1, 58 items.
+Checklist version 1, 59 items.
 
 ## Splash and Home
 
@@ -578,6 +578,16 @@ Needs the Mac desktop app. Panel setup: `open-settings-agents`.
 3. Send a message, then press "Use the model’s presets" and send another.
 
 **Expected:** The field placeholders show the model’s own values; the first reply uses temperature 1.2, the second the model’s 0.2 (visible in the runtime’s request log, e.g. llama-server’s terminal); other chats with the same model are unaffected.
+
+### MODEL-09: Delete a model's chats
+
+Needs the Mac desktop app. Panel setup: `open-model-lab`.
+
+1. Have two chats with a Model Lab model and one with Claude.
+2. In the Model Lab, press the crossed-out speech bubble on that model's card; read the count, then press Delete chats.
+3. Press it again.
+
+**Expected:** The confirmation says "Delete 2 chats with <model>?"; afterwards only the Claude chat is left in the Explorer, the model is still in the Model Lab, and pressing again says there are no chats with it yet.
 
 ## Business plans
 

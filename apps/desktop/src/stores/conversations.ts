@@ -28,6 +28,8 @@ export interface ConversationsState {
   autoTitle: (id: string, title: string) => Promise<void>;
   togglePin: (id: string) => Promise<void>;
   remove: (id: string) => Promise<void>;
+  /** Deletes these chats; unlike `remove` it rejects on failure, so the caller can say so. */
+  removeMany: (ids: string[]) => Promise<void>;
   /** Settings for the active conversation, or for the draft when there is none. */
   updateSettings: (patch: Partial<ConversationSettings>) => Promise<void>;
   /** Puts a conversation in a project (or takes it out with null). */
@@ -150,6 +152,22 @@ export function createConversationsStore(database: () => Promise<Db> = getDb) {
           if (get().activeId === id) set({ activeId: null, draft: freshDraft() });
           await refresh();
         }),
+
+      removeMany: async (ids) => {
+        const db = await database();
+        const deleted: string[] = [];
+        try {
+          for (const id of ids) {
+            await repo.deleteConversation(db, id);
+            deleted.push(id);
+          }
+        } finally {
+          // Only a chat that is really gone stops being the open one.
+          const { activeId } = get();
+          if (activeId && deleted.includes(activeId)) set({ activeId: null, draft: freshDraft() });
+          await guarded(refresh);
+        }
+      },
 
       updateSettings: (patch) =>
         guarded(async () => {

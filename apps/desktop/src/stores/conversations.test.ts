@@ -88,6 +88,46 @@ describe('conversations store', () => {
     expect(store.getState()).toMatchObject({ conversations: [], activeId: null });
   });
 
+  it('removeMany deletes only the given chats and leaves another open chat open', async () => {
+    const a = await repo.createConversation(db, DEFAULT_SETTINGS, 1);
+    const b = await repo.createConversation(db, DEFAULT_SETTINGS, 2);
+    const keep = await repo.createConversation(db, DEFAULT_SETTINGS, 3);
+    await store.getState().load();
+    store.getState().select(keep.id);
+    await store.getState().removeMany([a.id, b.id]);
+    expect((await repo.listConversations(db)).map((c) => c.id)).toEqual([keep.id]);
+    expect(store.getState().conversations.map((c) => c.id)).toEqual([keep.id]);
+    expect(store.getState().activeId).toBe(keep.id);
+  });
+
+  it('removeMany returns to a fresh draft when the open chat is one of them', async () => {
+    const a = await repo.createConversation(db, DEFAULT_SETTINGS, 1);
+    const b = await repo.createConversation(db, DEFAULT_SETTINGS, 2);
+    store.getState().select(a.id);
+    await store.getState().removeMany([a.id]);
+    expect(store.getState().activeId).toBeNull();
+    expect(store.getState().conversations.map((c) => c.id)).toEqual([b.id]);
+  });
+
+  it('removeMany rejects on failure but still refreshes what was deleted', async () => {
+    const a = await repo.createConversation(db, DEFAULT_SETTINGS, 1);
+    const b = await repo.createConversation(db, DEFAULT_SETTINGS, 2);
+    const failing = {
+      ...db,
+      execute: (sql: string, params?: unknown[]) =>
+        sql.startsWith('DELETE FROM conversations') && params?.[0] === b.id
+          ? Promise.reject(new Error('locked'))
+          : db.execute(sql, params),
+    };
+    const s = createConversationsStore(() => Promise.resolve(failing));
+    await s.getState().load();
+    s.getState().select(b.id);
+    await expect(s.getState().removeMany([a.id, b.id])).rejects.toThrow('locked');
+    // a went before b failed; the list shows that, and b (not deleted) stays open.
+    expect(s.getState().conversations.map((c) => c.id)).toEqual([b.id]);
+    expect(s.getState().activeId).toBe(b.id);
+  });
+
   it('searches titles and message content, then clears', async () => {
     const a = await repo.createConversation(db, DEFAULT_SETTINGS, 1);
     const b = await repo.createConversation(db, DEFAULT_SETTINGS, 2);
