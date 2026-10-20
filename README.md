@@ -137,7 +137,7 @@ docs/prompts/            The prompts used to build Command Center, one per sessi
 
 ## Your data
 
-One SQLite file in the app's config folder (Settings shows the exact path and can open it). Nothing is uploaded except the messages you send to Claude. Settings can export everything as JSON and clear usage history, the prompt library, or all data.
+One SQLite file in the app's config folder (Settings shows the exact path and can open it). Chats, including chats with models on this computer, are saved in that file until you delete them. Nothing is uploaded except the messages you send to a cloud provider (Claude, ChatGPT, Grok or Hugging Face cloud), which go to that provider, and the words you search for in the Model Lab, which go to Hugging Face; chats with a model running on this computer stay on it. Settings can export everything as JSON and clear usage history, the prompt library, or all data.
 
 ## Releasing
 
