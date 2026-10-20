@@ -80,6 +80,105 @@ const key = (k: string, init: Partial<KeyboardEventInit> = {}) =>
   act(() => void fireEvent.keyDown(window, { key: k, ctrlKey: true, ...init }));
 
 describe('editor shell', () => {
+  it('deletes a chat from the explorer after confirming', async () => {
+    const repo = await import('../lib/repo');
+    const { DEFAULT_SETTINGS } = await import('../lib/types');
+    const keep = await repo.createConversation(hoisted.db, DEFAULT_SETTINGS);
+    await repo.renameConversation(hoisted.db, keep.id, 'Keep me');
+    const gone = await repo.createConversation(hoisted.db, DEFAULT_SETTINGS);
+    await repo.renameConversation(hoisted.db, gone.id, 'Old chat');
+    render(<App />);
+    const explorer = await screen.findByRole('complementary', { name: 'Explorer' });
+    fireEvent.click(await within(explorer).findByRole('button', { name: 'Delete Old chat' }));
+    // Cancel keeps it.
+    fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
+    expect(within(explorer).getByRole('button', { name: /^Old chat/ })).toBeTruthy();
+
+    fireEvent.click(within(explorer).getByRole('button', { name: 'Delete Old chat' }));
+    expect(
+      screen.getByText(/“Old chat” and all of its messages will be permanently deleted/),
+    ).toBeTruthy();
+    fireEvent.click(screen.getByRole('button', { name: 'Delete' }));
+    await waitFor(() =>
+      expect(within(explorer).queryByRole('button', { name: /^Old chat/ })).toBeNull(),
+    );
+    expect(await repo.getConversation(hoisted.db, gone.id)).toBeNull();
+    expect(within(explorer).getByRole('button', { name: /^Keep me/ })).toBeTruthy();
+    await waitFor(() =>
+      expect(document.activeElement).toBe(screen.getByRole('textbox', { name: 'Filter threads' })),
+    );
+  });
+
+  it('deleting the open chat returns the editor to the welcome screen', async () => {
+    const repo = await import('../lib/repo');
+    const { DEFAULT_SETTINGS } = await import('../lib/types');
+    const open = await repo.createConversation(hoisted.db, DEFAULT_SETTINGS);
+    await repo.renameConversation(hoisted.db, open.id, 'Open chat');
+    // A code block gives the thread a file, so the editor shows it instead of the welcome.
+    await repo.insertMessage(hoisted.db, {
+      id: 'a1',
+      conversationId: open.id,
+      role: 'assistant',
+      content: '```ts title="a.ts"\nexport const a = 1;\n```',
+      attachments: [],
+      status: 'complete',
+      error: null,
+      model: null,
+      inputTokens: null,
+      outputTokens: null,
+      cacheReadTokens: null,
+      cacheCreationTokens: null,
+      costUsd: null,
+      createdAt: Date.now(),
+    });
+    render(<App />);
+    const explorer = await screen.findByRole('complementary', { name: 'Explorer' });
+    fireEvent.click(await within(explorer).findByRole('button', { name: /^Open chat/ }));
+    await waitFor(() =>
+      expect(screen.getByLabelText('Editor', { selector: 'section' })).toBeTruthy(),
+    );
+    expect(screen.queryByLabelText('Welcome')).toBeNull();
+
+    fireEvent.click(within(explorer).getByRole('button', { name: 'Delete Open chat' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Delete' }));
+    await waitFor(() => expect(screen.getByLabelText('Welcome')).toBeTruthy());
+    expect(conversationsStore.getState().activeId).toBeNull();
+    expect(await repo.getConversation(hoisted.db, open.id)).toBeNull();
+  });
+
+  it('stops a streaming reply before deleting its chat', async () => {
+    const repo = await import('../lib/repo');
+    const { DEFAULT_SETTINGS } = await import('../lib/types');
+    const busy = await repo.createConversation(hoisted.db, DEFAULT_SETTINGS);
+    await repo.renameConversation(hoisted.db, busy.id, 'Busy chat');
+    const originalStop = chatStore.getState().stop;
+    const stop = vi.fn();
+    chatStore.setState({
+      stop,
+      streams: {
+        [busy.id]: {
+          messageId: 'm1',
+          requestId: 'r1',
+          text: 'partial',
+          tools: [],
+          rateLimit: null,
+          startedAt: Date.now(),
+        },
+      },
+    });
+    try {
+      render(<App />);
+      const explorer = await screen.findByRole('complementary', { name: 'Explorer' });
+      fireEvent.click(await within(explorer).findByRole('button', { name: 'Delete Busy chat' }));
+      expect(stop).not.toHaveBeenCalled();
+      fireEvent.click(screen.getByRole('button', { name: 'Delete' }));
+      expect(stop).toHaveBeenCalledWith(busy.id);
+      await waitFor(async () => expect(await repo.getConversation(hoisted.db, busy.id)).toBeNull());
+    } finally {
+      chatStore.setState({ stop: originalStop });
+    }
+  });
+
   it('shows the explorer, editor welcome and assistant, and toggles panels from the keyboard', () => {
     render(<App />);
     expect(screen.getByTestId('ide-shell')).toBeTruthy();

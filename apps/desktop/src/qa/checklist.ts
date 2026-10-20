@@ -909,4 +909,17 @@ export const QA_ITEMS: readonly QaItem[] = [
     setup: 'open-business-plans',
     rev: 1,
   },
+  {
+    id: 'SHELL-03',
+    area: 'shell',
+    title: 'Delete a chat from the Explorer',
+    steps: [
+      'In the editor layout, hover a chat in the Explorer and press the bin icon; press Cancel.',
+      'Press the bin again and Delete. Then press Tab to a chat row and Tab once more to its bin, and press Enter.',
+    ],
+    expected:
+      'Cancel keeps the chat; Delete removes it and its messages; the bin shows when the row is hovered or has keyboard focus, and after deleting, focus is in the Explorer filter box. In both themes the bin turns red on hover and the open chat row keeps its highlight.',
+    needs: 'mac-desktop',
+    rev: 1,
+  },
 ];

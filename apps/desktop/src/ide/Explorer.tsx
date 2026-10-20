@@ -1,8 +1,10 @@
-import { ChevronRight, FileCode2, FolderPlus, Plus, Search } from 'lucide-react';
-import { useMemo, useState } from 'react';
+import { ChevronRight, FileCode2, FolderPlus, Plus, Search, Trash2 } from 'lucide-react';
+import { useMemo, useRef, useState } from 'react';
 import { cn } from '../lib/cn';
 import { formatAgo } from '../lib/format';
-import { useChat } from '../stores/chat';
+import { ConfirmDialog } from '../components/ui/dialog';
+import type { Conversation } from '../lib/types';
+import { chatStore, useChat } from '../stores/chat';
 import { conversationsStore, useConversations } from '../stores/conversations';
 import { useIdeStore } from '../stores/ide';
 import { projectsStore } from '../stores/projects';
@@ -54,6 +56,8 @@ export function Explorer() {
   const [filter, setFilter] = useState('');
   const [naming, setNaming] = useState(false);
   const [name, setName] = useState('');
+  const [deleting, setDeleting] = useState<Conversation | null>(null);
+  const filterInput = useRef<HTMLInputElement>(null);
 
   const q = filter.trim().toLowerCase();
   const visible = useMemo(
@@ -90,6 +94,7 @@ export function Explorer() {
         <label className="flex h-7 min-w-0 flex-1 items-center gap-1.5 rounded-control border border-border bg-bg px-2 text-xs focus-within:border-accent">
           <Search size={12} className="shrink-0 text-fg-subtle" />
           <input
+            ref={filterInput}
             value={filter}
             onChange={(e) => setFilter(e.target.value)}
             placeholder="Filter threads"
@@ -183,31 +188,41 @@ export function Explorer() {
                   )}
                   {!collapsed &&
                     g.conversations.map((c) => (
-                      <button
-                        key={c.id}
-                        type="button"
-                        onClick={() => openThread(c.id)}
-                        aria-current={c.id === activeId ? 'true' : undefined}
-                        title={c.title}
-                        className={cn(
-                          'group flex h-(--row-h) w-full items-center gap-2 rounded-control pr-2 text-left text-xs',
-                          g.project ? 'pl-6' : 'pl-2',
-                          c.id === activeId
-                            ? 'bg-accent/15 text-fg'
-                            : 'text-fg-muted hover:bg-hover hover:text-fg',
-                        )}
-                      >
-                        <span
+                      <div key={c.id} className="group relative">
+                        <button
+                          type="button"
+                          onClick={() => openThread(c.id)}
+                          aria-current={c.id === activeId ? 'true' : undefined}
+                          title={c.title}
                           className={cn(
-                            'size-1.5 shrink-0 rounded-full',
-                            streams[c.id] ? 'animate-pulse bg-accent' : 'bg-border-strong',
+                            'flex h-(--row-h) w-full items-center gap-2 rounded-control pr-2 text-left text-xs group-focus-within:pr-7 group-hover:pr-7',
+                            g.project ? 'pl-6' : 'pl-2',
+                            c.id === activeId
+                              ? 'bg-accent/15 text-fg'
+                              : 'text-fg-muted hover:bg-hover hover:text-fg',
                           )}
-                        />
-                        <span className="min-w-0 flex-1 truncate">{c.title}</span>
-                        <span className="hidden shrink-0 text-[10px] text-fg-subtle group-hover:inline">
-                          {formatAgo(c.updatedAt)}
-                        </span>
-                      </button>
+                        >
+                          <span
+                            className={cn(
+                              'size-1.5 shrink-0 rounded-full',
+                              streams[c.id] ? 'animate-pulse bg-accent' : 'bg-border-strong',
+                            )}
+                          />
+                          <span className="min-w-0 flex-1 truncate">{c.title}</span>
+                          <span className="hidden shrink-0 text-[10px] text-fg-subtle group-hover:inline">
+                            {formatAgo(c.updatedAt)}
+                          </span>
+                        </button>
+                        <button
+                          type="button"
+                          aria-label={`Delete ${c.title}`}
+                          title="Delete chat"
+                          onClick={() => setDeleting(c)}
+                          className="absolute top-1/2 right-1 grid size-6 -translate-y-1/2 place-items-center rounded-control text-fg-subtle opacity-0 group-focus-within:opacity-100 group-hover:opacity-100 hover:bg-hover hover:text-danger"
+                        >
+                          <Trash2 size={12} />
+                        </button>
+                      </div>
                     ))}
                 </div>
               );
@@ -256,6 +271,24 @@ export function Explorer() {
           )}
         </div>
       </div>
+      <ConfirmDialog
+        open={deleting !== null}
+        title="Delete this chat?"
+        confirmLabel="Delete"
+        destructive
+        onCancel={() => setDeleting(null)}
+        onConfirm={() => {
+          if (deleting) {
+            chatStore.getState().stop(deleting.id);
+            void conversationsStore.getState().remove(deleting.id);
+          }
+          setDeleting(null);
+          // The deleted row's button is gone: keep keyboard users in the Explorer.
+          requestAnimationFrame(() => filterInput.current?.focus());
+        }}
+      >
+        <p>“{deleting?.title}” and all of its messages will be permanently deleted.</p>
+      </ConfirmDialog>
     </aside>
   );
 }
