@@ -59,6 +59,15 @@ describe('conversations', () => {
     });
   });
 
+  it('finds the ids of chats set to exactly one model', async () => {
+    const a = await repo.createConversation(db, settings({ model: 'cm:1' }));
+    const b = await repo.createConversation(db, settings({ model: 'cm:1' }));
+    await repo.createConversation(db, settings({ model: 'cm:10' }));
+    await repo.createConversation(db, DEFAULT_SETTINGS);
+    expect((await repo.conversationIdsWithModel(db, 'cm:1')).sort()).toEqual([a.id, b.id].sort());
+    expect(await repo.conversationIdsWithModel(db, 'cm:missing')).toEqual([]);
+  });
+
   it('deleting a conversation removes its messages', async () => {
     const c = await repo.createConversation(db, DEFAULT_SETTINGS);
     await repo.insertMessage(db, msg(c.id));

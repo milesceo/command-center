@@ -171,6 +171,7 @@ export const Card: Story = {
         onChat={() => undefined}
         onEdit={() => undefined}
         onDelete={() => undefined}
+        onDeleteChats={() => undefined}
         onRun={() => undefined}
       />
     </ul>

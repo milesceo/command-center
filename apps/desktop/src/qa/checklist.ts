@@ -922,4 +922,19 @@ export const QA_ITEMS: readonly QaItem[] = [
     needs: 'mac-desktop',
     rev: 1,
   },
+  {
+    id: 'MODEL-09',
+    area: 'models',
+    title: "Delete a model's chats",
+    steps: [
+      'Have two chats with a Model Lab model and one with Claude.',
+      "In the Model Lab, press the crossed-out speech bubble on that model's card; read the count, then press Delete chats.",
+      'Press it again.',
+    ],
+    expected:
+      'The confirmation says "Delete 2 chats with <model>?"; afterwards only the Claude chat is left in the Explorer, the model is still in the Model Lab, and pressing again says there are no chats with it yet.',
+    needs: 'mac-desktop',
+    setup: 'open-model-lab',
+    rev: 1,
+  },
 ];

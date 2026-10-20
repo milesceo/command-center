@@ -190,6 +190,100 @@ describe('AddModelDialog', () => {
 });
 
 describe('ModelLab', () => {
+  it("deletes only that model's chats after confirming, and keeps the model", async () => {
+    const { DEFAULT_SETTINGS } = await import('../../lib/types');
+    const { useToastStore } = await import('../../stores/toast');
+    const m = await useCustomModels.getState().add(localModel);
+    const settings = {
+      ...DEFAULT_SETTINGS,
+      provider: 'local' as const,
+      model: customModelRef(m.id),
+    };
+    const a = await repo.createConversation(hoisted.db, settings);
+    await repo.createConversation(hoisted.db, settings);
+    const other = await repo.createConversation(hoisted.db, DEFAULT_SETTINGS);
+    await conversationsStore.getState().load();
+    conversationsStore.getState().select(a.id);
+    render(<ModelLab />);
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Delete chats with Tiny Qwen' }));
+    expect(await screen.findByText('Delete 2 chats with Tiny Qwen?')).toBeTruthy();
+    fireEvent.click(screen.getByRole('button', { name: 'Delete chats' }));
+    await waitFor(async () =>
+      expect((await repo.listConversations(hoisted.db)).map((c) => c.id)).toEqual([other.id]),
+    );
+    // The open chat was one of them, so nothing is open now; the model stays.
+    expect(conversationsStore.getState().activeId).toBeNull();
+    expect(useCustomModels.getState().models.map((x) => x.id)).toEqual([m.id]);
+    expect(useToastStore.getState().toasts.map((t) => t.message)).toContain('Deleted 2 chats');
+
+    // With nothing left, it says so instead of asking.
+    fireEvent.click(screen.getByRole('button', { name: 'Delete chats with Tiny Qwen' }));
+    await waitFor(() =>
+      expect(useToastStore.getState().toasts.map((t) => t.message)).toContain(
+        'No chats with Tiny Qwen',
+      ),
+    );
+  });
+
+  it('says so when deleting the chats fails, and does not claim they were deleted', async () => {
+    const { DEFAULT_SETTINGS } = await import('../../lib/types');
+    const { useToastStore } = await import('../../stores/toast');
+    useToastStore.setState({ toasts: [] });
+    const m = await useCustomModels.getState().add(localModel);
+    await repo.createConversation(hoisted.db, {
+      ...DEFAULT_SETTINGS,
+      provider: 'local',
+      model: customModelRef(m.id),
+    });
+    const real = hoisted.db;
+    hoisted.db = {
+      ...real,
+      execute: (sql, params) =>
+        sql.startsWith('DELETE FROM conversations')
+          ? Promise.reject(new Error('disk is full'))
+          : real.execute(sql, params),
+    };
+    render(<ModelLab />);
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Delete chats with Tiny Qwen' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Delete chats' }));
+    const messages = () => useToastStore.getState().toasts.map((t) => t.message);
+    await waitFor(() => expect(messages()).toContain('Could not delete the chats: disk is full'));
+    expect(messages().some((t) => t.startsWith('Deleted'))).toBe(false);
+    expect(await repo.listConversations(real)).toHaveLength(1);
+  });
+
+  it('stops a reply still streaming into one of the chats before deleting it', async () => {
+    const { DEFAULT_SETTINGS } = await import('../../lib/types');
+    const { chatStore } = await import('../../stores/chat');
+    const m = await useCustomModels.getState().add(localModel);
+    const a = await repo.createConversation(hoisted.db, {
+      ...DEFAULT_SETTINGS,
+      provider: 'local',
+      model: customModelRef(m.id),
+    });
+    const log: string[] = [];
+    const real = hoisted.db;
+    hoisted.db = {
+      ...real,
+      execute: (sql, params) => {
+        if (sql.startsWith('DELETE FROM conversations')) log.push('delete');
+        return real.execute(sql, params);
+      },
+    };
+    await conversationsStore.getState().load();
+    conversationsStore.getState().select(a.id);
+    void chatStore.getState().send('hello');
+    await waitFor(() => expect(hoisted.cancels).toHaveLength(1));
+    hoisted.cancels[0]!.mockImplementation(() => log.push('cancel'));
+    render(<ModelLab />);
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Delete chats with Tiny Qwen' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Delete chats' }));
+    await waitFor(() => expect(log).toEqual(['cancel', 'delete']));
+  });
+
   it('shows an empty state that opens the add dialog', async () => {
     render(<ModelLab />);
     expect(await screen.findByText('No models yet')).toBeTruthy();
