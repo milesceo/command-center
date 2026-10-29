@@ -16,7 +16,7 @@ item has a one-click setup, Pass / Fail / Skip, and a button that opens a prefil
 4. A fix references the issue. Items whose question changed get a new `rev`, which clears the old
    answer. **Copy results** puts a Markdown report on the clipboard.
 
-Checklist version 1, 59 items.
+Checklist version 1, 60 items.
 
 ## Splash and Home
 
@@ -457,6 +457,15 @@ Needs the Mac desktop app.
 3. Open the shortcuts list (Cmd+/) and try Cmd+K, Cmd+B, Cmd+T, Cmd+J, Cmd+L, Cmd+Shift+A and the QA panel (Cmd+Shift+Y); hover a toolbar button and read its tooltip; in the composer press Ctrl+T.
 
 **Expected:** The preview runs and shows its console output; the save dialog writes the file; the shortcut list shows ⌘ glyphs and every listed shortcut works, none of them triggering a system action instead; tooltips show ⌘ glyphs; Ctrl+T in the composer transposes letters instead of opening a thread.
+
+### MAC-10: The app icon is the orange cross
+
+Needs the Mac desktop app.
+
+1. Open Command Center and look at its Dock icon, then press Cmd+Tab.
+2. Open Finder > Applications and find Command Center.
+
+**Expected:** The Dock, the app switcher and Finder show the orange rounded square with the black cross of five joined squares, the same size and shape as other Mac app icons, crisp at small sizes. The menu bar icon is unchanged.
 
 ## Lighter runtime
 
