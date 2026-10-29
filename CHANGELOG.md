@@ -88,6 +88,8 @@ recorded here. The format follows
 
 ### Changed
 
+- New app icon: an orange rounded square with a black cross of five joined squares, in the Dock,
+  the app switcher and the installers (the menu bar icon is unchanged).
 - When a local model's engine isn't working (for example Ollama running out of memory), the chat
   now says so: wait if the model is still loading, otherwise restart it (Ollama from the menu bar
   or tray, the other runtimes from their terminal or app).
