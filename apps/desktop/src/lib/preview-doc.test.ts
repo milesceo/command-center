@@ -3,10 +3,12 @@ import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import {
   CONSOLE_SOURCE,
+  PLAN_STORAGE_SOURCE,
   PREVIEW_CSP,
   buildHtmlDocument,
   buildSvgDocument,
   parseConsoleMessage,
+  parsePlanStorageMessage,
 } from './preview-doc';
 
 describe('buildHtmlDocument', () => {
@@ -37,6 +39,65 @@ describe('buildHtmlDocument', () => {
   it('cannot be broken out of through the frame id', () => {
     const doc = buildHtmlDocument('x', '</script><script>alert(1)</script>');
     expect(doc).not.toContain('</script><script>alert(1)');
+  });
+});
+
+describe('plan page storage', () => {
+  /** Runs the injected storage script against a stand-in window and parent. */
+  const run = (doc: string) => {
+    const script = [...doc.matchAll(/<script>([\s\S]*?)<\/script>/g)]
+      .map((m) => m[1] ?? '')
+      .find((s) => s.includes(PLAN_STORAGE_SOURCE));
+    if (!script) throw new Error('no storage script');
+    const sent: unknown[] = [];
+    const win: Record<string, unknown> = {
+      get localStorage(): never {
+        throw new Error('SecurityError');
+      },
+    };
+    const parent = { postMessage: (m: unknown) => sent.push(m) };
+    new Function('window', 'parent', script)(win, parent);
+    return { storage: win.localStorage as Storage, sent };
+  };
+
+  it('is only added for plans', () => {
+    expect(buildHtmlDocument('x', 'f')).not.toContain(PLAN_STORAGE_SOURCE);
+    expect(buildHtmlDocument('x', 'f', {})).toContain(PLAN_STORAGE_SOURCE);
+  });
+
+  it('gives the page a localStorage seeded with what was saved, and sends every change', () => {
+    const { storage, sent } = run(buildHtmlDocument('x', 'plan-1', { a: '1' }));
+    expect(storage.getItem('a')).toBe('1');
+    expect(storage.getItem('missing')).toBeNull();
+    storage.setItem('b', '2');
+    expect(storage.length).toBe(2);
+    expect(storage.key(1)).toBe('b');
+    expect(storage.key(5)).toBeNull();
+    storage.removeItem('a');
+    expect(sent.at(-1)).toEqual({ source: PLAN_STORAGE_SOURCE, id: 'plan-1', items: { b: '2' } });
+    storage.clear();
+    expect(sent.at(-1)).toEqual({ source: PLAN_STORAGE_SOURCE, id: 'plan-1', items: {} });
+    expect(sent).toHaveLength(3);
+  });
+
+  it('cannot be broken out of through saved values', () => {
+    const doc = buildHtmlDocument('x', 'f', { k: '</script><script>alert(1)</script>' });
+    expect(doc).not.toContain('</script><script>alert(1)');
+    expect(run(doc).storage.getItem('k')).toBe('</script><script>alert(1)</script>');
+  });
+
+  it('keeps a saved key named __proto__ as an ordinary key', () => {
+    const { storage } = run(buildHtmlDocument('x', 'f', JSON.parse('{"__proto__":"p"}')));
+    expect(storage.getItem('__proto__')).toBe('p');
+  });
+
+  it('accepts only well-formed messages for the expected frame', () => {
+    const ok = { source: PLAN_STORAGE_SOURCE, id: 'plan-1', items: { a: 'b' } };
+    expect(parsePlanStorageMessage(ok, 'plan-1')).toEqual({ a: 'b' });
+    expect(parsePlanStorageMessage(ok, 'plan-2')).toBeNull();
+    expect(parsePlanStorageMessage({ ...ok, source: CONSOLE_SOURCE }, 'plan-1')).toBeNull();
+    expect(parsePlanStorageMessage({ ...ok, items: { a: 1 } }, 'plan-1')).toBeNull();
+    expect(parsePlanStorageMessage('nope', 'plan-1')).toBeNull();
   });
 });
 

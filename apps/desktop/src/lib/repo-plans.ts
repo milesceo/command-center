@@ -95,7 +95,11 @@ export async function listPlans(db: Db): Promise<PlanSummary[]> {
 }
 
 export async function getPlan(db: Db, id: string): Promise<BusinessPlan | null> {
-  const rows = await db.select<Row>('SELECT * FROM business_plans WHERE id = ?', [id]);
+  // Not `*`: the page storage column is read only by getPlanStorage.
+  const rows = await db.select<Row>(
+    'SELECT id, title, html, source, position, created_at, updated_at FROM business_plans WHERE id = ?',
+    [id],
+  );
   const r = rows[0];
   return r ? { ...summary(r), html: r.html } : null;
 }
@@ -136,6 +140,46 @@ export async function movePlanFirst(db: Db, id: string): Promise<void> {
   );
   await db.execute('UPDATE business_plans SET position = ? WHERE id = ?', [
     (first[0]?.p ?? 0) - 1,
+    id,
+  ]);
+}
+
+/** What a plan's page keeps in its localStorage (ticks, "read" marks), key to value. */
+export type PlanStorage = Record<string, string>;
+
+/** The most a plan's page may keep, counted in characters of its keys and values. */
+export const MAX_PLAN_STORAGE = 256_000;
+
+/** A plain object of strings within the size limit, or null. Page data is untrusted. */
+export function parsePlanStorage(value: unknown): PlanStorage | null {
+  if (typeof value !== 'object' || value === null || Array.isArray(value)) return null;
+  const items: PlanStorage = {};
+  let size = 0;
+  for (const [key, item] of Object.entries(value)) {
+    if (typeof item !== 'string') return null;
+    size += key.length + item.length;
+    if (size > MAX_PLAN_STORAGE) return null;
+    items[key] = item;
+  }
+  return items;
+}
+
+export async function getPlanStorage(db: Db, id: string): Promise<PlanStorage> {
+  const rows = await db.select<{ storage: string | null }>(
+    'SELECT storage FROM business_plans WHERE id = ?',
+    [id],
+  );
+  try {
+    return parsePlanStorage(JSON.parse(rows[0]?.storage ?? '{}')) ?? {};
+  } catch {
+    return {};
+  }
+}
+
+/** Replaces what the page keeps. Not a change to the plan itself, so `updated_at` stays. */
+export async function savePlanStorage(db: Db, id: string, items: PlanStorage): Promise<void> {
+  await db.execute('UPDATE business_plans SET storage = ? WHERE id = ?', [
+    JSON.stringify(items),
     id,
   ]);
 }

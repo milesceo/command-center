@@ -2,6 +2,8 @@
 import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { Db } from '../../lib/db';
+import { PLAN_STORAGE_SOURCE } from '../../lib/preview-doc';
+import { getPlanStorage, MAX_PLAN_STORAGE } from '../../lib/repo-plans';
 import { createTestDb } from '../../lib/sqlite-test-db';
 
 const hoisted = vi.hoisted(() => ({ db: undefined as unknown as Db }));
@@ -135,6 +137,64 @@ describe('Business plans', () => {
     expect(plans.find((p) => p.id === selectedId)?.title).toBe('C');
   });
 
+  it("saves what the plan's own page stores, and gives it back when the plan opens again", async () => {
+    const plan = await usePlans.getState().add({ title: 'First', html: PLAN, source: null });
+    const { unmount } = render(<BusinessPlansView />);
+    const frame = await planFrame('First');
+    const send = (data: unknown, source: Window | null) =>
+      window.dispatchEvent(new MessageEvent('message', { data, source }));
+    const items = { 'slp-checks': '{"k1":true}' };
+    // Another window, another plan's id or a malformed message is ignored.
+    send({ source: PLAN_STORAGE_SOURCE, id: `plan-${plan.id}`, items }, window);
+    send({ source: PLAN_STORAGE_SOURCE, id: 'plan-other', items }, frame.contentWindow);
+    send({ source: PLAN_STORAGE_SOURCE, id: `plan-${plan.id}`, items: [1] }, frame.contentWindow);
+    send({ source: PLAN_STORAGE_SOURCE, id: `plan-${plan.id}`, items }, frame.contentWindow);
+    await waitFor(async () => expect(await getPlanStorage(hoisted.db, plan.id)).toEqual(items));
+    unmount();
+
+    render(<BusinessPlansView />);
+    expect((await planFrame('First')).getAttribute('srcdoc')).toContain('slp-checks');
+  });
+
+  it('saves only the newest snapshot, one write at a time, and warns once when one is refused', async () => {
+    const plan = await usePlans.getState().add({ title: 'First', html: PLAN, source: null });
+    // The first storage write is slow, so later ones would overtake it without the queue.
+    const real = hoisted.db.execute.bind(hoisted.db);
+    let release = () => {};
+    const slow = new Promise<void>((r) => (release = r));
+    let writes = 0;
+    hoisted.db.execute = async (sql, params) => {
+      if (sql.includes('SET storage')) {
+        writes++;
+        if (writes === 1) await slow;
+      }
+      return real(sql, params);
+    };
+    render(<BusinessPlansView />);
+    const frame = await planFrame('First');
+    const send = (items: unknown) =>
+      window.dispatchEvent(
+        new MessageEvent('message', {
+          data: { source: PLAN_STORAGE_SOURCE, id: `plan-${plan.id}`, items },
+          source: frame.contentWindow,
+        }),
+      );
+    send({ k: 'a' });
+    send({ k: 'b' });
+    send({ k: 'c' });
+    release();
+    await waitFor(async () =>
+      expect(await getPlanStorage(hoisted.db, plan.id)).toEqual({ k: 'c' }),
+    );
+    // a, then only the newest of the rest.
+    expect(writes).toBe(2);
+
+    send({ k: 'x'.repeat(MAX_PLAN_STORAGE) });
+    send({ k: 'x'.repeat(MAX_PLAN_STORAGE) });
+    await waitFor(() => expect(useToastStore.getState().toasts).toHaveLength(1));
+    expect(await getPlanStorage(hoisted.db, plan.id)).toEqual({ k: 'c' });
+  });
+
   it('keeps the reader iframe sandboxed to allow-scripts only, with no referrer', async () => {
     await usePlans.getState().add({ title: 'First', html: PLAN, source: null });
     render(<BusinessPlansView />);
@@ -150,7 +210,7 @@ describe('Business plans', () => {
     let failed = false;
     hoisted.db.select = ((sql: string, params?: unknown[]) => {
       // Fail only the reader's first document read; the list keeps working.
-      if (!failed && sql.includes('SELECT * FROM business_plans WHERE id')) {
+      if (!failed && sql.includes('html, source, position')) {
         failed = true;
         return Promise.reject(new Error('database is locked'));
       }

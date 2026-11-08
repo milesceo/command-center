@@ -597,10 +597,10 @@ Needs the Mac desktop app. Panel setup: `open-business-plans`.
 
 1. If the Short-Let Launch Plan is not listed (a new computer), Add a plan and pick its downloaded HTML file.
 2. Click Business plans (the briefcase) in the left rail.
-3. Scroll the plan and use whatever it has: change a number in a calculator, tick a checklist box, press a Copy button.
+3. Scroll the plan and use whatever it has: change a number in a calculator, tick a checklist box, press a Copy button, and mark a section read.
 4. Switch to another view and back, then quit and reopen Command Center.
 
-**Expected:** Short-Let Launch Plan is first in the list and opens on its own; it looks like the artifact; the calculator updates; the plan is still there after reopening. Ticks are not kept (the sandbox has no storage), and Copy may select the text instead of copying it.
+**Expected:** Short-Let Launch Plan is first in the list and opens on its own; it looks like the artifact; the calculator updates; the plan is still there after reopening, with the same boxes ticked and sections marked read. Copy may select the text instead of copying it.
 
 ### PLAN-02: Add, rename, reorder and remove a plan
 

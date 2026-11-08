@@ -871,14 +871,14 @@ export const QA_ITEMS: readonly QaItem[] = [
     steps: [
       'If the Short-Let Launch Plan is not listed (a new computer), Add a plan and pick its downloaded HTML file.',
       'Click Business plans (the briefcase) in the left rail.',
-      'Scroll the plan and use whatever it has: change a number in a calculator, tick a checklist box, press a Copy button.',
+      'Scroll the plan and use whatever it has: change a number in a calculator, tick a checklist box, press a Copy button, and mark a section read.',
       'Switch to another view and back, then quit and reopen Command Center.',
     ],
     expected:
-      'Short-Let Launch Plan is first in the list and opens on its own; it looks like the artifact; the calculator updates; the plan is still there after reopening. Ticks are not kept (the sandbox has no storage), and Copy may select the text instead of copying it.',
+      'Short-Let Launch Plan is first in the list and opens on its own; it looks like the artifact; the calculator updates; the plan is still there after reopening, with the same boxes ticked and sections marked read. Copy may select the text instead of copying it.',
     needs: 'mac-desktop',
     setup: 'open-business-plans',
-    rev: 1,
+    rev: 2,
   },
   {
     id: 'PLAN-02',
