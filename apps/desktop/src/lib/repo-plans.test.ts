@@ -62,6 +62,32 @@ describe('business plans', () => {
     expect(plans.titleFromFileName('.html')).toBe('Untitled plan');
   });
 
+  it("keeps what a plan's page saves, separately from the plan", async () => {
+    const a = await plans.createPlan(db, { title: 'A', html: doc, source: null }, 1);
+    expect(await plans.getPlanStorage(db, a.id)).toEqual({});
+    await plans.savePlanStorage(db, a.id, { 'slp-checks': '{"k1":true}', read: 'p1' });
+    expect(await plans.getPlanStorage(db, a.id)).toEqual({
+      'slp-checks': '{"k1":true}',
+      read: 'p1',
+    });
+    // Saving progress is not an edit of the plan.
+    expect((await plans.getPlan(db, a.id))?.updatedAt).toBe(1);
+    expect(await plans.getPlan(db, a.id)).not.toHaveProperty('storage');
+    // A damaged value reads back as empty rather than failing the plan.
+    await db.execute('UPDATE business_plans SET storage = ? WHERE id = ?', ['{bad', a.id]);
+    expect(await plans.getPlanStorage(db, a.id)).toEqual({});
+  });
+
+  it('accepts only plain objects of strings within the size limit as page storage', () => {
+    expect(plans.parsePlanStorage({ a: 'b' })).toEqual({ a: 'b' });
+    expect(plans.parsePlanStorage({})).toEqual({});
+    expect(plans.parsePlanStorage(null)).toBeNull();
+    expect(plans.parsePlanStorage(['a'])).toBeNull();
+    expect(plans.parsePlanStorage('a')).toBeNull();
+    expect(plans.parsePlanStorage({ a: 1 })).toBeNull();
+    expect(plans.parsePlanStorage({ a: 'x'.repeat(plans.MAX_PLAN_STORAGE) })).toBeNull();
+  });
+
   it('is part of the data export and the full wipe', async () => {
     await plans.createPlan(db, { title: 'A', html: doc, source: null });
     expect((await exportAll(db)).tables.business_plans).toHaveLength(1);

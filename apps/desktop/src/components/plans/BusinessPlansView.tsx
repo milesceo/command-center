@@ -12,9 +12,16 @@ import {
 import { useEffect, useRef, useState } from 'react';
 import { getDb } from '../../lib/db';
 import { enterPlanFullWidth, restorePlanFullWidth } from '../../lib/plan-full-width';
-import { buildHtmlDocument } from '../../lib/preview-doc';
+import {
+  buildHtmlDocument,
+  isOwnStorageMessage,
+  parsePlanStorageMessage,
+} from '../../lib/preview-doc';
 import {
   getPlan,
+  getPlanStorage,
+  savePlanStorage,
+  type PlanStorage,
   MAX_PLAN_BYTES,
   PlanError,
   titleFromFileName,
@@ -32,6 +39,32 @@ import { ListSkeleton } from '../ui/skeleton';
 
 let builds = 0;
 
+/** The newest unsaved page storage per plan, and the write in progress for it. */
+const pendingStorage = new Map<string, PlanStorage>();
+const storageWrites = new Map<string, Promise<void>>();
+
+/**
+ * Saves a plan page's storage one write at a time, always the newest snapshot, so an older one
+ * never lands last and a page calling setItem in a loop costs one write at a time, not thousands.
+ */
+function saveLatestStorage(planId: string, items: PlanStorage): Promise<void> {
+  pendingStorage.set(planId, items);
+  const running = storageWrites.get(planId);
+  if (running) return running;
+  const run = (async () => {
+    try {
+      for (let next = pendingStorage.get(planId); next; next = pendingStorage.get(planId)) {
+        pendingStorage.delete(planId);
+        await savePlanStorage(await getDb(), planId, next);
+      }
+    } finally {
+      storageWrites.delete(planId);
+    }
+  })();
+  storageWrites.set(planId, run);
+  return run;
+}
+
 /**
  * One plan, shown exactly as it was made. The document is untrusted HTML, so it runs in the same
  * sandbox as code previews: an iframe with `allow-scripts` only, served from the `preview:`
@@ -44,17 +77,22 @@ export function PlanReader({ plan }: { plan: PlanSummary }) {
   const [frame, setFrame] = useState<(Frame & { planId: string; key: number }) | null>(null);
   const [error, setError] = useState<{ planId: string; message: string } | null>(null);
   const [attempt, setAttempt] = useState(0);
+  const iframe = useRef<HTMLIFrameElement>(null);
 
   // Only the plan's id: a rename must not reload the page (and lose the reader's place).
   useEffect(() => {
     let current = true;
     void (async () => {
       try {
-        const full = await getPlan(await getDb(), plan.id);
+        const db = await getDb();
+        const full = await getPlan(db, plan.id);
         if (!full) throw new Error('This plan was removed.');
         // One stable id per plan, so the Rust store replaces it instead of keeping copies.
         const id = `plan-${plan.id}`;
-        const next = await publishPreview(id, buildHtmlDocument(full.html, id));
+        // A save from the last time this plan was open may still be running.
+        await storageWrites.get(plan.id)?.catch(() => undefined);
+        const storage = await getPlanStorage(db, plan.id);
+        const next = await publishPreview(id, buildHtmlDocument(full.html, id, storage));
         if (current) setFrame({ ...next, planId: plan.id, key: ++builds });
       } catch (err) {
         if (current) {
@@ -66,6 +104,27 @@ export function PlanReader({ plan }: { plan: PlanSummary }) {
       current = false;
     };
   }, [plan.id, attempt]);
+
+  // The page's storage changes (ticks, "read" marks), kept for it. Only from our own frame, with its id.
+  useEffect(() => {
+    const planId = plan.id;
+    const frameId = `plan-${planId}`;
+    let warned = false;
+    const warn = () => {
+      if (warned) return;
+      warned = true;
+      toast('Could not save your progress in this plan.');
+    };
+    const onMessage = (event: MessageEvent) => {
+      if (!iframe.current || event.source !== iframe.current.contentWindow) return;
+      const items = parsePlanStorageMessage(event.data, frameId);
+      if (items) saveLatestStorage(planId, items).catch(warn);
+      // Ours but refused (too large or malformed): say so once instead of dropping it silently.
+      else if (isOwnStorageMessage(event.data, frameId)) warn();
+    };
+    window.addEventListener('message', onMessage);
+    return () => window.removeEventListener('message', onMessage);
+  }, [plan.id]);
 
   const ready = frame?.planId === plan.id;
   if (!ready && error?.planId === plan.id) {
@@ -88,6 +147,7 @@ export function PlanReader({ plan }: { plan: PlanSummary }) {
     <div className="flex min-h-0 flex-1 bg-bg" data-testid="plan-reader" aria-busy={!ready}>
       {ready ? (
         <iframe
+          ref={iframe}
           key={frame.key}
           title={plan.title}
           sandbox="allow-scripts"

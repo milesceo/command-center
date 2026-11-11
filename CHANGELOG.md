@@ -9,6 +9,8 @@ recorded here. The format follows
 
 ### Added
 
+- Business plans remember what you tick: checklist ticks and "read" marks in a plan are now
+  saved in the local database and are still there when you reopen the plan or the app.
 - **Delete a model's chats** from the Model Lab: the new button on each model card deletes every
   chat set to that model (it shows how many and asks first); the model itself stays.
 - Delete a chat from the Explorer in the editor layout: hover a chat and press the bin icon, then
