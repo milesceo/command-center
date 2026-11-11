@@ -937,4 +937,17 @@ export const QA_ITEMS: readonly QaItem[] = [
     setup: 'open-model-lab',
     rev: 1,
   },
+  {
+    id: 'MAC-10',
+    area: 'macos',
+    title: 'The app icon is the orange cross',
+    steps: [
+      'Open Command Center and look at its Dock icon, then press Cmd+Tab.',
+      'Open Finder > Applications and find Command Center.',
+    ],
+    expected:
+      'The Dock, the app switcher and Finder show the orange rounded square with the black cross of five joined squares, the same size and shape as other Mac app icons, crisp at small sizes. The menu bar icon is unchanged.',
+    needs: 'mac-desktop',
+    rev: 1,
+  },
 ];

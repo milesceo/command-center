@@ -1,4 +1,4 @@
-// Generates the macOS menu-bar ("template") tray icon: the app icon's `>_` prompt in black on a
+// Generates the macOS menu-bar ("template") tray icon: the `>_` prompt glyph in black on a
 // transparent background. macOS uses only the alpha channel of a template image and tints it for
 // the light or dark menu bar, so the glyph is drawn as coverage, supersampled for smooth edges.
 //
